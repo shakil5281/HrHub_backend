@@ -1,0 +1,59 @@
+2026-01-27 21:46:34.332 +06:00 [ERR] An error occurred while seeding the database.
+Microsoft.Data.SqlClient.SqlException (0x80131904): A network-related or instance-specific error occurred while establishing a connection to SQL Server. The server was not found or was not accessible. Verify that the instance name is correct and that SQL Server is configured to allow remote connections. (provider: Named Pipes Provider, error: 40 - Could not open a connection to SQL Server)
+ ---> System.ComponentModel.Win32Exception (2): The system cannot find the file specified.
+   at Microsoft.Data.SqlClient.SqlInternalConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+   at Microsoft.Data.SqlClient.TdsParser.ThrowExceptionAndWarning(TdsParserStateObject stateObj, SqlCommand command, Boolean callerHasConnectionLock, Boolean asyncClose)
+   at Microsoft.Data.SqlClient.TdsParser.Connect(ServerInfo serverInfo, SqlInternalConnectionTds connHandler, TimeoutTimer timeout, SqlConnectionString connectionOptions, Boolean withFailover)
+   at Microsoft.Data.SqlClient.SqlInternalConnectionTds.AttemptOneLogin(ServerInfo serverInfo, String newPassword, SecureString newSecurePassword, TimeoutTimer timeout, Boolean withFailover)
+   at Microsoft.Data.SqlClient.SqlInternalConnectionTds.LoginNoFailover(ServerInfo serverInfo, String newPassword, SecureString newSecurePassword, Boolean redirectedUserInstance, SqlConnectionString connectionOptions, SqlCredential credential, TimeoutTimer timeout)
+   at Microsoft.Data.SqlClient.SqlInternalConnectionTds.OpenLoginEnlist(TimeoutTimer timeout, SqlConnectionString connectionOptions, SqlCredential credential, String newPassword, SecureString newSecurePassword, Boolean redirectedUserInstance)
+   at Microsoft.Data.SqlClient.SqlInternalConnectionTds..ctor(DbConnectionPoolIdentity identity, SqlConnectionString connectionOptions, SqlCredential credential, Object providerInfo, String newPassword, SecureString newSecurePassword, Boolean redirectedUserInstance, SqlConnectionString userConnectionOptions, SessionData reconnectSessionData, Boolean applyTransientFaultHandling, String accessToken, IDbConnectionPool pool, Func`3 accessTokenCallback)
+   at Microsoft.Data.SqlClient.SqlConnectionFactory.CreateConnection(DbConnectionOptions options, DbConnectionPoolKey poolKey, DbConnectionPoolGroupProviderInfo poolGroupProviderInfo, IDbConnectionPool pool, DbConnection owningConnection, DbConnectionOptions userOptions)
+   at Microsoft.Data.ProviderBase.DbConnectionFactory.CreatePooledConnection(IDbConnectionPool pool, DbConnection owningObject, DbConnectionOptions options, DbConnectionPoolKey poolKey, DbConnectionOptions userOptions)
+   at Microsoft.Data.SqlClient.ConnectionPool.WaitHandleDbConnectionPool.CreateObject(DbConnection owningObject, DbConnectionOptions userOptions, DbConnectionInternal oldConnection)
+   at Microsoft.Data.SqlClient.ConnectionPool.WaitHandleDbConnectionPool.UserCreateRequest(DbConnection owningObject, DbConnectionOptions userOptions, DbConnectionInternal oldConnection)
+   at Microsoft.Data.SqlClient.ConnectionPool.WaitHandleDbConnectionPool.TryGetConnection(DbConnection owningObject, UInt32 waitForMultipleObjectsTimeout, Boolean allowCreate, Boolean onlyOneCheckConnection, DbConnectionOptions userOptions, DbConnectionInternal& connection)
+   at Microsoft.Data.SqlClient.ConnectionPool.WaitHandleDbConnectionPool.WaitForPendingOpen()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenInternalAsync(Boolean errorsExpected, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenInternalAsync(Boolean errorsExpected, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenAsync(CancellationToken cancellationToken, Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerDatabaseCreator.<>c__DisplayClass20_0.<<ExistsAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerDatabaseCreator.<>c__DisplayClass20_0.<<ExistsAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerDatabaseCreator.<>c__DisplayClass20_0.<<ExistsAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Migrations.Internal.Migrator.MigrateAsync(String targetMigration, CancellationToken cancellationToken)
+   at ERPBackend.Infrastructure.Data.DbInitializer.InitializeAsync(ApplicationDbContext context) in D:\SHAKIL\hrhub\backend\ERPBackend.Infrastructure\Data\DbInitializer.cs:line 11
+   at Program.<Main>$(String[] args) in D:\SHAKIL\hrhub\backend\ERPBackend.API\Program.cs:line 101
+ClientConnectionId:00000000-0000-0000-0000-000000000000
+Error Number:2,State:0,Class:20
+2026-01-27 21:46:34.385 +06:00 [INF] ERP Backend API starting up...
+2026-01-27 21:46:34.454 +06:00 [INF] Now listening on: http://localhost:5011
+2026-01-27 21:46:34.456 +06:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-01-27 21:46:34.456 +06:00 [INF] Hosting environment: Development
+2026-01-27 21:46:34.457 +06:00 [INF] Content root path: D:\SHAKIL\hrhub\backend\ERPBackend.API
+2026-01-27 21:46:44.199 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/ - null null
+2026-01-27 21:46:44.320 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/ - 301 0 null 127.1857ms
+2026-01-27 21:46:44.665 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/index.html - null null
+2026-01-27 21:46:44.741 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/index.html - 200 null text/html;charset=utf-8 76.4094ms
+2026-01-27 21:46:44.782 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/index.css - null null
+2026-01-27 21:46:44.782 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/swagger-ui.css - null null
+2026-01-27 21:46:44.784 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/swagger-ui-bundle.js - null null
+2026-01-27 21:46:44.800 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/index.css - 200 152 text/css 18.3233ms
+2026-01-27 21:46:44.801 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/swagger-ui.css - 200 26248 text/css 18.8213ms
+2026-01-27 21:46:44.811 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/swagger-ui-standalone-preset.js - null null
+2026-01-27 21:46:44.812 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/index.js - null null
+2026-01-27 21:46:44.815 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/swagger-ui-bundle.js - 200 424871 text/javascript 31.1762ms
+2026-01-27 21:46:44.843 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/index.js - 200 null application/javascript;charset=utf-8 31.0858ms
+2026-01-27 21:46:44.843 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/swagger-ui-standalone-preset.js - 200 77848 text/javascript 32.0328ms
+2026-01-27 21:46:45.042 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/swagger/v1/swagger.json - null null
+2026-01-27 21:46:45.064 +06:00 [INF] Request starting HTTP/1.1 GET http://localhost:5011/favicon-32x32.png - null null
+2026-01-27 21:46:45.066 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/favicon-32x32.png - 200 628 image/png 2.2206ms
+2026-01-27 21:46:45.141 +06:00 [INF] Request finished HTTP/1.1 GET http://localhost:5011/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 98.4693ms
