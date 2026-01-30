@@ -1,71 +1,76 @@
-using System;
-using System.IO;
-using Microsoft.EntityFrameworkCore;
-using Serilog;
-using ERPBackend.Infrastructure.Data;
-using ERPBackend.Infrastructure.Repositories;
-using ERPBackend.Services.Services;
 using ERPBackend.Core.Interfaces;
+using ERPBackend.Core.Models;
+using ERPBackend.Infrastructure.Data;
+using ERPBackend.Services.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models; // Re-add this
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
-    .CreateLogger();
-
-builder.Host.UseSerilog();
-
 // Add services to the container
+
+// 1. EF Core
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 2. Identity
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// 3. Custom Services
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// 4. Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.SaveToken = true;
+    options.RequireHttpsMetadata = false;
+    options.TokenValidationParameters = new TokenValidationParameters()
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["JWT:ValidAudience"],
+        ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+    };
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
-    {
-        Title = "ERP Backend API",
-        Version = "v1",
-        Description = "Comprehensive ERP Backend API for data migration, analysis, import/export operations"
+
+// 5. Swagger with Auth
+builder.Services.AddSwaggerGen(c => {
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ERP Backend API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
+        In = ParameterLocation.Header, 
+        Description = "Please enter token",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        BearerFormat = "JWT",
+        Scheme = "bearer"
     });
-});
-
-// Configure Entity Framework with SQL Server
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null
-        )
-    )
-);
-
-// Register repositories and services
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<IExcelService, ExcelService>();
-builder.Services.AddScoped<IPdfService, PdfService>();
-builder.Services.AddScoped<IDataMigrationService, DataMigrationService>();
-builder.Services.AddScoped<IDataAnalysisService, DataAnalysisService>();
-
-// Configure CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement {
+        {
+            new OpenApiSecurityScheme {
+                Reference = new OpenApiReference {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
     });
-});
-
-// Configure file upload limits
-builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
-{
-    options.MultipartBodyLengthLimit = 52428800; // 50 MB
 });
 
 var app = builder.Build();
@@ -74,39 +79,46 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    app.UseSwaggerUI(options =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ERP Backend API V1");
-        c.RoutePrefix = string.Empty; // Set Swagger UI at app's root
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+        options.RoutePrefix = string.Empty;
     });
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
-// Create upload and export directories if they don't exist
-var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
-var exportPath = Path.Combine(Directory.GetCurrentDirectory(), "Exports");
-Directory.CreateDirectory(uploadPath);
-Directory.CreateDirectory(exportPath);
-// Initialize Database
-using (var scope = app.Services.CreateScope())
+// Seed Roles
+try
 {
-    var services = scope.ServiceProvider;
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        await DbInitializer.InitializeAsync(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var roles = new[] { 
+            "SuperAdmin", "Admin", "IT Officer", "Accounts", 
+            "HR Manager", "HR Officer", 
+            "Account GM", "Account Officer", 
+            "Store GM", "Store Manager", "Store Officer", "Store Admin" 
+        };
+
+        foreach (var role in roles)
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(new IdentityRole(role));
+            }
+        }
     }
 }
-
-Log.Information("ERP Backend API starting up...");
+catch (Exception ex)
+{
+    // Log exception or ignore if database doesn't exist yet
+    Console.WriteLine("Seeding failed (likely due to missing DB): " + ex.Message);
+}
 
 app.Run();
