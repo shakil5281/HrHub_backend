@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260202200049_AddAddressFieldsToEmployee")]
+    partial class AddAddressFieldsToEmployee
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -116,9 +119,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int?>("FloorId")
-                        .HasColumnType("int");
-
                     b.Property<decimal?>("FoodAllowance")
                         .HasColumnType("decimal(18,2)");
 
@@ -138,16 +138,10 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<decimal?>("GrossSalary")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int?>("GroupId")
-                        .HasColumnType("int");
-
                     b.Property<decimal?>("HouseRent")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsOTEnabled")
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("JoinDate")
@@ -245,9 +239,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<int?>("SectionId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ShiftId")
-                        .HasColumnType("int");
-
                     b.Property<string>("SignatureImageUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -289,10 +280,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasIndex("EmployeeId")
                         .IsUnique();
 
-                    b.HasIndex("FloorId");
-
-                    b.HasIndex("GroupId");
-
                     b.HasIndex("LineId");
 
                     b.HasIndex("Proximity")
@@ -300,8 +287,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasFilter("[Proximity] IS NOT NULL");
 
                     b.HasIndex("SectionId");
-
-                    b.HasIndex("ShiftId");
 
                     b.HasIndex("UserId");
 
@@ -608,50 +593,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.ToTable("Divisions");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.Floor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("NameBn")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Floors");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.Group", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("NameBn")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Groups");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.Line", b =>
                 {
                     b.Property<int>("Id")
@@ -736,58 +677,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasIndex("DepartmentId");
 
                     b.ToTable("Sections");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.Shift", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("InTime")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("LateInTime")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<decimal>("LunchHour")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("LunchTimeStart")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("NameBn")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("OutTime")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Weekends")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Shifts");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Thana", b =>
@@ -979,16 +868,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ERPBackend.Core.Models.Floor", "Floor")
-                        .WithMany()
-                        .HasForeignKey("FloorId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ERPBackend.Core.Models.Group", "Group")
-                        .WithMany()
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ERPBackend.Core.Models.Line", "Line")
                         .WithMany()
                         .HasForeignKey("LineId")
@@ -997,11 +876,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Models.Section", "Section")
                         .WithMany()
                         .HasForeignKey("SectionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ERPBackend.Core.Models.Shift", "Shift")
-                        .WithMany()
-                        .HasForeignKey("ShiftId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ERPBackend.Core.Models.ApplicationUser", "User")
@@ -1013,15 +887,9 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.Navigation("Designation");
 
-                    b.Navigation("Floor");
-
-                    b.Navigation("Group");
-
                     b.Navigation("Line");
 
                     b.Navigation("Section");
-
-                    b.Navigation("Shift");
 
                     b.Navigation("User");
                 });

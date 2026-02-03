@@ -13,5 +13,7 @@ namespace ERPBackend.Core.Models
         public string? Country { get; set; }
         public string? City { get; set; }
         public bool IsActive { get; set; } = true;
+
+        public ICollection<Company> AssignedCompanies { get; set; } = new List<Company>();
     }
 }

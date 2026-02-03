@@ -1,3 +1,4 @@
+using ERPBackend.Core.Constants;
 using ERPBackend.Core.Interfaces;
 using ERPBackend.Core.Models;
 using ERPBackend.Infrastructure.Data;
@@ -8,6 +9,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models; // Re-add this
 using System.Text;
+
+// Configure EPPlus license for non-commercial use (EPPlus 8+)
+OfficeOpenXml.ExcelPackage.License.SetNonCommercialOrganization("HR Hub");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -119,6 +123,8 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseStaticFiles();
+
 app.MapControllers();
 
 // Seed Roles
@@ -129,11 +135,11 @@ try
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var roles = new[]
         {
-            "SuperAdmin", "Admin", "IT Officer", "Accounts",
-            "HR Manager", "HR Officer",
-            "Account GM", "Account Officer",
-            "Store GM", "Store Manager", "Store Officer", "Store Admin",
-            "Production", "ProductionManager", "Merchandiser", "Cutting"
+            UserRoles.SuperAdmin, UserRoles.Admin, UserRoles.ItOfficer, UserRoles.Accounts,
+            UserRoles.HrManager, UserRoles.HrOfficer,
+            UserRoles.AccountGm, UserRoles.AccountOfficer,
+            UserRoles.StoreGm, UserRoles.StoreManager, UserRoles.StoreOfficer, UserRoles.StoreAdmin,
+            UserRoles.Production, UserRoles.ProductionManager, UserRoles.Merchandiser, UserRoles.Cutting
         };
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -172,6 +178,29 @@ try
                 await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
             }
         }
+
+        // Seed Groups and Floors
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var groups = new[] { "Worker", "Staff" };
+        foreach (var groupName in groups)
+        {
+            if (!await dbContext.Groups.AnyAsync(g => g.NameEn == groupName))
+            {
+                dbContext.Groups.Add(new Group { NameEn = groupName });
+            }
+        }
+
+        var floors = new[] { "Ground Floor", "1st Floor", "2nd Floor", "3rd Floor" };
+        foreach (var floorName in floors)
+        {
+            if (!await dbContext.Floors.AnyAsync(f => f.NameEn == floorName))
+            {
+                dbContext.Floors.Add(new Floor { NameEn = floorName });
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
     }
 }
 catch (Exception ex)
