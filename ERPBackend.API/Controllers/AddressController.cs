@@ -470,7 +470,7 @@ namespace ERPBackend.API.Controllers
                            UserRoles.ItOfficer)]
         public async Task<ActionResult<AddressImportResultDto>> ImportFromExcel(IFormFile file)
         {
-            if (file.Length == 0)
+            if (file == null || file.Length == 0)
                 return BadRequest("Please upload a valid Excel file.");
 
             var result = new AddressImportResultDto();
@@ -501,6 +501,13 @@ namespace ERPBackend.API.Controllers
 
                 result.TotalRows = rowCount - 1;
 
+                // Pre-load reference data for performance
+                var countries = await _context.Countries.ToListAsync();
+                var divisions = await _context.Divisions.ToListAsync();
+                var districts = await _context.Districts.ToListAsync();
+                var thanas = await _context.Thanas.ToListAsync();
+                var postOffices = await _context.PostOffices.ToListAsync();
+
                 for (int row = 2; row <= rowCount; row++)
                 {
                     try
@@ -520,56 +527,62 @@ namespace ERPBackend.API.Controllers
                         if (string.IsNullOrEmpty(countryNameEn)) continue;
 
                         // Country
-                        var country = await _context.Countries.FirstOrDefaultAsync(c => c.NameEn == countryNameEn);
+                        var country = countries.FirstOrDefault(c => c.NameEn.Equals(countryNameEn, StringComparison.OrdinalIgnoreCase));
                         if (country == null)
                         {
                             country = new Country { NameEn = countryNameEn, NameBn = countryNameBn ?? "" };
                             _context.Countries.Add(country);
-                            await _context.SaveChangesAsync();
+                            countries.Add(country);
                             result.CreatedCount++;
                         }
 
                         if (!string.IsNullOrEmpty(divisionNameEn))
                         {
-                            var division = await _context.Divisions.FirstOrDefaultAsync(d =>
-                                d.NameEn == divisionNameEn && d.CountryId == country.Id);
+                            var division = divisions.FirstOrDefault(d =>
+                                d.NameEn.Equals(divisionNameEn, StringComparison.OrdinalIgnoreCase) && 
+                                (d.CountryId == country.Id || d.Country == country));
+                            
                             if (division == null)
                             {
                                 division = new Division
-                                    { NameEn = divisionNameEn, NameBn = divisionNameBn ?? "", CountryId = country.Id };
+                                    { NameEn = divisionNameEn, NameBn = divisionNameBn ?? "", Country = country };
                                 _context.Divisions.Add(division);
-                                await _context.SaveChangesAsync();
+                                divisions.Add(division);
                                 result.CreatedCount++;
                             }
 
                             if (!string.IsNullOrEmpty(districtNameEn))
                             {
-                                var district = await _context.Districts.FirstOrDefaultAsync(d =>
-                                    d.NameEn == districtNameEn && d.DivisionId == division.Id);
+                                var district = districts.FirstOrDefault(d =>
+                                    d.NameEn.Equals(districtNameEn, StringComparison.OrdinalIgnoreCase) && 
+                                    (d.DivisionId == division.Id || d.Division == division));
+                                
                                 if (district == null)
                                 {
                                     district = new District
                                     {
-                                        NameEn = districtNameEn, NameBn = districtNameBn ?? "", DivisionId = division.Id
+                                        NameEn = districtNameEn, NameBn = districtNameBn ?? "", Division = division
                                     };
                                     _context.Districts.Add(district);
-                                    await _context.SaveChangesAsync();
+                                    districts.Add(district);
                                     result.CreatedCount++;
                                 }
 
                                 // Thana
                                 if (!string.IsNullOrEmpty(thanaNameEn))
                                 {
-                                    var thana = await _context.Thanas.FirstOrDefaultAsync(t =>
-                                        t.NameEn == thanaNameEn && t.DistrictId == district.Id);
+                                    var thana = thanas.FirstOrDefault(t =>
+                                        t.NameEn.Equals(thanaNameEn, StringComparison.OrdinalIgnoreCase) && 
+                                        (t.DistrictId == district.Id || t.District == district));
+                                    
                                     if (thana == null)
                                     {
                                         thana = new Thana
                                         {
-                                            NameEn = thanaNameEn, NameBn = thanaNameBn ?? "", DistrictId = district.Id
+                                            NameEn = thanaNameEn, NameBn = thanaNameBn ?? "", District = district
                                         };
                                         _context.Thanas.Add(thana);
-                                        await _context.SaveChangesAsync();
+                                        thanas.Add(thana);
                                         result.CreatedCount++;
                                     }
                                 }
@@ -577,23 +590,24 @@ namespace ERPBackend.API.Controllers
                                 // Post Office
                                 if (!string.IsNullOrEmpty(poNameEn))
                                 {
-                                    var po = await _context.PostOffices.FirstOrDefaultAsync(p =>
-                                        p.NameEn == poNameEn && p.DistrictId == district.Id);
+                                    var po = postOffices.FirstOrDefault(p =>
+                                        p.NameEn.Equals(poNameEn, StringComparison.OrdinalIgnoreCase) && 
+                                        (p.DistrictId == district.Id || p.District == district));
+                                    
                                     if (po == null)
                                     {
                                         po = new PostOffice
                                         {
                                             NameEn = poNameEn, NameBn = poNameBn ?? "", Code = postCode ?? "",
-                                            DistrictId = district.Id
+                                            District = district
                                         };
                                         _context.PostOffices.Add(po);
-                                        await _context.SaveChangesAsync();
+                                        postOffices.Add(po);
                                         result.CreatedCount++;
                                     }
-                                    else if (!string.IsNullOrEmpty(postCode))
+                                    else if (!string.IsNullOrEmpty(postCode) && po.Code != postCode)
                                     {
                                         po.Code = postCode;
-                                        await _context.SaveChangesAsync();
                                         result.UpdatedCount++;
                                     }
                                 }
@@ -608,6 +622,11 @@ namespace ERPBackend.API.Controllers
                             { RowNumber = row, Field = "General", Message = ex.Message });
                         result.ErrorCount++;
                     }
+                }
+
+                if (result.SuccessCount > 0)
+                {
+                    await _context.SaveChangesAsync();
                 }
 
                 return Ok(result);

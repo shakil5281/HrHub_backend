@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260204051927_AddAdvanceIncrementBonusTables")]
+    partial class AddAdvanceIncrementBonusTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -952,99 +955,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.ToTable("Groups");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.LeaveApplication", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ActionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("AppliedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("ApprovedById")
-                        .HasColumnType("int");
-
-                    b.Property<string>("AttachmentUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("LeaveTypeId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Remarks")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<decimal>("TotalDays")
-                        .HasColumnType("decimal(18,1)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.HasIndex("LeaveTypeId");
-
-                    b.ToTable("LeaveApplications");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.LeaveType", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsCarryForward")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("YearlyLimit")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("LeaveTypes");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.Line", b =>
                 {
                     b.Property<int>("Id")
@@ -1360,64 +1270,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.ToTable("Sections");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.Separation", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdminRemark")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ApprovedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsSettled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("LastWorkingDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("SettledAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.ToTable("Separations");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.Shift", b =>
                 {
                     b.Property<int>("Id")
@@ -1495,73 +1347,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasIndex("DistrictId");
 
                     b.ToTable("Thanas");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.Transfer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdminRemark")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ApprovedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("FromDepartmentId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("FromDesignationId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("ToDepartmentId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ToDesignationId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("TransferDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.HasIndex("FromDepartmentId");
-
-                    b.HasIndex("FromDesignationId");
-
-                    b.HasIndex("ToDepartmentId");
-
-                    b.HasIndex("ToDesignationId");
-
-                    b.ToTable("Transfers");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -1891,25 +1676,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Shift");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.LeaveApplication", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ERPBackend.Core.Models.LeaveType", "LeaveType")
-                        .WithMany()
-                        .HasForeignKey("LeaveTypeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-
-                    b.Navigation("LeaveType");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.Line", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.Section", "Section")
@@ -1995,17 +1761,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Department");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.Separation", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.Thana", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.District", "District")
@@ -2015,47 +1770,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("District");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.Transfer", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ERPBackend.Core.Models.Department", "FromDepartment")
-                        .WithMany()
-                        .HasForeignKey("FromDepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ERPBackend.Core.Models.Designation", "FromDesignation")
-                        .WithMany()
-                        .HasForeignKey("FromDesignationId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ERPBackend.Core.Models.Department", "ToDepartment")
-                        .WithMany()
-                        .HasForeignKey("ToDepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ERPBackend.Core.Models.Designation", "ToDesignation")
-                        .WithMany()
-                        .HasForeignKey("ToDesignationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-
-                    b.Navigation("FromDepartment");
-
-                    b.Navigation("FromDesignation");
-
-                    b.Navigation("ToDepartment");
-
-                    b.Navigation("ToDesignation");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

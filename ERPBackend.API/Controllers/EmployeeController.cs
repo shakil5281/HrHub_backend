@@ -28,10 +28,16 @@ namespace ERPBackend.API.Controllers
                            UserRoles.HrOfficer)]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetEmployees(
             [FromQuery] int? departmentId,
+            [FromQuery] int? sectionId,
             [FromQuery] int? designationId,
+            [FromQuery] int? lineId,
+            [FromQuery] int? shiftId,
+            [FromQuery] int? groupId,
+            [FromQuery] int? floorId,
             [FromQuery] string? status,
             [FromQuery] bool? isActive,
-            [FromQuery] string? employeeId)
+            [FromQuery] string? employeeId,
+            [FromQuery] string? searchTerm)
         {
             var query = _context.Employees
                 .Include(e => e.Department)
@@ -46,8 +52,23 @@ namespace ERPBackend.API.Controllers
             if (departmentId.HasValue)
                 query = query.Where(e => e.DepartmentId == departmentId.Value);
 
+            if (sectionId.HasValue)
+                query = query.Where(e => e.SectionId == sectionId.Value);
+
             if (designationId.HasValue)
                 query = query.Where(e => e.DesignationId == designationId.Value);
+
+            if (lineId.HasValue)
+                query = query.Where(e => e.LineId == lineId.Value);
+
+            if (shiftId.HasValue)
+                query = query.Where(e => e.ShiftId == shiftId.Value);
+
+            if (groupId.HasValue)
+                query = query.Where(e => e.GroupId == groupId.Value);
+
+            if (floorId.HasValue)
+                query = query.Where(e => e.FloorId == floorId.Value);
 
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(e => e.Status == status);
@@ -57,6 +78,16 @@ namespace ERPBackend.API.Controllers
 
             if (!string.IsNullOrEmpty(employeeId))
                 query = query.Where(e => e.EmployeeId.Contains(employeeId));
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(e => 
+                    e.EmployeeId.Contains(searchTerm) || 
+                    e.FullNameEn.Contains(searchTerm) || 
+                    (e.FullNameBn != null && e.FullNameBn.Contains(searchTerm)) ||
+                    (e.PhoneNumber != null && e.PhoneNumber.Contains(searchTerm))
+                );
+            }
 
             var employees = await query
                 .OrderByDescending(e => e.CreatedAt)
@@ -504,73 +535,88 @@ namespace ERPBackend.API.Controllers
             var worksheet = package.Workbook.Worksheets.Add("Employee Data");
 
             // Headers
-            // Basic Info (1-12)
-            worksheet.Cells[1, 1].Value = "Full Name (EN)";
-            worksheet.Cells[1, 2].Value = "Full Name (BN)";
-            worksheet.Cells[1, 3].Value = "NID";
-            worksheet.Cells[1, 4].Value = "Date of Birth";
-            worksheet.Cells[1, 5].Value = "Department";
-            worksheet.Cells[1, 6].Value = "Section";
-            worksheet.Cells[1, 7].Value = "Designation";
-            worksheet.Cells[1, 8].Value = "Line";
-            worksheet.Cells[1, 9].Value = "Status";
-            worksheet.Cells[1, 10].Value = "Join Date";
-            worksheet.Cells[1, 11].Value = "Email";
-            worksheet.Cells[1, 12].Value = "Phone Number";
+            // SL (1)
+            worksheet.Cells[1, 1].Value = "SL";
 
-            // Present Address (13-19)
-            worksheet.Cells[1, 13].Value = "Present Address (EN)";
-            worksheet.Cells[1, 14].Value = "Present Address (BN)";
-            worksheet.Cells[1, 15].Value = "Present Division";
-            worksheet.Cells[1, 16].Value = "Present District";
-            worksheet.Cells[1, 17].Value = "Present Thana";
-            worksheet.Cells[1, 18].Value = "Present Post Office";
-            worksheet.Cells[1, 19].Value = "Present Postal Code";
+            // ID Info (2-3)
+            worksheet.Cells[1, 2].Value = "Employee ID";
+            worksheet.Cells[1, 3].Value = "Card ID (Proximity)";
 
-            // Permanent Address (20-26)
-            worksheet.Cells[1, 20].Value = "Permanent Address (EN)";
-            worksheet.Cells[1, 21].Value = "Permanent Address (BN)";
-            worksheet.Cells[1, 22].Value = "Permanent Division";
-            worksheet.Cells[1, 23].Value = "Permanent District";
-            worksheet.Cells[1, 24].Value = "Permanent Thana";
-            worksheet.Cells[1, 25].Value = "Permanent Post Office";
-            worksheet.Cells[1, 26].Value = "Permanent Postal Code";
+            // Basic Info (4-17)
+            worksheet.Cells[1, 4].Value = "Full Name (EN)";
+            worksheet.Cells[1, 5].Value = "Full Name (BN)";
+            worksheet.Cells[1, 6].Value = "NID";
+            worksheet.Cells[1, 7].Value = "Date of Birth";
+            worksheet.Cells[1, 8].Value = "Gender";
+            worksheet.Cells[1, 9].Value = "Religion";
+            worksheet.Cells[1, 10].Value = "Department";
+            worksheet.Cells[1, 11].Value = "Section";
+            worksheet.Cells[1, 12].Value = "Designation";
+            worksheet.Cells[1, 13].Value = "Line";
+            worksheet.Cells[1, 14].Value = "Status";
+            worksheet.Cells[1, 15].Value = "Join Date";
+            worksheet.Cells[1, 16].Value = "Email";
+            worksheet.Cells[1, 17].Value = "Phone Number";
 
-            // Family Info (27-35)
-            worksheet.Cells[1, 27].Value = "Father Name (EN)";
-            worksheet.Cells[1, 28].Value = "Father Name (BN)";
-            worksheet.Cells[1, 29].Value = "Mother Name (EN)";
-            worksheet.Cells[1, 30].Value = "Mother Name (BN)";
-            worksheet.Cells[1, 31].Value = "Marital Status";
-            worksheet.Cells[1, 32].Value = "Spouse Name (EN)";
-            worksheet.Cells[1, 33].Value = "Spouse Name (BN)";
-            worksheet.Cells[1, 34].Value = "Spouse Occupation";
-            worksheet.Cells[1, 35].Value = "Spouse Contact";
+            // Present Address (18-24)
+            worksheet.Cells[1, 18].Value = "Present Address (EN)";
+            worksheet.Cells[1, 19].Value = "Present Address (BN)";
+            worksheet.Cells[1, 20].Value = "Present Division";
+            worksheet.Cells[1, 21].Value = "Present District";
+            worksheet.Cells[1, 22].Value = "Present Thana";
+            worksheet.Cells[1, 23].Value = "Present Post Office";
+            worksheet.Cells[1, 24].Value = "Present Postal Code";
 
-            // Salary Info (36-42)
-            worksheet.Cells[1, 36].Value = "Gross Salary";
-            worksheet.Cells[1, 37].Value = "Basic Salary (Auto)";
-            worksheet.Cells[1, 38].Value = "House Rent (Auto)";
-            worksheet.Cells[1, 39].Value = "Medical (Auto)";
-            worksheet.Cells[1, 40].Value = "Conveyance (Auto)";
-            worksheet.Cells[1, 41].Value = "Food (Auto)";
-            worksheet.Cells[1, 42].Value = "Other (Auto)";
+            // Permanent Address (25-31)
+            worksheet.Cells[1, 25].Value = "Permanent Address (EN)";
+            worksheet.Cells[1, 26].Value = "Permanent Address (BN)";
+            worksheet.Cells[1, 27].Value = "Permanent Division";
+            worksheet.Cells[1, 28].Value = "Permanent District";
+            worksheet.Cells[1, 29].Value = "Permanent Thana";
+            worksheet.Cells[1, 30].Value = "Permanent Post Office";
+            worksheet.Cells[1, 31].Value = "Permanent Postal Code";
 
-            // Account Info (43-47)
-            worksheet.Cells[1, 43].Value = "Bank Name";
-            worksheet.Cells[1, 44].Value = "Bank Branch";
-            worksheet.Cells[1, 45].Value = "Account No";
-            worksheet.Cells[1, 46].Value = "Routing No";
-            worksheet.Cells[1, 47].Value = "Account Type";
+            // Family Info (32-40)
+            worksheet.Cells[1, 32].Value = "Father Name (EN)";
+            worksheet.Cells[1, 33].Value = "Father Name (BN)";
+            worksheet.Cells[1, 34].Value = "Mother Name (EN)";
+            worksheet.Cells[1, 35].Value = "Mother Name (BN)";
+            worksheet.Cells[1, 36].Value = "Marital Status";
+            worksheet.Cells[1, 37].Value = "Spouse Name (EN)";
+            worksheet.Cells[1, 38].Value = "Spouse Name (BN)";
+            worksheet.Cells[1, 39].Value = "Spouse Occupation";
+            worksheet.Cells[1, 40].Value = "Spouse Contact";
 
-            // Emergency Contact (48-51)
-            worksheet.Cells[1, 48].Value = "Emergency Name";
-            worksheet.Cells[1, 49].Value = "Emergency Relation";
-            worksheet.Cells[1, 50].Value = "Emergency Phone";
-            worksheet.Cells[1, 51].Value = "Emergency Address";
+            // Salary Info (41-47)
+            worksheet.Cells[1, 41].Value = "Gross Salary";
+            worksheet.Cells[1, 42].Value = "Basic Salary (Auto)";
+            worksheet.Cells[1, 43].Value = "House Rent (Auto)";
+            worksheet.Cells[1, 44].Value = "Medical (Auto)";
+            worksheet.Cells[1, 45].Value = "Conveyance (Auto)";
+            worksheet.Cells[1, 46].Value = "Food (Auto)";
+            worksheet.Cells[1, 47].Value = "Other (Auto)";
+
+            // Account Info (48-52)
+            worksheet.Cells[1, 48].Value = "Bank Name";
+            worksheet.Cells[1, 49].Value = "Bank Branch";
+            worksheet.Cells[1, 50].Value = "Account No";
+            worksheet.Cells[1, 51].Value = "Routing No";
+            worksheet.Cells[1, 52].Value = "Account Type";
+
+            // Emergency Contact (53-56)
+            worksheet.Cells[1, 53].Value = "Emergency Name";
+            worksheet.Cells[1, 54].Value = "Emergency Relation";
+            worksheet.Cells[1, 55].Value = "Emergency Phone";
+            worksheet.Cells[1, 56].Value = "Emergency Address";
+
+            // Extras (57-60)
+            worksheet.Cells[1, 57].Value = "Shift";
+            worksheet.Cells[1, 58].Value = "Group";
+            worksheet.Cells[1, 59].Value = "Floor";
+            worksheet.Cells[1, 60].Value = "OT Status";
 
             // Style headers
-            using (var range = worksheet.Cells[1, 1, 1, 51])
+            using (var range = worksheet.Cells[1, 1, 1, 60])
             {
                 range.Style.Font.Bold = true;
                 range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
@@ -578,7 +624,9 @@ namespace ERPBackend.API.Controllers
             }
 
             // Instructions as comments
-            worksheet.Cells[1, 36]
+            worksheet.Cells[1, 2]
+                .AddComment("Optional. If left blank, ID will be auto-generated.", "System");
+            worksheet.Cells[1, 41]
                 .AddComment("Enter Gross Salary. Other components can be auto-calculated if left blank.", "System");
 
             worksheet.Cells.AutoFitColumns();
@@ -601,147 +649,163 @@ namespace ERPBackend.API.Controllers
             var worksheet = package.Workbook.Worksheets.Add("Employee Data");
 
             // Headers
-            // Basic Info (1-12)
-            worksheet.Cells[1, 1].Value = "Full Name (EN)";
-            worksheet.Cells[1, 2].Value = "Full Name (BN)";
-            worksheet.Cells[1, 3].Value = "NID";
-            worksheet.Cells[1, 4].Value = "Date of Birth";
-            worksheet.Cells[1, 5].Value = "Department";
-            worksheet.Cells[1, 6].Value = "Section";
-            worksheet.Cells[1, 7].Value = "Designation";
-            worksheet.Cells[1, 8].Value = "Line";
-            worksheet.Cells[1, 9].Value = "Status";
-            worksheet.Cells[1, 10].Value = "Join Date";
-            worksheet.Cells[1, 11].Value = "Email";
-            worksheet.Cells[1, 12].Value = "Phone Number";
+            // SL (1)
+            worksheet.Cells[1, 1].Value = "SL";
 
-            // Present Address (13-19)
-            worksheet.Cells[1, 13].Value = "Present Address (EN)";
-            worksheet.Cells[1, 14].Value = "Present Address (BN)";
-            worksheet.Cells[1, 15].Value = "Present Division";
-            worksheet.Cells[1, 16].Value = "Present District";
-            worksheet.Cells[1, 17].Value = "Present Thana";
-            worksheet.Cells[1, 18].Value = "Present Post Office";
-            worksheet.Cells[1, 19].Value = "Present Postal Code";
+            // ID Info (2-3)
+            worksheet.Cells[1, 2].Value = "Employee ID";
+            worksheet.Cells[1, 3].Value = "Card ID (Proximity)";
 
-            // Permanent Address (20-26)
-            worksheet.Cells[1, 20].Value = "Permanent Address (EN)";
-            worksheet.Cells[1, 21].Value = "Permanent Address (BN)";
-            worksheet.Cells[1, 22].Value = "Permanent Division";
-            worksheet.Cells[1, 23].Value = "Permanent District";
-            worksheet.Cells[1, 24].Value = "Permanent Thana";
-            worksheet.Cells[1, 25].Value = "Permanent Post Office";
-            worksheet.Cells[1, 26].Value = "Permanent Postal Code";
+            // Basic Info (4-17)
+            worksheet.Cells[1, 4].Value = "Full Name (EN)";
+            worksheet.Cells[1, 5].Value = "Full Name (BN)";
+            worksheet.Cells[1, 6].Value = "NID";
+            worksheet.Cells[1, 7].Value = "Date of Birth";
+            worksheet.Cells[1, 8].Value = "Gender";
+            worksheet.Cells[1, 9].Value = "Religion";
+            worksheet.Cells[1, 10].Value = "Department";
+            worksheet.Cells[1, 11].Value = "Section";
+            worksheet.Cells[1, 12].Value = "Designation";
+            worksheet.Cells[1, 13].Value = "Line";
+            worksheet.Cells[1, 14].Value = "Status";
+            worksheet.Cells[1, 15].Value = "Join Date";
+            worksheet.Cells[1, 16].Value = "Email";
+            worksheet.Cells[1, 17].Value = "Phone Number";
 
-            // Family Info (27-35)
-            worksheet.Cells[1, 27].Value = "Father Name (EN)";
-            worksheet.Cells[1, 28].Value = "Father Name (BN)";
-            worksheet.Cells[1, 29].Value = "Mother Name (EN)";
-            worksheet.Cells[1, 30].Value = "Mother Name (BN)";
-            worksheet.Cells[1, 31].Value = "Marital Status";
-            worksheet.Cells[1, 32].Value = "Spouse Name (EN)";
-            worksheet.Cells[1, 33].Value = "Spouse Name (BN)";
-            worksheet.Cells[1, 34].Value = "Spouse Occupation";
-            worksheet.Cells[1, 35].Value = "Spouse Contact";
+            // Present Address (18-24)
+            worksheet.Cells[1, 18].Value = "Present Address (EN)";
+            worksheet.Cells[1, 19].Value = "Present Address (BN)";
+            worksheet.Cells[1, 20].Value = "Present Division";
+            worksheet.Cells[1, 21].Value = "Present District";
+            worksheet.Cells[1, 22].Value = "Present Thana";
+            worksheet.Cells[1, 23].Value = "Present Post Office";
+            worksheet.Cells[1, 24].Value = "Present Postal Code";
 
-            // Salary Info (36-42)
-            worksheet.Cells[1, 36].Value = "Gross Salary";
-            worksheet.Cells[1, 37].Value = "Basic Salary (Auto)";
-            worksheet.Cells[1, 38].Value = "House Rent (Auto)";
-            worksheet.Cells[1, 39].Value = "Medical (Auto)";
-            worksheet.Cells[1, 40].Value = "Conveyance (Auto)";
-            worksheet.Cells[1, 41].Value = "Food (Auto)";
-            worksheet.Cells[1, 42].Value = "Other (Auto)";
+            // Permanent Address (25-31)
+            worksheet.Cells[1, 25].Value = "Permanent Address (EN)";
+            worksheet.Cells[1, 26].Value = "Permanent Address (BN)";
+            worksheet.Cells[1, 27].Value = "Permanent Division";
+            worksheet.Cells[1, 28].Value = "Permanent District";
+            worksheet.Cells[1, 29].Value = "Permanent Thana";
+            worksheet.Cells[1, 30].Value = "Permanent Post Office";
+            worksheet.Cells[1, 31].Value = "Permanent Postal Code";
 
-            // Account Info (43-47)
-            worksheet.Cells[1, 43].Value = "Bank Name";
-            worksheet.Cells[1, 44].Value = "Bank Branch";
-            worksheet.Cells[1, 45].Value = "Account No";
-            worksheet.Cells[1, 46].Value = "Routing No";
-            worksheet.Cells[1, 47].Value = "Account Type";
+            // Family Info (32-40)
+            worksheet.Cells[1, 32].Value = "Father Name (EN)";
+            worksheet.Cells[1, 33].Value = "Father Name (BN)";
+            worksheet.Cells[1, 34].Value = "Mother Name (EN)";
+            worksheet.Cells[1, 35].Value = "Mother Name (BN)";
+            worksheet.Cells[1, 36].Value = "Marital Status";
+            worksheet.Cells[1, 37].Value = "Spouse Name (EN)";
+            worksheet.Cells[1, 38].Value = "Spouse Name (BN)";
+            worksheet.Cells[1, 39].Value = "Spouse Occupation";
+            worksheet.Cells[1, 40].Value = "Spouse Contact";
 
-            // Emergency Contact (48-51)
-            worksheet.Cells[1, 48].Value = "Emergency Name";
-            worksheet.Cells[1, 49].Value = "Emergency Relation";
-            worksheet.Cells[1, 50].Value = "Emergency Phone";
-            worksheet.Cells[1, 51].Value = "Emergency Address";
-            worksheet.Cells[1, 52].Value = "Shift";
-            worksheet.Cells[1, 53].Value = "Group";
-            worksheet.Cells[1, 54].Value = "Floor";
-            worksheet.Cells[1, 55].Value = "OT Status";
+            // Salary Info (41-47)
+            worksheet.Cells[1, 41].Value = "Gross Salary";
+            worksheet.Cells[1, 42].Value = "Basic Salary (Auto)";
+            worksheet.Cells[1, 43].Value = "House Rent (Auto)";
+            worksheet.Cells[1, 44].Value = "Medical (Auto)";
+            worksheet.Cells[1, 45].Value = "Conveyance (Auto)";
+            worksheet.Cells[1, 46].Value = "Food (Auto)";
+            worksheet.Cells[1, 47].Value = "Other (Auto)";
+
+            // Account Info (48-52)
+            worksheet.Cells[1, 48].Value = "Bank Name";
+            worksheet.Cells[1, 49].Value = "Bank Branch";
+            worksheet.Cells[1, 50].Value = "Account No";
+            worksheet.Cells[1, 51].Value = "Routing No";
+            worksheet.Cells[1, 52].Value = "Account Type";
+
+            // Emergency Contact (53-56)
+            worksheet.Cells[1, 53].Value = "Emergency Name";
+            worksheet.Cells[1, 54].Value = "Emergency Relation";
+            worksheet.Cells[1, 55].Value = "Emergency Phone";
+            worksheet.Cells[1, 56].Value = "Emergency Address";
+
+            // Extras
+            worksheet.Cells[1, 57].Value = "Shift";
+            worksheet.Cells[1, 58].Value = "Group";
+            worksheet.Cells[1, 59].Value = "Floor";
+            worksheet.Cells[1, 60].Value = "OT Status";
 
             // Style headers
-            using (var range = worksheet.Cells[1, 1, 1, 55])
+            using (var range = worksheet.Cells[1, 1, 1, 60])
             {
                 range.Style.Font.Bold = true;
                 range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                 range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
             }
 
-            // Demo data - 1 row sample for brevity, but let's add full sample
+            // Demo data - 1 row sample
             int r = 2;
-            worksheet.Cells[r, 1].Value = "John Doe";
-            worksheet.Cells[r, 2].Value = "জন ডো";
-            worksheet.Cells[r, 3].Value = "1234567890";
-            worksheet.Cells[r, 4].Value = "1990-01-15";
-            worksheet.Cells[r, 5].Value = "Engineering";
-            worksheet.Cells[r, 6].Value = "Backend";
-            worksheet.Cells[r, 7].Value = "Senior Developer";
-            worksheet.Cells[r, 8].Value = "Line 01";
-            worksheet.Cells[r, 9].Value = "Active";
-            worksheet.Cells[r, 10].Value = DateTime.Now.ToString("yyyy-MM-dd");
-            worksheet.Cells[r, 11].Value = "john@example.com";
-            worksheet.Cells[r, 12].Value = "+880 1712345678";
+            worksheet.Cells[r, 1].Value = 1; // SL
+            worksheet.Cells[r, 2].Value = "EMP000123";
+            worksheet.Cells[r, 3].Value = "100200300";
+            worksheet.Cells[r, 4].Value = "John Doe";
+            worksheet.Cells[r, 5].Value = "জন ডো";
+            worksheet.Cells[r, 6].Value = "1234567890";
+            worksheet.Cells[r, 7].Value = "1990-01-15";
+            worksheet.Cells[r, 8].Value = "Male";
+            worksheet.Cells[r, 9].Value = "Islam";
+            worksheet.Cells[r, 10].Value = "Engineering";
+            worksheet.Cells[r, 11].Value = "Backend";
+            worksheet.Cells[r, 12].Value = "Senior Developer";
+            worksheet.Cells[r, 13].Value = "Line 01";
+            worksheet.Cells[r, 14].Value = "Active";
+            worksheet.Cells[r, 15].Value = DateTime.Now.ToString("yyyy-MM-dd");
+            worksheet.Cells[r, 16].Value = "john@example.com";
+            worksheet.Cells[r, 17].Value = "+880 1712345678";
 
             // Present Address
-            worksheet.Cells[r, 13].Value = "123 Main St";
-            worksheet.Cells[r, 14].Value = "১২৩ মেইন রোড";
-            worksheet.Cells[r, 15].Value = "Dhaka";
-            worksheet.Cells[r, 16].Value = "Dhaka";
-            worksheet.Cells[r, 17].Value = "Gulshan";
-            worksheet.Cells[r, 18].Value = "Gulshan Model Town";
-            worksheet.Cells[r, 19].Value = "1212";
+            worksheet.Cells[r, 18].Value = "123 Main St";
+            worksheet.Cells[r, 19].Value = "১২২৩ মেইন রোড";
+            worksheet.Cells[r, 20].Value = "Dhaka";
+            worksheet.Cells[r, 21].Value = "Dhaka";
+            worksheet.Cells[r, 22].Value = "Gulshan";
+            worksheet.Cells[r, 23].Value = "Gulshan Model Town";
+            worksheet.Cells[r, 24].Value = "1212";
 
             // Permanent Address
-            worksheet.Cells[r, 20].Value = "456 Village Rd";
-            worksheet.Cells[r, 21].Value = "৪৫৬ গ্রাম রোড";
-            worksheet.Cells[r, 22].Value = "Chittagong";
-            worksheet.Cells[r, 23].Value = "Comilla";
-            worksheet.Cells[r, 24].Value = "Kotwali";
-            worksheet.Cells[r, 25].Value = "Main PO";
-            worksheet.Cells[r, 26].Value = "3500";
+            worksheet.Cells[r, 25].Value = "456 Village Rd";
+            worksheet.Cells[r, 26].Value = "৪৫৬ গ্রাম রোড";
+            worksheet.Cells[r, 27].Value = "Chittagong";
+            worksheet.Cells[r, 28].Value = "Comilla";
+            worksheet.Cells[r, 29].Value = "Kotwali";
+            worksheet.Cells[r, 30].Value = "Main PO";
+            worksheet.Cells[r, 31].Value = "3500";
 
             // Family
-            worksheet.Cells[r, 27].Value = "Father Doe";
-            worksheet.Cells[r, 28].Value = "ফাদার ডো";
-            worksheet.Cells[r, 29].Value = "Mother Doe";
-            worksheet.Cells[r, 30].Value = "মাদার ডো";
-            worksheet.Cells[r, 31].Value = "Married"; // Single, Married, Widowed, Divorced
-            worksheet.Cells[r, 32].Value = "Mrs. Doe";
-            worksheet.Cells[r, 33].Value = "মিসেস ডো";
-            worksheet.Cells[r, 34].Value = "Housewife";
-            worksheet.Cells[r, 35].Value = "01700000000";
+            worksheet.Cells[r, 32].Value = "Father Doe";
+            worksheet.Cells[r, 33].Value = "ফাদার ডো";
+            worksheet.Cells[r, 34].Value = "Mother Doe";
+            worksheet.Cells[r, 35].Value = "মাদার ডো";
+            worksheet.Cells[r, 36].Value = "Married";
+            worksheet.Cells[r, 37].Value = "Mrs. Doe";
+            worksheet.Cells[r, 38].Value = "মিসেস ডো";
+            worksheet.Cells[r, 39].Value = "Housewife";
+            worksheet.Cells[r, 40].Value = "01700000000";
 
             // Salary
-            worksheet.Cells[r, 36].Value = 25000; // Gross
-            // Auto-calc fields left blank or filled for demo
+            worksheet.Cells[r, 41].Value = 25000;
 
             // Account
-            worksheet.Cells[r, 43].Value = "Islami Bank Bangladesh Limited";
-            worksheet.Cells[r, 44].Value = "Chawrasta";
-            worksheet.Cells[r, 45].Value = "205099887766";
-            worksheet.Cells[r, 46].Value = "123456789";
-            worksheet.Cells[r, 47].Value = "Savings";
+            worksheet.Cells[r, 48].Value = "Islami Bank Bangladesh Limited";
+            worksheet.Cells[r, 49].Value = "Chawrasta";
+            worksheet.Cells[r, 50].Value = "205099887766";
+            worksheet.Cells[r, 51].Value = "123456789";
+            worksheet.Cells[r, 52].Value = "Savings";
 
             // Emergency
-            worksheet.Cells[r, 48].Value = "Brother Doe";
-            worksheet.Cells[r, 49].Value = "Brother";
-            worksheet.Cells[r, 50].Value = "01800000000";
-            worksheet.Cells[r, 51].Value = "Same as Present";
-            worksheet.Cells[r, 52].Value = "General";
-            worksheet.Cells[r, 53].Value = "A";
-            worksheet.Cells[r, 54].Value = "1st Floor";
-            worksheet.Cells[r, 55].Value = "Yes";
+            worksheet.Cells[r, 53].Value = "Brother Doe";
+            worksheet.Cells[r, 54].Value = "Brother";
+            worksheet.Cells[r, 55].Value = "01800000000";
+            worksheet.Cells[r, 56].Value = "Same as Present";
+
+            worksheet.Cells[r, 57].Value = "General";
+            worksheet.Cells[r, 58].Value = "A";
+            worksheet.Cells[r, 59].Value = "1st Floor";
+            worksheet.Cells[r, 60].Value = "Yes";
 
             worksheet.Cells.AutoFitColumns();
 
@@ -786,17 +850,34 @@ namespace ERPBackend.API.Controllers
                     return BadRequest(result);
                 }
 
-                // Load reference data
-                var departments = await _context.Departments.ToDictionaryAsync(d => d.NameEn, d => d);
+                // Load reference data safely (handling potential duplicates in database)
+                var departments = (await _context.Departments.ToListAsync())
+                    .GroupBy(x => x.NameEn, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
                 var sections = await _context.Sections.Include(s => s.Department).ToListAsync();
-                var designations = await _context.Designations.ToDictionaryAsync(d => d.NameEn, d => d);
-                var lines = await _context.Lines.ToDictionaryAsync(l => l.NameEn, l => l);
-                var shifts = await _context.Shifts.ToDictionaryAsync(s => s.NameEn, s => s);
-                var groups = await _context.Groups.ToDictionaryAsync(g => g.NameEn, g => g);
-                var floors = await _context.Floors.ToDictionaryAsync(f => f.NameEn, f => f);
+
+                var designations = (await _context.Designations.ToListAsync())
+                    .GroupBy(x => x.NameEn, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                var lines = (await _context.Lines.ToListAsync())
+                    .GroupBy(x => x.NameEn, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                var shifts = (await _context.Shifts.ToListAsync())
+                    .GroupBy(x => x.NameEn, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                var groups = (await _context.Groups.ToListAsync())
+                    .GroupBy(x => x.NameEn, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                var floors = (await _context.Floors.ToListAsync())
+                    .GroupBy(x => x.NameEn, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 // Address References
-                // For simplified matching, we'll try to match by English name (case insensitive)
                 var divisions = await _context.Divisions.ToListAsync();
                 var districts = await _context.Districts.Include(d => d.Division).ToListAsync();
                 var thanas = await _context.Thanas.Include(t => t.District).ToListAsync();
@@ -812,68 +893,74 @@ namespace ERPBackend.API.Controllers
                         string GetVal(int col) => worksheet.Cells[row, col].Text.Trim();
 
                         // Basic Info
-                        var fullNameEn = GetVal(1);
-                        var fullNameBn = GetVal(2);
-                        var nid = GetVal(3);
-                        var dobText = GetVal(4);
-                        var deptName = GetVal(5);
-                        var secName = GetVal(6);
-                        var desigName = GetVal(7);
-                        var lineName = GetVal(8);
-                        var status = GetVal(9);
-                        var joinDateText = GetVal(10);
-                        var email = GetVal(11);
-                        var phone = GetVal(12);
-                        var shiftName = GetVal(52);
-                        var groupName = GetVal(53);
-                        var floorName = GetVal(54);
-                        var otStatusVal = GetVal(55);
+                        var providedEmpId = GetVal(2);
+                        var proximity = GetVal(3);
+                        var fullNameEn = GetVal(4);
+                        var fullNameBn = GetVal(5);
+                        var nid = GetVal(6);
+                        var dobText = GetVal(7);
+                        var gender = GetVal(8);
+                        var religion = GetVal(9);
+                        var deptName = GetVal(10);
+                        var secName = GetVal(11);
+                        var desigName = GetVal(12);
+                        var lineName = GetVal(13);
+                        var status = GetVal(14);
+                        var joinDateText = GetVal(15);
+                        var email = GetVal(16);
+                        var phone = GetVal(17);
 
                         // Present Address
-                        var preAddrEn = GetVal(13);
-                        var preAddrBn = GetVal(14);
-                        var preDiv = GetVal(15);
-                        var preDist = GetVal(16);
-                        var preThana = GetVal(17);
-                        var prePO = GetVal(18);
-                        var prePC = GetVal(19);
+                        var preAddrEn = GetVal(18);
+                        var preAddrBn = GetVal(19);
+                        var preDiv = GetVal(20);
+                        var preDist = GetVal(21);
+                        var preThana = GetVal(22);
+                        var prePO = GetVal(23);
+                        var prePC = GetVal(24);
 
                         // Permanent Address
-                        var perAddrEn = GetVal(20);
-                        var perAddrBn = GetVal(21);
-                        var perDiv = GetVal(22);
-                        var perDist = GetVal(23);
-                        var perThana = GetVal(24);
-                        var perPO = GetVal(25);
-                        var perPC = GetVal(26);
+                        var perAddrEn = GetVal(25);
+                        var perAddrBn = GetVal(26);
+                        var perDiv = GetVal(27);
+                        var perDist = GetVal(28);
+                        var perThana = GetVal(29);
+                        var perPO = GetVal(30);
+                        var perPC = GetVal(31);
 
                         // Family
-                        var fNameEn = GetVal(27);
-                        var fNameBn = GetVal(28);
-                        var mNameEn = GetVal(29);
-                        var mNameBn = GetVal(30);
-                        var marital = GetVal(31);
-                        var sNameEn = GetVal(32);
-                        var sNameBn = GetVal(33);
-                        var sOcc = GetVal(34);
-                        var sCont = GetVal(35);
+                        var fNameEn = GetVal(32);
+                        var fNameBn = GetVal(33);
+                        var mNameEn = GetVal(34);
+                        var mNameBn = GetVal(35);
+                        var marital = GetVal(36);
+                        var sNameEn = GetVal(37);
+                        var sNameBn = GetVal(38);
+                        var sOcc = GetVal(39);
+                        var sCont = GetVal(40);
 
                         // Salary
-                        var grossText = GetVal(36);
-                        var basicText = GetVal(37); // Optional, can be calculated
+                        var grossText = GetVal(41);
+                        var basicText = GetVal(42);
 
                         // Account
-                        var bankName = GetVal(43);
-                        var bankBranch = GetVal(44);
-                        var accNo = GetVal(45);
-                        var routeNo = GetVal(46);
-                        var accType = GetVal(47);
+                        var bankName = GetVal(48);
+                        var bankBranch = GetVal(49);
+                        var accNo = GetVal(50);
+                        var routeNo = GetVal(51);
+                        var accType = GetVal(52);
 
                         // Emergency
-                        var emName = GetVal(48);
-                        var emRel = GetVal(49);
-                        var emPhone = GetVal(50);
-                        var emAddr = GetVal(51);
+                        var emName = GetVal(53);
+                        var emRel = GetVal(54);
+                        var emPhone = GetVal(55);
+                        var emAddr = GetVal(56);
+
+                        // Extras
+                        var shiftName = GetVal(57);
+                        var groupName = GetVal(58);
+                        var floorName = GetVal(59);
+                        var otStatusVal = GetVal(60);
 
                         // Validation
                         if (string.IsNullOrEmpty(fullNameEn))
@@ -928,8 +1015,7 @@ namespace ERPBackend.API.Controllers
                         int? lineId = null;
                         if (!string.IsNullOrEmpty(lineName) && lines.ContainsKey(lineName)) lineId = lines[lineName].Id;
 
-                        // Resolve Address IDs
-                        // Helper for address lookup
+                        // Resolve Address IDs Lookups
                         int? ResolveDiv(string name) => divisions
                             .FirstOrDefault(d => d.NameEn.Equals(name, StringComparison.OrdinalIgnoreCase))?.Id;
 
@@ -951,7 +1037,6 @@ namespace ERPBackend.API.Controllers
                         int? preThanaId = string.IsNullOrEmpty(preThana) ? null : ResolveThana(preThana, preDistId);
                         int? prePOId = string.IsNullOrEmpty(prePO) ? null : ResolvePO(prePO, preDistId);
 
-                        // If Postal code is empty but PO is found, use it
                         string prePCFinal = prePC;
                         if (string.IsNullOrEmpty(prePCFinal) && prePOId.HasValue)
                         {
@@ -975,72 +1060,35 @@ namespace ERPBackend.API.Controllers
                         decimal gross = 0;
                         decimal.TryParse(grossText, out gross);
 
-                        decimal basic = 0;
-                        decimal houseRent = 0;
-                        decimal medical = 0;
-                        decimal food = 0;
-                        decimal conveyance = 0;
-                        decimal other = 0;
+                        decimal basic = 0, houseRent = 0, medical = 0, food = 0, conveyance = 0, other = 0;
 
                         if (gross > 0)
                         {
-                            // Apply formula
-                            medical = 750;
-                            food = 1250;
-                            conveyance = 450;
-                            other = 0;
-
+                            medical = 750; food = 1250; conveyance = 450; other = 0;
                             decimal fixedTotal = medical + food + conveyance + other;
                             if (gross > fixedTotal)
                             {
                                 basic = (gross - fixedTotal) / 1.5m;
                                 houseRent = gross - fixedTotal - basic;
                             }
-
-                            // Rounding
                             basic = Math.Round(basic, 2);
                             houseRent = Math.Round(houseRent, 2);
                         }
 
-                        // Generate ID
-                        // Check if an ID column exists in Excel (we didn't add one in template, assuming auto-gen)
-                        // Actually, let's auto-gen to be safe
-                        var lastId = await _context.Employees.OrderByDescending(e => e.Id).Select(e => e.Id)
-                            .FirstOrDefaultAsync();
-                        // Note: In loop this is tricky because we are adding to context but not saving yet.
-                        // We should track nextId locally.
-                        // Simple approach: create a temporary ID based on current max + created count
-                        // Real implementation might need transaction or sequence, but for now:
+                        int? shiftId = !string.IsNullOrEmpty(shiftName) && shifts.TryGetValue(shiftName, out var sVal) ? sVal.Id : null;
+                        int? groupId = !string.IsNullOrEmpty(groupName) && groups.TryGetValue(groupName, out var gVal) ? gVal.Id : null;
+                        int? floorId = !string.IsNullOrEmpty(floorName) && floors.TryGetValue(floorName, out var fVal) ? fVal.Id : null;
 
-                        // Better: Generate string ID. 
-                        // But wait, EF Core auto-increments the PK 'Id'. We need 'EmployeeId' string.
-                        // We can generate a provisional one.
-
-                        int? shiftId = !string.IsNullOrEmpty(shiftName) && shifts.TryGetValue(shiftName, out var sVal)
-                            ? sVal.Id
-                            : null;
-                        int? groupId = !string.IsNullOrEmpty(groupName) && groups.TryGetValue(groupName, out var gVal)
-                            ? gVal.Id
-                            : null;
-                        int? floorId = !string.IsNullOrEmpty(floorName) && floors.TryGetValue(floorName, out var fVal)
-                            ? fVal.Id
-                            : null;
-
-                        // Let's just create new Employee object
                         var employee = new Employee
                         {
-                            // We will set EmployeeId after saving or use a Guid/Timestamp logic if not strict sequential needed during bulk
-                            // For strict sequential 'EMP000001', we need to be careful.
-                            // Let's defer EmployeeId generation to just before adding, capturing the latest from DB? 
-                            // No, db update is at end.
-                            // Let's generate a placeholder or calculate based on result.CreatedCount + offset
-                            EmployeeId = "TEMP", // Will fix below
-
+                            EmployeeId = string.IsNullOrEmpty(providedEmpId) ? "TEMP" : providedEmpId,
+                            Proximity = proximity,
                             FullNameEn = fullNameEn,
                             FullNameBn = fullNameBn,
                             NID = nid,
                             DateOfBirth = dob,
-
+                            Gender = gender,
+                            Religion = religion,
                             DepartmentId = department.Id,
                             SectionId = sectionId,
                             DesignationId = designation.Id,
@@ -1048,7 +1096,6 @@ namespace ERPBackend.API.Controllers
                             ShiftId = shiftId,
                             GroupId = groupId,
                             FloorId = floorId,
-
                             Status = string.IsNullOrEmpty(status) ? "Active" : status,
                             JoinDate = joinDate,
                             IsOTEnabled = otStatusVal.Equals("Yes", StringComparison.OrdinalIgnoreCase) ||
@@ -1056,8 +1103,6 @@ namespace ERPBackend.API.Controllers
                                           otStatusVal.Equals("1"),
                             Email = email,
                             PhoneNumber = phone,
-
-                            // Address
                             PresentAddress = preAddrEn,
                             PresentAddressBn = preAddrBn,
                             PresentDivisionId = preDivId,
@@ -1065,7 +1110,6 @@ namespace ERPBackend.API.Controllers
                             PresentThanaId = preThanaId,
                             PresentPostOfficeId = prePOId,
                             PresentPostalCode = prePCFinal,
-
                             PermanentAddress = perAddrEn,
                             PermanentAddressBn = perAddrBn,
                             PermanentDivisionId = perDivId,
@@ -1073,8 +1117,6 @@ namespace ERPBackend.API.Controllers
                             PermanentThanaId = perThanaId,
                             PermanentPostOfficeId = perPOId,
                             PermanentPostalCode = perPCFinal,
-
-                            // Family
                             FatherNameEn = fNameEn,
                             FatherNameBn = fNameBn,
                             MotherNameEn = mNameEn,
@@ -1084,8 +1126,6 @@ namespace ERPBackend.API.Controllers
                             SpouseNameBn = sNameBn,
                             SpouseOccupation = sOcc,
                             SpouseContact = sCont,
-
-                            // Salary
                             GrossSalary = gross,
                             BasicSalary = basic,
                             HouseRent = houseRent,
@@ -1093,20 +1133,15 @@ namespace ERPBackend.API.Controllers
                             FoodAllowance = food,
                             Conveyance = conveyance,
                             OtherAllowance = other,
-
-                            // Account
                             BankName = bankName,
                             BankBranchName = bankBranch,
                             BankAccountNo = accNo,
                             BankRoutingNo = routeNo,
                             BankAccountType = accType,
-
-                            // Emergency
                             EmergencyContactName = emName,
                             EmergencyContactRelation = emRel,
                             EmergencyContactPhone = emPhone,
                             EmergencyContactAddress = emAddr,
-
                             IsActive = true,
                             CreatedAt = DateTime.UtcNow
                         };
@@ -1117,35 +1152,31 @@ namespace ERPBackend.API.Controllers
                     }
                     catch (Exception ex)
                     {
-                        result.Errors.Add(new ImportError
-                        {
-                            RowNumber = row,
-                            Field = "General",
-                            Message = ex.Message
-                        });
+                        result.Errors.Add(new ImportError { RowNumber = row, Field = "General", Message = ex.Message });
                         result.ErrorCount++;
                     }
                 }
 
                 if (result.SuccessCount > 0)
                 {
-                    // We need to fix EmployeeIDs before saving
-                    // Strategy: Get max numeric ID from DB, then assign sequential IDs
-                    // Limitation: This is not thread-safe in high concurrency but sufficient here.
-
-                    // Actually, we can save changes first to get PKs, then update EmployeeIds?
-                    // Or manual calc.
-                    var maxId = await _context.Employees.MaxAsync(e => (int?)e.Id) ?? 0;
                     var addedEmployees = _context.ChangeTracker.Entries<Employee>()
                         .Where(e => e.State == EntityState.Added)
                         .Select(e => e.Entity)
                         .ToList();
 
-                    int currentId = maxId;
-                    foreach (var emp in addedEmployees)
+                    if (addedEmployees.Any(e => e.EmployeeId == "TEMP"))
                     {
-                        currentId++;
-                        emp.EmployeeId = $"EMP{currentId:D6}";
+                        var maxIdStr = await _context.Employees.Where(e => e.EmployeeId.StartsWith("EMP"))
+                            .Select(e => e.EmployeeId.Substring(3))
+                            .ToListAsync();
+                        
+                        int nextNumericId = maxIdStr.Count > 0 ? maxIdStr.Select(s => int.TryParse(s, out var i) ? i : 0).Max() : 0;
+
+                        foreach (var emp in addedEmployees.Where(e => e.EmployeeId == "TEMP"))
+                        {
+                            nextNumericId++;
+                            emp.EmployeeId = $"EMP{nextNumericId:D6}";
+                        }
                     }
 
                     await _context.SaveChangesAsync();

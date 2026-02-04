@@ -229,4 +229,24 @@ namespace ERPBackend.Core.DTOs
         public bool IsActive { get; set; }
         public bool IsOTEnabled { get; set; }
     }
+
+    public class ManpowerSummaryDto
+    {
+        public int TotalEmployees { get; set; }
+        public int ActiveEmployees { get; set; }
+        public int OnLeaveEmployees { get; set; }
+        public int InactiveEmployees { get; set; }
+        public List<SummaryItemDto> DepartmentSummary { get; set; } = new();
+        public List<SummaryItemDto> DesignationSummary { get; set; } = new();
+        public List<SummaryItemDto> GenderSummary { get; set; } = new();
+        public List<SummaryItemDto> StatusSummary { get; set; } = new();
+    }
+
+    public class SummaryItemDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public int Count { get; set; }
+        public double Percentage { get; set; }
+    }
 }
