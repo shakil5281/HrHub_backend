@@ -55,5 +55,29 @@ namespace ERPBackend.API.Controllers
             if (!result) return BadRequest("Invalid user name");
             return NoContent();
         }
+
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UserProfileUpdateDto model)
+        {
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username)) return Unauthorized();
+
+            var result = await _authService.UpdateProfileAsync(username, model);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [Authorize]
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username)) return Unauthorized();
+
+            var result = await _authService.GetProfileAsync(username);
+            if (result == null) return NotFound("User not found");
+            return Ok(result);
+        }
     }
 }
