@@ -64,11 +64,11 @@ namespace ERPBackend.API.Controllers
                 {
                     Id = a.Id,
                     EmployeeId = a.EmployeeId,
-                    EmployeeIdCard = a.Employee!.EmployeeId,
-                    EmployeeName = a.Employee!.FullNameEn,
-                    Department = a.Employee!.Department != null ? a.Employee.Department.NameEn : "N/A",
-                    Designation = a.Employee!.Designation != null ? a.Employee.Designation.NameEn : "N/A",
-                    Shift = a.Employee!.Shift != null ? a.Employee.Shift.NameEn : "N/A",
+                    EmployeeIdCard = a.Employee != null ? a.Employee.EmployeeId : "",
+                    EmployeeName = a.Employee != null ? a.Employee.FullNameEn : "",
+                    Department = (a.Employee != null && a.Employee.Department != null) ? a.Employee.Department.NameEn : "N/A",
+                    Designation = (a.Employee != null && a.Employee.Designation != null) ? a.Employee.Designation.NameEn : "N/A",
+                    Shift = (a.Employee != null && a.Employee.Shift != null) ? a.Employee.Shift.NameEn : "N/A",
                     Date = a.Date,
                     InTime = a.InTime,
                     OutTime = a.OutTime,
@@ -125,10 +125,10 @@ namespace ERPBackend.API.Controllers
             worksheet.PrinterSettings.FitToWidth = 1;
             worksheet.PrinterSettings.FitToHeight = 0;
             worksheet.PrinterSettings.PaperSize = OfficeOpenXml.ePaperSize.A4;
-            worksheet.PrinterSettings.TopMargin = 0.5;
-            worksheet.PrinterSettings.BottomMargin = 0.5;
-            worksheet.PrinterSettings.LeftMargin = 0.5;
-            worksheet.PrinterSettings.RightMargin = 0.5;
+            worksheet.PrinterSettings.TopMargin = 0.5m;
+            worksheet.PrinterSettings.BottomMargin = 0.5m;
+            worksheet.PrinterSettings.LeftMargin = 0.5m;
+            worksheet.PrinterSettings.RightMargin = 0.5m;
 
             // 1. Header Section
             string companyName = company?.CompanyNameEn ?? "HR HUB";
@@ -258,7 +258,7 @@ namespace ERPBackend.API.Controllers
             currentRow++;
 
             worksheet.Cells[currentRow, 2].Value = "Present (P)";
-            worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status == "Present" || x.Status == "Late");
+            worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status.StartsWith("Present") || x.Status == "Late");
             worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Green);
             currentRow++;
 
@@ -416,28 +416,28 @@ namespace ERPBackend.API.Controllers
                 .AsQueryable();
 
             if (departmentId.HasValue)
-                query = query.Where(a => a.Employee!.DepartmentId == departmentId.Value);
+                query = query.Where(a => a.Employee != null && a.Employee.DepartmentId == departmentId.Value);
 
             if (!string.IsNullOrEmpty(status) && status != "all")
                 query = query.Where(a => a.Status == status);
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                query = query.Where(a => a.Employee!.FullNameEn.Contains(searchTerm) ||
-                                       a.Employee!.EmployeeId.Contains(searchTerm));
+                query = query.Where(a => a.Employee != null && (a.Employee.FullNameEn.Contains(searchTerm) ||
+                                       a.Employee.EmployeeId.Contains(searchTerm)));
             }
 
             return await query.Select(a => new AttendanceDto
             {
                 Id = a.Id,
                 EmployeeId = a.EmployeeId,
-                EmployeeIdCard = a.Employee!.EmployeeId,
-                EmployeeName = a.Employee!.FullNameEn,
-                Department = a.Employee!.Department != null ? a.Employee.Department.NameEn : "N/A",
-                Section = a.Employee!.Section != null ? a.Employee.Section.NameEn : "N/A",
-                Line = a.Employee!.Line != null ? a.Employee.Line.NameEn : "N/A",
-                Designation = a.Employee!.Designation != null ? a.Employee.Designation.NameEn : "N/A",
-                Shift = a.Employee!.Shift != null ? a.Employee.Shift.NameEn : "N/A",
+                EmployeeIdCard = a.Employee != null ? a.Employee.EmployeeId : "",
+                EmployeeName = a.Employee != null ? a.Employee.FullNameEn : "",
+                Department = (a.Employee != null && a.Employee.Department != null) ? a.Employee.Department.NameEn : "N/A",
+                Section = (a.Employee != null && a.Employee.Section != null) ? a.Employee.Section.NameEn : "N/A",
+                Line = (a.Employee != null && a.Employee.Line != null) ? a.Employee.Line.NameEn : "N/A",
+                Designation = (a.Employee != null && a.Employee.Designation != null) ? a.Employee.Designation.NameEn : "N/A",
+                Shift = (a.Employee != null && a.Employee.Shift != null) ? a.Employee.Shift.NameEn : "N/A",
                 Date = a.Date,
                 InTime = a.InTime,
                 OutTime = a.OutTime,
@@ -457,7 +457,7 @@ namespace ERPBackend.API.Controllers
                     .Where(a => a.Date.Date == date.Date)
                     .ToListAsync();
 
-                var present = attendances.Count(a => a.Status == "Present" || a.Status == "Late");
+                var present = attendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var late = attendances.Count(a => a.Status == "Late");
                 var absent = attendances.Count(a => a.Status == "Absent");
                 var leave = attendances.Count(a => a.Status == "On Leave");
@@ -524,7 +524,7 @@ namespace ERPBackend.API.Controllers
             attendances = attendances.Where(a => activeEmpIds.Contains(a.EmployeeId)).ToList();
 
             // 3. Overall Summary
-            var present = attendances.Count(a => a.Status == "Present" || a.Status == "Late");
+            var present = attendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
             var late = attendances.Count(a => a.Status == "Late");
             var absent = attendances.Count(a => a.Status == "Absent");
             var leave = attendances.Count(a => a.Status == "On Leave");
@@ -549,7 +549,7 @@ namespace ERPBackend.API.Controllers
                 var empIds = allEmployees.Where(e => e.DepartmentId == dept!.Id).Select(e => e.Id).ToHashSet();
                 var deptAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
                 
-                var p = deptAttendances.Count(a => a.Status == "Present" || a.Status == "Late");
+                var p = deptAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = deptAttendances.Count(a => a.Status == "Late");
                 var ab = deptAttendances.Count(a => a.Status == "Absent");
                 var lv = deptAttendances.Count(a => a.Status == "On Leave");
@@ -578,7 +578,7 @@ namespace ERPBackend.API.Controllers
                 var empIds = allEmployees.Where(e => e.SectionId == sec!.Id).Select(e => e.Id).ToHashSet();
                 var secAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
 
-                var p = secAttendances.Count(a => a.Status == "Present" || a.Status == "Late");
+                var p = secAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = secAttendances.Count(a => a.Status == "Late");
                 var ab = secAttendances.Count(a => a.Status == "Absent");
                 var lv = secAttendances.Count(a => a.Status == "On Leave");
@@ -607,7 +607,7 @@ namespace ERPBackend.API.Controllers
                 var empIds = allEmployees.Where(e => e.DesignationId == desig!.Id).Select(e => e.Id).ToHashSet();
                 var desigAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
 
-                var p = desigAttendances.Count(a => a.Status == "Present" || a.Status == "Late");
+                var p = desigAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = desigAttendances.Count(a => a.Status == "Late");
                 var ab = desigAttendances.Count(a => a.Status == "Absent");
                 var lv = desigAttendances.Count(a => a.Status == "On Leave");
@@ -636,7 +636,7 @@ namespace ERPBackend.API.Controllers
                 var empIds = allEmployees.Where(e => e.LineId == line!.Id).Select(e => e.Id).ToHashSet();
                 var lineAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
 
-                var p = lineAttendances.Count(a => a.Status == "Present" || a.Status == "Late");
+                var p = lineAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = lineAttendances.Count(a => a.Status == "Late");
                 var ab = lineAttendances.Count(a => a.Status == "Absent");
                 var lv = lineAttendances.Count(a => a.Status == "On Leave");
@@ -669,7 +669,7 @@ namespace ERPBackend.API.Controllers
                 var empIds = allEmployees.Where(e => e.GroupId == grp.Id).Select(e => e.Id).ToHashSet();
                 var grpAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
 
-                var p = grpAttendances.Count(a => a.Status == "Present" || a.Status == "Late");
+                var p = grpAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = grpAttendances.Count(a => a.Status == "Late");
                 var ab = grpAttendances.Count(a => a.Status == "Absent");
                 var lv = grpAttendances.Count(a => a.Status == "On Leave");
@@ -698,7 +698,7 @@ namespace ERPBackend.API.Controllers
                     var empIds = g.Select(e => e.Id).ToHashSet();
                     var dsAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
 
-                    var p = dsAttendances.Count(a => a.Status == "Present" || a.Status == "Late");
+                    var p = dsAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                     var l = dsAttendances.Count(a => a.Status == "Late");
                     var ab = dsAttendances.Count(a => a.Status == "Absent");
                     var lv = dsAttendances.Count(a => a.Status == "On Leave");
@@ -834,14 +834,14 @@ namespace ERPBackend.API.Controllers
 
                         page.Header().Column(col =>
                         {
-                            col.Item().Text(companyName).FontSize(16).Bold().FontColor(Colors.Blue.Medium).AlignCenter();
-                            col.Item().Text(company?.Address ?? "").FontSize(9).AlignCenter();
-                            col.Item().PaddingTop(5).Text("Daily Attendance Summary Report").FontSize(12).Bold().Underline().AlignCenter();
-                            col.Item().Text($"Date: {date:dd MMMM yyyy}").FontSize(10).AlignCenter();
+                            col.Item().AlignCenter().Text(companyName).FontSize(16).Bold().FontColor(Colors.Blue.Medium);
+                            col.Item().AlignCenter().Text(company?.Address ?? "").FontSize(9);
+                            col.Item().PaddingTop(5).AlignCenter().Text("Daily Attendance Summary Report").FontSize(12).Bold().Underline();
+                            col.Item().AlignCenter().Text($"Date: {date:dd MMMM yyyy}").FontSize(10);
                             if (departmentId.HasValue)
                             {
                                 var deptName = summaryData.DepartmentSummaries.FirstOrDefault()?.DepartmentName ?? "Selected Department";
-                                col.Item().Text($"Filtered by Department: {deptName}").FontSize(9).Italic().AlignCenter();
+                                col.Item().AlignCenter().Text($"Filtered by Department: {deptName}").FontSize(9).Italic();
                             }
                         });
 
@@ -1471,26 +1471,11 @@ namespace ERPBackend.API.Controllers
                             bool missingIn = string.IsNullOrWhiteSpace(attendance.InTime);
                             bool missingOut = string.IsNullOrWhiteSpace(attendance.OutTime);
 
-                            if (missingIn || missingOut)
+                            // Only show if exactly one is missing (excluding "Both (No Punch)")
+                            if (missingIn ^ missingOut) 
                             {
-                                string missingType;
-                                string status;
-
-                                if (missingIn && missingOut)
-                                {
-                                    missingType = "Both (No Punch)";
-                                    status = "Critical";
-                                }
-                                else if (missingIn)
-                                {
-                                    missingType = "In Time";
-                                    status = "Pending";
-                                }
-                                else
-                                {
-                                    missingType = "Out Time";
-                                    status = "Pending";
-                                }
+                                string missingType = missingIn ? "In Time" : "Out Time";
+                                string status = "Pending";
 
                                 missingEntries.Add(new MissingEntryDto
                                 {
@@ -1509,25 +1494,7 @@ namespace ERPBackend.API.Controllers
                                 });
                             }
                         }
-                        else
-                        {
-                            // No attendance record at all - critical
-                            missingEntries.Add(new MissingEntryDto
-                            {
-                                Id = idCounter++,
-                                EmployeeId = employee.Id,
-                                EmployeeIdCard = employee.EmployeeId,
-                                EmployeeName = employee.FullNameEn,
-                                Department = employee.Department?.NameEn ?? "N/A",
-                                Designation = employee.Designation?.NameEn ?? "N/A",
-                                Shift = employee.Shift?.NameEn,
-                                Date = date,
-                                InTime = null,
-                                OutTime = null,
-                                MissingType = "Both (No Punch)",
-                                Status = "Critical"
-                            });
-                        }
+                        // We skip the "else" (attendance == null) case because user doesn't want "Both (No Punch)"
                     }
                 }
 
@@ -1851,20 +1818,59 @@ namespace ERPBackend.API.Controllers
                         {
                             status = "Off Day";
                         }
-                        else if (attendance != null && !string.IsNullOrEmpty(attendance.InTime))
+                        else if (attendance != null && (!string.IsNullOrEmpty(attendance.InTime) || !string.IsNullOrEmpty(attendance.OutTime)))
                         {
-                            // Calculate Late
-                            var inTime = ParseTime(attendance.InTime);
-                            var shiftInTime = ParseTime(shift.InTime);
-                            var lateLimit = ParseTime(shift.LateInTime) ?? shiftInTime?.Add(TimeSpan.FromMinutes(15));
-
-                            if (inTime > lateLimit)
+                            // Re-classify In/Out times based on user rules (cutoff at 11:00 AM)
+                            var rawIn = attendance.InTime;
+                            var rawOut = attendance.OutTime;
+                            
+                            var p1 = ParseTime(rawIn);
+                            var p2 = ParseTime(rawOut);
+                            
+                            TimeSpan? actualIn = null;
+                            TimeSpan? actualOut = null;
+                            
+                            var cutoff = new TimeSpan(11, 0, 0); // 11:00 AM
+                            
+                            // Collect all unique non-null times
+                            var allTimes = new List<TimeSpan>();
+                            if (p1.HasValue) allTimes.Add(p1.Value);
+                            if (p2.HasValue && (!p1.HasValue || p1.Value != p2.Value)) allTimes.Add(p2.Value);
+                            
+                            foreach(var t in allTimes)
                             {
-                                status = "Late";
+                                if (t <= cutoff)
+                                {
+                                    if (actualIn == null || t < actualIn) actualIn = t; // Earlier punch is In
+                                }
+                                else
+                                {
+                                    if (actualOut == null || t > actualOut) actualOut = t; // Later punch is Out
+                                }
                             }
-                            else
+                            
+                            attendance.InTime = actualIn?.ToString(@"hh\:mm\:ss");
+                            attendance.OutTime = actualOut?.ToString(@"hh\:mm\:ss");
+
+                            if (!string.IsNullOrEmpty(attendance.InTime))
                             {
-                                status = "Present";
+                                // Calculate Late
+                                var inTime = ParseTime(attendance.InTime);
+                                var shiftInTime = ParseTime(shift.InTime);
+                                var lateLimit = ParseTime(shift.LateInTime) ?? shiftInTime?.Add(TimeSpan.FromMinutes(15));
+
+                                if (inTime > lateLimit)
+                                {
+                                    status = "Late";
+                                }
+                                else
+                                {
+                                    status = "Present";
+                                }
+                            }
+                            else if (!string.IsNullOrEmpty(attendance.OutTime))
+                            {
+                                status = "Present (Out Only)";
                             }
 
                             // Calculate OT
@@ -1876,7 +1882,7 @@ namespace ERPBackend.API.Controllers
                                 if (outTime > shiftOutTime)
                                 {
                                     var diff = (outTime.Value - shiftOutTime.Value).TotalHours;
-                                    otHours = (decimal)Math.Max(0, Math.Floor(diff)); // Usually OT is calculated in full hours
+                                    otHours = (decimal)Math.Max(0, Math.Floor(diff));
                                 }
                             }
                         }
@@ -1911,6 +1917,93 @@ namespace ERPBackend.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Error during processing: " + ex.Message });
+            }
+        }
+
+        [HttpPost("bulk-manual-entry")]
+        public async Task<ActionResult> BulkManualEntry([FromBody] BulkManualAttendanceDto dto)
+        {
+            try
+            {
+                var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+                var updatedCount = 0;
+                var createdCount = 0;
+
+                foreach (var empId in dto.EmployeeIds)
+                {
+                    var existing = await _context.Attendances
+                        .FirstOrDefaultAsync(a => a.EmployeeId == empId && a.Date.Date == dto.Date.Date);
+
+                    if (existing != null)
+                    {
+                        existing.InTime = dto.InTime;
+                        existing.OutTime = dto.OutTime;
+                        existing.Status = dto.Status;
+                        existing.Reason = dto.Reason;
+                        existing.UpdatedAt = DateTime.UtcNow;
+                        existing.UpdatedBy = userName;
+                        updatedCount++;
+                    }
+                    else
+                    {
+                        var attendance = new Attendance
+                        {
+                            EmployeeId = empId,
+                            Date = dto.Date.Date,
+                            InTime = dto.InTime,
+                            OutTime = dto.OutTime,
+                            Status = dto.Status,
+                            Reason = dto.Reason,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = userName
+                        };
+                        _context.Attendances.Add(attendance);
+                        createdCount++;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { message = $"Successfully processed {updatedCount + createdCount} records. (Updated: {updatedCount}, Created: {createdCount})" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error during bulk manual entry: " + ex.Message });
+            }
+        }
+
+        [HttpPost("delete-attendance")]
+        public async Task<ActionResult> DeleteAttendance([FromBody] DeleteAttendanceDto dto)
+        {
+            try
+            {
+                var query = _context.Attendances.AsQueryable();
+
+                query = query.Where(a => a.Date.Date >= dto.FromDate.Date && a.Date.Date <= dto.ToDate.Date);
+
+                if (dto.EmployeeIds != null && dto.EmployeeIds.Any())
+                {
+                    query = query.Where(a => dto.EmployeeIds.Contains(a.EmployeeId));
+                }
+
+                if (dto.DepartmentId.HasValue)
+                {
+                    query = query.Where(a => a.Employee!.DepartmentId == dto.DepartmentId.Value);
+                }
+
+                if (dto.SectionId.HasValue)
+                {
+                    query = query.Where(a => a.Employee!.SectionId == dto.SectionId.Value);
+                }
+
+                var recordsToDelete = await query.ToListAsync();
+                _context.Attendances.RemoveRange(recordsToDelete);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = $"Successfully deleted {recordsToDelete.Count} attendance records." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error during attendance deletion: " + ex.Message });
             }
         }
 

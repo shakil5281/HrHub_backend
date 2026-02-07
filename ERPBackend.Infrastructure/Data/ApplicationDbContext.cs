@@ -39,6 +39,8 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<LeaveApplication> LeaveApplications { get; set; } = null!;
         public DbSet<Transfer> Transfers { get; set; } = null!;
         public DbSet<Separation> Separations { get; set; } = null!;
+        public DbSet<AttendanceLog> AttendanceLogs { get; set; } = null!;
+
 
 
         protected override void OnModelCreating(ModelBuilder builder)

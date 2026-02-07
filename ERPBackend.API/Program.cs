@@ -10,16 +10,23 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models; // Re-add this
 using System.Text;
 
-// Configure EPPlus license for non-commercial use (EPPlus 8+)
-OfficeOpenXml.ExcelPackage.License.SetNonCommercialOrganization("HR Hub");
+// Configure EPPlus and QuestPDF licenses
+// Licenses are set in the controllers or via configuration
+// OfficeOpenXml.ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
+// QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
+OfficeOpenXml.ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 // Add services to the container
 
 // 1. EF Core
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddDbContext<CashbookDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("CashbookConnection")));
 
 // 2. Identity
 // 2. Identity
@@ -35,7 +42,14 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddDefaultTokenProviders();
 
 // 3. Custom Services
+// 4. Custom Services
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+if (OperatingSystem.IsWindows())
+{
+    builder.Services.AddScoped<IZkTecoService, ZkTecoService>();
+}
+
 
 // 4. Authentication
 builder.Services.AddAuthentication(options =>
@@ -68,9 +82,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll",
         builder =>
         {
-            builder.AllowAnyOrigin()
+            builder.AllowAnyOrigin() // Changed from WithOrigins for debugging/flexibility
                 .AllowAnyMethod()
-                .AllowAnyHeader();
+                .AllowAnyHeader()
+                .WithExposedHeaders("Content-Disposition"); // Expose filename header
         });
 });
 

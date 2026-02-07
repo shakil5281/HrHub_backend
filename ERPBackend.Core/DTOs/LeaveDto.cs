@@ -17,6 +17,7 @@ namespace ERPBackend.Core.DTOs
         public string EmployeeIdCard { get; set; } = string.Empty;
         public string EmployeeName { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
+        public string Designation { get; set; } = string.Empty;
         public int LeaveTypeId { get; set; }
         public string LeaveTypeName { get; set; } = string.Empty;
         public DateTime StartDate { get; set; }
@@ -32,6 +33,16 @@ namespace ERPBackend.Core.DTOs
     public class CreateLeaveApplicationDto
     {
         public int EmployeeId { get; set; }
+        public int LeaveTypeId { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string Reason { get; set; } = string.Empty;
+        public string? AttachmentUrl { get; set; }
+    }
+
+    public class UpdateLeaveApplicationDto
+    {
+        public int Id { get; set; }
         public int LeaveTypeId { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }

@@ -382,6 +382,84 @@ namespace ERPBackend.API.Controllers
             }));
         }
 
+        [HttpGet("export-monthly-sheet")]
+        public async Task<IActionResult> ExportMonthlySalarySheet(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? departmentId,
+            [FromQuery] string? searchTerm)
+        {
+            var query = _context.MonthlySalarySheets
+                .Include(s => s.Employee)
+                .ThenInclude(e => e!.Department)
+                .Include(s => s.Employee)
+                .ThenInclude(e => e!.Designation)
+                .Where(s => s.Year == year && s.Month == month);
+
+            if (departmentId.HasValue)
+            {
+                query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+            }
+
+            var records = await query.ToListAsync();
+
+            using var package = new OfficeOpenXml.ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add($"Salary Sheet {month}-{year}");
+
+            // Headers
+            var headers = new[]
+            {
+                "SL", "ID", "Name", "Designation", "Department",
+                "Gross Salary", "Basic", "Total Days", "Present", "Absent", "Leave", 
+                "OT Hours", "OT Amount", "Total Earning", "Total Deduction", "Net Payable"
+            };
+
+            for (int i = 0; i < headers.Length; i++)
+            {
+                worksheet.Cells[1, i + 1].Value = headers[i];
+                worksheet.Cells[1, i + 1].Style.Font.Bold = true;
+                worksheet.Cells[1, i + 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                worksheet.Cells[1, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+            }
+
+            int row = 2;
+            foreach (var s in records)
+            {
+                worksheet.Cells[row, 1].Value = row - 1;
+                worksheet.Cells[row, 2].Value = s.Employee?.EmployeeId;
+                worksheet.Cells[row, 3].Value = s.Employee?.FullNameEn;
+                worksheet.Cells[row, 4].Value = s.Employee?.Designation?.NameEn;
+                worksheet.Cells[row, 5].Value = s.Employee?.Department?.NameEn;
+                worksheet.Cells[row, 6].Value = s.GrossSalary;
+                worksheet.Cells[row, 7].Value = s.BasicSalary;
+                worksheet.Cells[row, 8].Value = s.TotalDays;
+                worksheet.Cells[row, 9].Value = s.PresentDays;
+                worksheet.Cells[row, 10].Value = s.AbsentDays;
+                worksheet.Cells[row, 11].Value = s.LeaveDays;
+                worksheet.Cells[row, 12].Value = s.OTHours;
+                worksheet.Cells[row, 13].Value = s.OTAmount;
+                worksheet.Cells[row, 14].Value = s.TotalEarning;
+                worksheet.Cells[row, 15].Value = s.TotalDeduction;
+                worksheet.Cells[row, 16].Value = s.NetPayable;
+                row++;
+            }
+
+            worksheet.Cells.AutoFitColumns();
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                $"Salary_Sheet_{monthName}_{year}.xlsx");
+        }
+
         [HttpPost("bonus")]
         public async Task<ActionResult> CreateBonus([FromBody] CreateBonusDto dto)
         {

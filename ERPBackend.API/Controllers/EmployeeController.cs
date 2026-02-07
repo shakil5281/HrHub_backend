@@ -526,6 +526,102 @@ namespace ERPBackend.API.Controllers
             return Ok(employees);
         }
 
+
+        // GET: api/employee/export
+        [HttpGet("export")]
+        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," + UserRoles.HrOfficer)]
+        public async Task<IActionResult> ExportEmployees(
+            [FromQuery] int? departmentId,
+            [FromQuery] int? sectionId,
+            [FromQuery] int? designationId,
+            [FromQuery] int? lineId,
+            [FromQuery] int? shiftId,
+            [FromQuery] int? groupId,
+            [FromQuery] int? floorId,
+            [FromQuery] string? status,
+            [FromQuery] bool? isActive,
+            [FromQuery] string? employeeId,
+            [FromQuery] string? searchTerm)
+        {
+            var query = _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Section)
+                .Include(e => e.Designation)
+                .Include(e => e.Line)
+                .Include(e => e.Shift)
+                .Include(e => e.Group)
+                .Include(e => e.Floor)
+                .AsQueryable();
+
+            if (departmentId.HasValue) query = query.Where(e => e.DepartmentId == departmentId.Value);
+            if (sectionId.HasValue) query = query.Where(e => e.SectionId == sectionId.Value);
+            if (designationId.HasValue) query = query.Where(e => e.DesignationId == designationId.Value);
+            if (lineId.HasValue) query = query.Where(e => e.LineId == lineId.Value);
+            if (shiftId.HasValue) query = query.Where(e => e.ShiftId == shiftId.Value);
+            if (groupId.HasValue) query = query.Where(e => e.GroupId == groupId.Value);
+            if (floorId.HasValue) query = query.Where(e => e.FloorId == floorId.Value);
+            if (!string.IsNullOrEmpty(status)) query = query.Where(e => e.Status == status);
+            if (isActive.HasValue) query = query.Where(e => e.IsActive == isActive.Value);
+            if (!string.IsNullOrEmpty(employeeId)) query = query.Where(e => e.EmployeeId.Contains(employeeId));
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(e => 
+                    e.EmployeeId.Contains(searchTerm) || 
+                    e.FullNameEn.Contains(searchTerm) || 
+                    (e.FullNameBn != null && e.FullNameBn.Contains(searchTerm)) ||
+                    (e.PhoneNumber != null && e.PhoneNumber.Contains(searchTerm))
+                );
+            }
+
+            var employees = await query.OrderByDescending(e => e.CreatedAt).ToListAsync();
+
+            using var package = new OfficeOpenXml.ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add("Employees");
+
+            // Headers
+            var headers = new[]
+            {
+                "SL", "ID", "Name (EN)", "Designation", "Department", "Section", 
+                "Line", "Shift", "Status", "Join Date", "Phone", "Email", "Gross Salary"
+            };
+
+            for (int i = 0; i < headers.Length; i++)
+            {
+                worksheet.Cells[1, i + 1].Value = headers[i];
+                worksheet.Cells[1, i + 1].Style.Font.Bold = true;
+                worksheet.Cells[1, i + 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                worksheet.Cells[1, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+            }
+
+            int row = 2;
+            foreach (var emp in employees)
+            {
+                worksheet.Cells[row, 1].Value = row - 1;
+                worksheet.Cells[row, 2].Value = emp.EmployeeId;
+                worksheet.Cells[row, 3].Value = emp.FullNameEn;
+                worksheet.Cells[row, 4].Value = emp.Designation?.NameEn;
+                worksheet.Cells[row, 5].Value = emp.Department?.NameEn;
+                worksheet.Cells[row, 6].Value = emp.Section?.NameEn;
+                worksheet.Cells[row, 7].Value = emp.Line?.NameEn;
+                worksheet.Cells[row, 8].Value = emp.Shift?.NameEn;
+                worksheet.Cells[row, 9].Value = emp.Status;
+                worksheet.Cells[row, 10].Value = emp.JoinDate.ToString("yyyy-MM-dd");
+                worksheet.Cells[row, 11].Value = emp.PhoneNumber;
+                worksheet.Cells[row, 12].Value = emp.Email;
+                worksheet.Cells[row, 13].Value = emp.GrossSalary;
+                row++;
+            }
+
+            worksheet.Cells.AutoFitColumns();
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                $"Employee_List_{DateTime.Now:yyyyMMdd_HHmm}.xlsx");
+        }
+
         // GET: api/employee/export-template
         [HttpGet("export-template")]
         [AllowAnonymous]
