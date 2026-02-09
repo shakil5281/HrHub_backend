@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260207081039_FixNamingConventions")]
+    partial class FixNamingConventions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -294,25 +297,24 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DesignationId");
 
+                    b.HasIndex("EmployeeId")
+                        .IsUnique();
+
                     b.HasIndex("FloorId");
 
                     b.HasIndex("GroupId");
 
                     b.HasIndex("LineId");
 
+                    b.HasIndex("Proximity")
+                        .IsUnique()
+                        .HasFilter("[Proximity] IS NOT NULL");
+
                     b.HasIndex("SectionId");
 
                     b.HasIndex("ShiftId");
 
                     b.HasIndex("UserId");
-
-                    b.HasIndex("EmployeeId", "CompanyName")
-                        .IsUnique()
-                        .HasFilter("[CompanyName] IS NOT NULL");
-
-                    b.HasIndex("Proximity", "CompanyName")
-                        .IsUnique()
-                        .HasFilter("[Proximity] IS NOT NULL AND [CompanyName] IS NOT NULL");
 
                     b.ToTable("Employees");
                 });
@@ -462,9 +464,6 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -509,8 +508,6 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
-
                     b.HasIndex("EmployeeId");
 
                     b.ToTable("Attendances");
@@ -523,9 +520,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -545,8 +539,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
 
                     b.HasIndex("EmployeeId");
 
@@ -604,21 +596,13 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AddressBn")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("AddressEn")
+                    b.Property<string>("Address")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("AuthorizeSignaturePath")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Branch")
-                        .HasColumnType("int");
 
                     b.Property<string>("CompanyNameBn")
                         .IsRequired()
@@ -847,12 +831,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<decimal>("AttendanceBonus")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("HolidayBill")
                         .HasColumnType("decimal(18,2)");
 
@@ -872,10 +850,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("DepartmentId");
 
                     b.HasIndex("SectionId");
 
@@ -985,13 +959,6 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CompanyName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<string>("NameBn")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1002,12 +969,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("NameEn", "CompanyId")
-                        .IsUnique()
-                        .HasFilter("[CompanyId] IS NOT NULL");
 
                     b.ToTable("Floors");
                 });
@@ -1020,13 +981,6 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CompanyName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<string>("NameBn")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1037,12 +991,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("NameEn", "CompanyId")
-                        .IsUnique()
-                        .HasFilter("[CompanyId] IS NOT NULL");
 
                     b.ToTable("Groups");
                 });
@@ -1148,12 +1096,6 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("int");
-
                     b.Property<string>("NameBn")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1167,10 +1109,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("DepartmentId");
 
                     b.HasIndex("SectionId");
 
@@ -1358,7 +1296,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("OtDeductions");
+                    b.ToTable("OTDeductions");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.PostOffice", b =>
@@ -1446,9 +1384,6 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
                     b.Property<int>("DepartmentId")
                         .HasColumnType("int");
 
@@ -1462,8 +1397,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
 
                     b.HasIndex("DepartmentId");
 
@@ -1536,13 +1469,6 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CompanyName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<string>("InTime")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -1583,12 +1509,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("NameEn", "CompanyId")
-                        .IsUnique()
-                        .HasFilter("[CompanyId] IS NOT NULL");
 
                     b.ToTable("Shifts");
                 });
@@ -1901,7 +1821,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
@@ -1909,36 +1829,22 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.Attendance", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Company");
 
                     b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.AttendanceLog", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Company");
 
                     b.Navigation("Employee");
                 });
@@ -1948,7 +1854,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
@@ -1959,7 +1865,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
@@ -1970,7 +1876,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
@@ -1989,25 +1895,11 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.Designation", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ERPBackend.Core.Models.Department", "Department")
-                        .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ERPBackend.Core.Models.Section", "Section")
                         .WithMany("Designations")
                         .HasForeignKey("SectionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Department");
 
                     b.Navigation("Section");
                 });
@@ -2039,7 +1931,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ERPBackend.Core.Models.Shift", "Shift")
@@ -2053,32 +1945,12 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Shift");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.Floor", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.Group", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Company");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.LeaveApplication", b =>
                 {
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ERPBackend.Core.Models.LeaveType", "LeaveType")
@@ -2094,25 +1966,11 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.Line", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ERPBackend.Core.Models.Department", "Department")
-                        .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ERPBackend.Core.Models.Section", "Section")
                         .WithMany("Lines")
                         .HasForeignKey("SectionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Department");
 
                     b.Navigation("Section");
                 });
@@ -2141,7 +1999,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
@@ -2152,7 +2010,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
@@ -2174,7 +2032,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
@@ -2182,18 +2040,11 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.Section", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ERPBackend.Core.Models.Department", "Department")
                         .WithMany("Sections")
                         .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Company");
 
                     b.Navigation("Department");
                 });
@@ -2203,20 +2054,10 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.Shift", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Thana", b =>
@@ -2235,7 +2076,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ERPBackend.Core.Models.Department", "FromDepartment")

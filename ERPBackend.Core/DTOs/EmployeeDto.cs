@@ -6,7 +6,7 @@ namespace ERPBackend.Core.DTOs
         public string EmployeeId { get; set; } = string.Empty;
         public string FullNameEn { get; set; } = string.Empty;
         public string? FullNameBn { get; set; }
-        public string? NID { get; set; }
+        public string? Nid { get; set; }
         public string? Proximity { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public string? Gender { get; set; }
@@ -79,9 +79,11 @@ namespace ERPBackend.Core.DTOs
         public string? EmergencyContactRelation { get; set; }
         public string? EmergencyContactPhone { get; set; }
         public string? EmergencyContactAddress { get; set; }
+        public string? CompanyName { get; set; }
+        public string? BloodGroup { get; set; }
 
         public bool IsActive { get; set; }
-        public bool IsOTEnabled { get; set; }
+        public bool IsOtEnabled { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 
@@ -90,7 +92,7 @@ namespace ERPBackend.Core.DTOs
         public string EmployeeId { get; set; } = string.Empty;
         public string FullNameEn { get; set; } = string.Empty;
         public string? FullNameBn { get; set; }
-        public string? NID { get; set; }
+        public string? Nid { get; set; }
         public string? Proximity { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public string? Gender { get; set; }
@@ -154,14 +156,16 @@ namespace ERPBackend.Core.DTOs
         public string? EmergencyContactRelation { get; set; }
         public string? EmergencyContactPhone { get; set; }
         public string? EmergencyContactAddress { get; set; }
-        public bool IsOTEnabled { get; set; }
+        public string? CompanyName { get; set; }
+        public string? BloodGroup { get; set; }
+        public bool IsOtEnabled { get; set; }
     }
 
     public class UpdateEmployeeDto
     {
         public string FullNameEn { get; set; } = string.Empty;
         public string? FullNameBn { get; set; }
-        public string? NID { get; set; }
+        public string? Nid { get; set; }
         public string? Proximity { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public string? Gender { get; set; }
@@ -225,9 +229,11 @@ namespace ERPBackend.Core.DTOs
         public string? EmergencyContactRelation { get; set; }
         public string? EmergencyContactPhone { get; set; }
         public string? EmergencyContactAddress { get; set; }
+        public string? CompanyName { get; set; }
+        public string? BloodGroup { get; set; }
 
         public bool IsActive { get; set; }
-        public bool IsOTEnabled { get; set; }
+        public bool IsOtEnabled { get; set; }
     }
 
     public class ManpowerSummaryDto
@@ -248,5 +254,18 @@ namespace ERPBackend.Core.DTOs
         public string Name { get; set; } = string.Empty;
         public int Count { get; set; }
         public double Percentage { get; set; }
+    }
+
+    public class EmployeeMiniDto
+    {
+        public int Id { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
+        public string FullNameEn { get; set; } = string.Empty;
+        public string? DepartmentName { get; set; }
+        public string? SectionName { get; set; }
+        public string? DesignationName { get; set; }
+        public string? LineName { get; set; }
+        public string? ShiftName { get; set; }
+        public string? GroupName { get; set; }
     }
 }

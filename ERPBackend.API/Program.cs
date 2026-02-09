@@ -23,10 +23,12 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 // 1. EF Core
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlServerOptionsAction: sqlOptions => { sqlOptions.EnableRetryOnFailure(); }));
 
 builder.Services.AddDbContext<CashbookDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("CashbookConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("CashbookConnection"),
+        sqlServerOptionsAction: sqlOptions => { sqlOptions.EnableRetryOnFailure(); }));
 
 // 2. Identity
 // 2. Identity
@@ -80,9 +82,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
-        builder =>
+        policyBuilder =>
         {
-            builder.AllowAnyOrigin() // Changed from WithOrigins for debugging/flexibility
+            policyBuilder.AllowAnyOrigin() // Changed from WithOrigins for debugging/flexibility
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .WithExposedHeaders("Content-Disposition"); // Expose filename header
@@ -192,30 +194,31 @@ try
             {
                 await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
             }
-        }
 
-        // Seed Groups and Floors
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        var groups = new[] { "Worker", "Staff" };
-        foreach (var groupName in groups)
-        {
-            if (!await dbContext.Groups.AnyAsync(g => g.NameEn == groupName))
+            // Seed Groups
+            if (!await dbContext.Groups.AnyAsync())
             {
-                dbContext.Groups.Add(new Group { NameEn = groupName });
+                dbContext.Groups.AddRange(
+                    new Group { NameEn = "Worker", NameBn = "শ্রমিক" },
+                    new Group { NameEn = "Staff", NameBn = "স্টাফ" }
+                );
             }
-        }
 
-        var floors = new[] { "Ground Floor", "1st Floor", "2nd Floor", "3rd Floor" };
-        foreach (var floorName in floors)
-        {
-            if (!await dbContext.Floors.AnyAsync(f => f.NameEn == floorName))
+            // Seed Floors
+            if (!await dbContext.Floors.AnyAsync())
             {
-                dbContext.Floors.Add(new Floor { NameEn = floorName });
+                dbContext.Floors.AddRange(
+                    new Floor { NameEn = "Ground", NameBn = "নিচ তলা" },
+                    new Floor { NameEn = "1st", NameBn = "১ম তলা" },
+                    new Floor { NameEn = "2nd", NameBn = "২য় তলা" },
+                    new Floor { NameEn = "3rd", NameBn = "৩য় তলা" }
+                );
             }
-        }
 
-        await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
+        }
     }
 }
 catch (Exception ex)

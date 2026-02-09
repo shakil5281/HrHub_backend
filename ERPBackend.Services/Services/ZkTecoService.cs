@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ERPBackend.Core.Interfaces;
@@ -10,6 +11,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
+using ERPBackend.Core.DTOs;
 
 namespace ERPBackend.Services.Services
 {
@@ -25,16 +27,18 @@ namespace ERPBackend.Services.Services
             _logger = logger;
         }
 
-        public async Task<int> SyncDataFromDeviceAsync(string dbPath, DateTime? startDate = null, DateTime? endDate = null)
+        public async Task<int> SyncDataFromDeviceAsync(string dbPath, DateTime? startDate = null,
+            DateTime? endDate = null, int? companyId = null)
         {
-            if (!System.IO.File.Exists(dbPath))
+            if (!File.Exists(dbPath))
             {
                 throw new FileNotFoundException("ZKTeco database file not found.", dbPath);
             }
 
             // Connection string for Microsoft Access (works with .mdb and .accdb)
             // Note: Requires Microsoft Access Database Engine (x64 if app is x64)
-            string connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={dbPath};Persist Security Info=False;";
+            string connectionString =
+                $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={dbPath};Persist Security Info=False;";
 
             var logsToInsert = new List<AttendanceLog>();
             int newRecordsCount = 0;
@@ -54,7 +58,7 @@ namespace ERPBackend.Services.Services
                             while (await reader.ReadAsync())
                             {
                                 int userId = Convert.ToInt32(reader["USERID"]);
-                                string badgeNumber = reader["Badgenumber"]?.ToString() ?? string.Empty;
+                                string badgeNumber = reader["Badgenumber"].ToString() ?? string.Empty;
                                 if (!userMap.ContainsKey(userId))
                                 {
                                     userMap.Add(userId, badgeNumber);
@@ -64,9 +68,18 @@ namespace ERPBackend.Services.Services
                     }
 
                     // 2. Get existing employees to validate map
-                    var validEmployees = await _context.Employees
-                        .Select(e => new { e.Id, e.EmployeeId }) // EmployeeId in DB matches Badgenumber
-                        .ToDictionaryAsync(e => e.EmployeeId, e => e.Id);
+                    var employeeQuery = _context.Employees.Include(e => e.Department).AsQueryable();
+                    if (companyId.HasValue)
+                    {
+                        employeeQuery = employeeQuery.Where(e => e.Department!.CompanyId == companyId.Value);
+                    }
+
+                    var validEmployees = await employeeQuery
+                        .Select(e => new
+                        {
+                            e.Id, e.EmployeeId, CompanyId = e.Department != null ? (int?)e.Department.CompanyId : null
+                        })
+                        .ToDictionaryAsync(e => e.EmployeeId, e => new { e.Id, e.CompanyId });
 
                     // 3. Get Logs
                     string sql = "SELECT USERID, CHECKTIME, SENSORID, CHECKTYPE FROM CHECKINOUT";
@@ -80,6 +93,7 @@ namespace ERPBackend.Services.Services
                             sql += " CHECKTIME >= ?";
                             parameters.Add(new OleDbParameter("@start", startDate.Value.Date));
                         }
+
                         if (endDate.HasValue)
                         {
                             if (startDate.HasValue) sql += " AND";
@@ -88,6 +102,7 @@ namespace ERPBackend.Services.Services
                         }
                     }
 
+                    var tempLogs = new List<(int UserId, DateTime CheckTime, string DeviceId)>();
                     using (var command = new OleDbCommand(sql, connection))
                     {
                         foreach (var param in parameters)
@@ -101,29 +116,45 @@ namespace ERPBackend.Services.Services
                             {
                                 int userId = Convert.ToInt32(reader["USERID"]);
                                 DateTime checkTime = Convert.ToDateTime(reader["CHECKTIME"]);
-                                string deviceId = reader["SENSORID"]?.ToString() ?? string.Empty;
-                                // checktype: 0/1/etc. we assume standard
-                                
-                                if (userMap.TryGetValue(userId, out string? badgeNumber) && badgeNumber != null)
-                                {
-                                    if (validEmployees.TryGetValue(badgeNumber, out int employeeDbId))
-                                    {
-                                        // Check if already exists
-                                        bool exists = await _context.AttendanceLogs.AnyAsync(l => 
-                                            l.EmployeeId == employeeDbId && 
-                                            l.LogTime == checkTime);
+                                string deviceId = reader["SENSORID"].ToString() ?? string.Empty;
+                                tempLogs.Add((userId, checkTime, deviceId));
+                            }
+                        }
+                    }
 
-                                        if (!exists)
+                    // 4. Batch check for existing logs to avoid N+1 queries
+                    if (tempLogs.Any())
+                    {
+                        var allCheckTimes = tempLogs.Select(l => l.CheckTime).Distinct().ToList();
+                        var existingLogsLookup = await _context.AttendanceLogs
+                            .Where(l => allCheckTimes.Contains(l.LogTime))
+                            .Select(l => new { l.EmployeeId, l.LogTime })
+                            .ToListAsync();
+
+                        var existingLogsSet = new HashSet<string>(
+                            existingLogsLookup.Select(l => $"{l.EmployeeId}|{l.LogTime:O}")
+                        );
+
+                        foreach (var log in tempLogs)
+                        {
+                            if (userMap.TryGetValue(log.UserId, out string? badgeNumber))
+                            {
+                                if (validEmployees.TryGetValue(badgeNumber, out var empInfo))
+                                {
+                                    string key = $"{empInfo.Id}|{log.CheckTime:O}";
+                                    if (!existingLogsSet.Contains(key))
+                                    {
+                                        logsToInsert.Add(new AttendanceLog
                                         {
-                                            logsToInsert.Add(new AttendanceLog
-                                            {
-                                                EmployeeId = employeeDbId,
-                                                LogTime = checkTime,
-                                                DeviceId = deviceId,
-                                                VerificationMode = "Device" // Or interpret CHECKTYPE
-                                            });
-                                            newRecordsCount++;
-                                        }
+                                            EmployeeId = empInfo.Id,
+                                            CompanyId = empInfo.CompanyId,
+                                            LogTime = log.CheckTime,
+                                            DeviceId = log.DeviceId,
+                                            VerificationMode = "Device"
+                                        });
+                                        newRecordsCount++;
+                                        // Add to set to prevent duplicates in same batch
+                                        existingLogsSet.Add(key);
                                     }
                                 }
                             }
@@ -147,10 +178,17 @@ namespace ERPBackend.Services.Services
             return newRecordsCount;
         }
 
-        public async Task ProcessDailyAttendanceAsync(DateTime date)
+        public async Task ProcessDailyAttendanceAsync(DateTime date,
+            List<string>? employeeCodes = null,
+            int? departmentId = null,
+            int? sectionId = null,
+            int? designationId = null,
+            int? lineId = null,
+            int? shiftId = null,
+            int? groupId = null,
+            int? companyId = null)
         {
             // 1. Fetch relevant logs: From current date 07:15 AM to next date 07:14 AM (to cover the Out window)
-            var startTime = date.Date.AddHours(7).AddMinutes(15);
             var endTime = date.Date.AddDays(1).AddHours(7).AddMinutes(14);
 
             var allLogs = await _context.AttendanceLogs
@@ -158,10 +196,34 @@ namespace ERPBackend.Services.Services
                 .ToListAsync();
 
             // 2. Fetch all active employees
-            var activeEmployees = await _context.Employees
+            var queryEmployees = _context.Employees
                 .Where(e => e.IsActive)
                 .Include(e => e.Shift)
-                .ToListAsync();
+                .Include(e => e.Department)
+                .AsQueryable();
+
+            if (employeeCodes != null && employeeCodes.Any())
+            {
+                queryEmployees = queryEmployees.Where(e => employeeCodes.Contains(e.EmployeeId));
+            }
+
+            if (departmentId.HasValue)
+            {
+                queryEmployees = queryEmployees.Where(e => e.DepartmentId == departmentId.Value);
+            }
+
+            if (sectionId.HasValue) queryEmployees = queryEmployees.Where(e => e.SectionId == sectionId.Value);
+            if (designationId.HasValue)
+                queryEmployees = queryEmployees.Where(e => e.DesignationId == designationId.Value);
+            if (lineId.HasValue) queryEmployees = queryEmployees.Where(e => e.LineId == lineId.Value);
+            if (shiftId.HasValue) queryEmployees = queryEmployees.Where(e => e.ShiftId == shiftId.Value);
+            if (groupId.HasValue) queryEmployees = queryEmployees.Where(e => e.GroupId == groupId.Value);
+            if (companyId.HasValue)
+            {
+                queryEmployees = queryEmployees.Where(e => e.Department!.CompanyId == companyId.Value);
+            }
+
+            var activeEmployees = await queryEmployees.ToListAsync();
 
             // 3. Fetch leaves for this date
             var leaves = await _context.LeaveApplications
@@ -173,23 +235,33 @@ namespace ERPBackend.Services.Services
                 .Where(r => r.Date.Date == date.Date)
                 .ToListAsync();
 
+            // 5. Fetch existing attendance for this date in one go
+            var existingAttendances = await _context.Attendances
+                .Where(a => a.Date == date.Date)
+                .ToDictionaryAsync(a => a.EmployeeId);
+
             foreach (var emp in activeEmployees)
             {
                 var empLogs = allLogs.Where(l => l.EmployeeId == emp.Id).OrderBy(l => l.LogTime).ToList();
                 var leave = leaves.FirstOrDefault(l => l.EmployeeId == emp.Id);
                 var roster = rosters.FirstOrDefault(r => r.EmployeeId == emp.Id);
 
-                var attendance = await _context.Attendances
-                    .FirstOrDefaultAsync(a => a.EmployeeId == emp.Id && a.Date == date.Date);
+                existingAttendances.TryGetValue(emp.Id, out var attendance);
 
                 if (attendance == null)
                 {
                     attendance = new Attendance
                     {
                         EmployeeId = emp.Id,
+                        CompanyId = emp.Department?.CompanyId,
                         Date = date.Date,
                         Status = "Absent" // Default, updated below
                     };
+                    _context.Attendances.Add(attendance);
+                }
+                else
+                {
+                    attendance.CompanyId = emp.Department?.CompanyId;
                 }
 
                 string status = "Absent";
@@ -207,15 +279,15 @@ namespace ERPBackend.Services.Services
                 else
                 {
                     // In Time logic: Only 07:15 AM to 11:00 AM
-                    var inTimeLog = empLogs.FirstOrDefault(l => 
-                        l.LogTime >= date.Date.AddHours(7).AddMinutes(15) && 
+                    var inTimeLog = empLogs.FirstOrDefault(l =>
+                        l.LogTime >= date.Date.AddHours(7).AddMinutes(15) &&
                         l.LogTime <= date.Date.AddHours(11));
 
                     // Out Time logic: 11:01 AM to next date 07:14 AM
-                    var outTimeLog = empLogs.LastOrDefault(l => 
-                        l.LogTime >= date.Date.AddHours(11).AddMinutes(1) && 
+                    var outTimeLog = empLogs.LastOrDefault(l =>
+                        l.LogTime >= date.Date.AddHours(11).AddMinutes(1) &&
                         l.LogTime <= date.Date.AddDays(1).AddHours(7).AddMinutes(14));
-                    
+
                     var shift = emp.Shift;
 
                     if (inTimeLog != null)
@@ -230,8 +302,8 @@ namespace ERPBackend.Services.Services
                             {
                                 var punchInTime = inTimeLog.LogTime.TimeOfDay;
                                 // Use LateInTime if defined, else 15 min grace
-                                var lateLimit = TimeSpan.TryParse(shift.LateInTime, out var lLimit) 
-                                    ? lLimit 
+                                var lateLimit = TimeSpan.TryParse(shift.LateInTime, out var lLimit)
+                                    ? lLimit
                                     : shiftInTime.Add(TimeSpan.FromMinutes(15));
 
                                 if (punchInTime > lateLimit)
@@ -241,7 +313,7 @@ namespace ERPBackend.Services.Services
                             }
                         }
                     }
-                    
+
                     if (outTimeLog != null)
                     {
                         outTimeStr = outTimeLog.LogTime.ToString("HH:mm:ss");
@@ -252,8 +324,10 @@ namespace ERPBackend.Services.Services
                         }
 
                         // Calculate OT
-                        if (emp.IsOTEnabled && shift != null && !string.IsNullOrEmpty(shift.OutTime) && TimeSpan.TryParse(shift.OutTime, out var shiftOutTime))
+                        if (emp.IsOtEnabled && shift != null && !string.IsNullOrEmpty(shift.OutTime) &&
+                            TimeSpan.TryParse(shift.OutTime, out var shiftOutTimeValue))
                         {
+                            var shiftOutTime = shiftOutTimeValue;
                             // Construct Shift Out DateTime
                             // Shift Out is strictly on the date (or next day if overnight, but here specific logic: 11:01 AM to next date 07:14 AM covers it)
                             // Usually Shift Out Time is relative to day start.
@@ -266,11 +340,11 @@ namespace ERPBackend.Services.Services
                             // However, we need to handle overnight shifts carefully.
                             // For simplicity, assuming if shiftOutTime is small (e.g. 05:00), it implies next day if InTime is large.
                             // But here let's rely on the fact we matched an outTimeLog that is logically "after" work.
-                            
+
                             // Let's assume standard day shift for now or rely on strict date comparison
                             // If we matched the OutTimeLog in the window [11:01 AM, Next 07:14 AM]
                             // And Shift Out is say 17:00 (5 PM).
-                            
+
                             // Handle cross-day shift out time logic if needed (e.g. if OutTime < InTime)
                             if (TimeSpan.TryParse(shift.InTime, out var sIn) && shiftOutTime < sIn)
                             {
@@ -291,7 +365,7 @@ namespace ERPBackend.Services.Services
                 attendance.InTime = inTimeStr;
                 attendance.OutTime = outTimeStr;
                 attendance.Status = status;
-                
+
                 if (attendance.Id == 0)
                 {
                     attendance.Remarks = "Auto-processed";
@@ -300,8 +374,8 @@ namespace ERPBackend.Services.Services
                 else
                 {
                     attendance.UpdatedAt = DateTime.UtcNow;
-                    attendance.Remarks = (attendance.Remarks ?? "").Contains("(Updated)") 
-                        ? attendance.Remarks 
+                    attendance.Remarks = (attendance.Remarks ?? "").Contains("(Updated)")
+                        ? attendance.Remarks
                         : (attendance.Remarks ?? "") + " (Updated)";
                     _context.Attendances.Update(attendance);
                 }
@@ -317,13 +391,21 @@ namespace ERPBackend.Services.Services
             return days.Contains(date.DayOfWeek.ToString().ToLower());
         }
 
-        public async Task ProcessBatchAttendanceAsync(DateTime? startDate, DateTime? endDate)
+        public async Task ProcessBatchAttendanceAsync(DateTime? startDate, DateTime? endDate,
+            List<string>? employeeCodes = null,
+            int? departmentId = null,
+            int? sectionId = null,
+            int? designationId = null,
+            int? lineId = null,
+            int? shiftId = null,
+            int? groupId = null,
+            int? companyId = null)
         {
             var query = _context.AttendanceLogs.AsQueryable();
 
             if (startDate.HasValue)
                 query = query.Where(l => l.LogTime.Date >= startDate.Value.Date);
-            
+
             if (endDate.HasValue)
                 query = query.Where(l => l.LogTime.Date <= endDate.Value.Date);
 
@@ -331,8 +413,52 @@ namespace ERPBackend.Services.Services
 
             foreach (var date in dates.OrderBy(d => d))
             {
-                await ProcessDailyAttendanceAsync(date);
+                await ProcessDailyAttendanceAsync(date, employeeCodes, departmentId, sectionId, designationId, lineId,
+                    shiftId, groupId, companyId);
             }
+        }
+
+        public async Task<List<AttendanceLogDto>> GetAttendanceLogsAsync(DateTime? startDate, DateTime? endDate,
+            string? searchTerm = null, int? companyId = null)
+        {
+            var query = _context.AttendanceLogs
+                .Include(l => l.Employee)
+                .ThenInclude(e => e!.Department)
+                .AsQueryable();
+
+            if (companyId.HasValue)
+            {
+                query = query.Where(l => l.Employee!.Department!.CompanyId == companyId.Value);
+            }
+
+            if (startDate.HasValue)
+                query = query.Where(l => l.LogTime.Date >= startDate.Value.Date);
+
+            if (endDate.HasValue)
+                query = query.Where(l => l.LogTime.Date <= endDate.Value.Date);
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(l =>
+                    l.Employee!.FullNameEn.Contains(searchTerm) || l.Employee.EmployeeId.Contains(searchTerm));
+            }
+
+            return await query
+                .OrderByDescending(l => l.LogTime)
+                .Select(l => new AttendanceLogDto
+                {
+                    Id = l.Id,
+                    EmployeeId = l.EmployeeId,
+                    EmployeeIdCard = l.Employee!.EmployeeId,
+                    EmployeeName = l.Employee.FullNameEn,
+                    DepartmentName = l.Employee.Department!.NameEn,
+                    LogTime = l.LogTime,
+                    DeviceId = l.DeviceId,
+                    VerificationMode = l.VerificationMode,
+                    CreatedAt = l.CreatedAt
+                })
+                .Take(500) // Limit for performance
+                .ToListAsync();
         }
     }
 }

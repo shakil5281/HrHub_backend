@@ -1,14 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
+using ERPBackend.Core.Enums;
 
 namespace ERPBackend.Core.DTOs
 {
     public class CompanyDto
     {
         public int Id { get; set; }
+        public BranchType Branch { get; set; }
         public string CompanyNameEn { get; set; } = string.Empty;
         public string CompanyNameBn { get; set; } = string.Empty;
-        public string Address { get; set; } = string.Empty;
+        public string AddressEn { get; set; } = string.Empty;
+        public string AddressBn { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string RegistrationNo { get; set; } = string.Empty;
         public string Industry { get; set; } = string.Empty;
@@ -21,10 +24,13 @@ namespace ERPBackend.Core.DTOs
 
     public class CreateCompanyDto
     {
+        public BranchType Branch { get; set; } = BranchType.Secondary;
+
         [Required] [StringLength(200)] public string CompanyNameEn { get; set; } = string.Empty;
         [Required] [StringLength(200)] public string CompanyNameBn { get; set; } = string.Empty;
 
-        [Required] [StringLength(500)] public string Address { get; set; } = string.Empty;
+        [Required] [StringLength(500)] public string AddressEn { get; set; } = string.Empty;
+        [Required] [StringLength(500)] public string AddressBn { get; set; } = string.Empty;
 
         [Required] [StringLength(20)] public string PhoneNumber { get; set; } = string.Empty;
 
