@@ -23,6 +23,8 @@ namespace ERPBackend.Core.DTOs
         public int Id { get; set; }
         public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
         public int DepartmentId { get; set; }
         public string? DepartmentName { get; set; }
     }
@@ -31,6 +33,7 @@ namespace ERPBackend.Core.DTOs
     {
         [Required] public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
+        public int? CompanyId { get; set; }
         public int DepartmentId { get; set; }
     }
 
@@ -42,6 +45,10 @@ namespace ERPBackend.Core.DTOs
         public decimal NightBill { get; set; }
         public decimal HolidayBill { get; set; }
         public decimal AttendanceBonus { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
+        public int? DepartmentId { get; set; }
+        public string? DepartmentName { get; set; }
         public int SectionId { get; set; }
         public string? SectionName { get; set; }
     }
@@ -53,6 +60,8 @@ namespace ERPBackend.Core.DTOs
         public decimal NightBill { get; set; }
         public decimal HolidayBill { get; set; }
         public decimal AttendanceBonus { get; set; }
+        public int? CompanyId { get; set; }
+        public int? DepartmentId { get; set; }
         public int SectionId { get; set; }
     }
 
@@ -61,6 +70,10 @@ namespace ERPBackend.Core.DTOs
         public int Id { get; set; }
         public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
+        public int? DepartmentId { get; set; }
+        public string? DepartmentName { get; set; }
         public int SectionId { get; set; }
         public string? SectionName { get; set; }
     }
@@ -69,6 +82,8 @@ namespace ERPBackend.Core.DTOs
     {
         [Required] public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
+        public int? CompanyId { get; set; }
+        public int? DepartmentId { get; set; }
         public int SectionId { get; set; }
     }
 
@@ -83,6 +98,8 @@ namespace ERPBackend.Core.DTOs
         public string? LunchTimeStart { get; set; }
         public decimal LunchHour { get; set; }
         public string? Weekends { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
         public string Status { get; set; } = "Active";
     }
 
@@ -96,6 +113,8 @@ namespace ERPBackend.Core.DTOs
         public string? LunchTimeStart { get; set; }
         public decimal LunchHour { get; set; } = 1.0m;
         public string? Weekends { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
         [Required] public string Status { get; set; } = "Active";
     }
 
@@ -104,12 +123,16 @@ namespace ERPBackend.Core.DTOs
         public int Id { get; set; }
         public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
     }
 
     public class CreateGroupDto
     {
         [Required] public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
     }
 
     public class FloorDto
@@ -117,11 +140,15 @@ namespace ERPBackend.Core.DTOs
         public int Id { get; set; }
         public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
     }
 
     public class CreateFloorDto
     {
         [Required] public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
     }
 }

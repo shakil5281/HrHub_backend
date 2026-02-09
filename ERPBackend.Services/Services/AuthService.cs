@@ -374,7 +374,10 @@ namespace ERPBackend.Services.Services
 
         public async Task<UserDto?> GetProfileAsync(string username)
         {
-            var user = await _userManager.FindByNameAsync(username);
+            var user = await _userManager.Users
+                .Include(u => u.AssignedCompanies)
+                .FirstOrDefaultAsync(u => u.UserName == username);
+
             if (user == null) return null;
 
             var roles = await _userManager.GetRolesAsync(user);
@@ -385,7 +388,8 @@ namespace ERPBackend.Services.Services
                 Email = user.Email ?? string.Empty,
                 FullName = user.FullName ?? string.Empty,
                 IsActive = user.IsActive,
-                Roles = roles
+                Roles = roles,
+                AssignedCompanyIds = user.AssignedCompanies.Select(c => c.Id).ToList()
             };
         }
 

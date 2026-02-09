@@ -51,6 +51,7 @@ namespace ERPBackend.Core.DTOs
         public string FullName { get; set; } = string.Empty;
         public IList<string> Roles { get; set; } = new List<string>();
         public bool IsActive { get; set; }
+        public List<int> AssignedCompanyIds { get; set; } = new();
     }
 
     public class AssignRoleDto

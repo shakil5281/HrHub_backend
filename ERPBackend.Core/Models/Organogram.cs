@@ -26,6 +26,10 @@ namespace ERPBackend.Core.Models
 
         [StringLength(100)] public string? NameBn { get; set; }
 
+        public int? CompanyId { get; set; }
+
+        [ForeignKey("CompanyId")] public virtual Company? Company { get; set; }
+
         public int DepartmentId { get; set; }
 
         [ForeignKey("DepartmentId")] public virtual Department? Department { get; set; }
@@ -46,6 +50,14 @@ namespace ERPBackend.Core.Models
         [Column(TypeName = "decimal(18,2)")] public decimal HolidayBill { get; set; }
         [Column(TypeName = "decimal(18,2)")] public decimal AttendanceBonus { get; set; }
 
+        public int? CompanyId { get; set; }
+
+        [ForeignKey("CompanyId")] public virtual Company? Company { get; set; }
+
+        public int? DepartmentId { get; set; }
+
+        [ForeignKey("DepartmentId")] public virtual Department? Department { get; set; }
+
         public int SectionId { get; set; }
 
         [ForeignKey("SectionId")] public virtual Section? Section { get; set; }
@@ -58,6 +70,14 @@ namespace ERPBackend.Core.Models
         [Required] [StringLength(100)] public string NameEn { get; set; } = string.Empty;
 
         [StringLength(100)] public string? NameBn { get; set; }
+
+        public int? CompanyId { get; set; }
+
+        [ForeignKey("CompanyId")] public virtual Company? Company { get; set; }
+
+        public int? DepartmentId { get; set; }
+
+        [ForeignKey("DepartmentId")] public virtual Department? Department { get; set; }
 
         public int SectionId { get; set; }
 
@@ -75,6 +95,9 @@ namespace ERPBackend.Core.Models
         [StringLength(10)] public string? LunchTimeStart { get; set; }
         [Column(TypeName = "decimal(18,2)")] public decimal LunchHour { get; set; } = 1.0m;
         [StringLength(200)] public string? Weekends { get; set; } // Comma separated days
+        [StringLength(200)] public string? CompanyName { get; set; }
+        public int? CompanyId { get; set; }
+        [ForeignKey(nameof(CompanyId))] public virtual Company? Company { get; set; }
         [Required] [StringLength(20)] public string Status { get; set; } = "Active";
     }
 
@@ -83,6 +106,9 @@ namespace ERPBackend.Core.Models
         [Key] public int Id { get; set; }
         [Required] [StringLength(100)] public string NameEn { get; set; } = string.Empty;
         [StringLength(100)] public string? NameBn { get; set; }
+        [StringLength(200)] public string? CompanyName { get; set; }
+        public int? CompanyId { get; set; }
+        [ForeignKey(nameof(CompanyId))] public virtual Company? Company { get; set; }
     }
 
     public class Floor
@@ -90,5 +116,8 @@ namespace ERPBackend.Core.Models
         [Key] public int Id { get; set; }
         [Required] [StringLength(100)] public string NameEn { get; set; } = string.Empty;
         [StringLength(100)] public string? NameBn { get; set; }
+        [StringLength(200)] public string? CompanyName { get; set; }
+        public int? CompanyId { get; set; }
+        [ForeignKey(nameof(CompanyId))] public virtual Company? Company { get; set; }
     }
 }

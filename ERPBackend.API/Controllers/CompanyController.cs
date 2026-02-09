@@ -1,6 +1,7 @@
 using ERPBackend.Core.Constants;
 using ERPBackend.Core.DTOs;
 using ERPBackend.Core.Models;
+using ERPBackend.Core.Enums;
 using ERPBackend.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -47,9 +48,11 @@ namespace ERPBackend.API.Controllers
                 .Select(c => new CompanyDto
                 {
                     Id = c.Id,
+                    Branch = c.Branch,
                     CompanyNameEn = c.CompanyNameEn,
                     CompanyNameBn = c.CompanyNameBn,
-                    Address = c.Address,
+                    AddressEn = c.AddressEn,
+                    AddressBn = c.AddressBn,
                     PhoneNumber = c.PhoneNumber,
                     RegistrationNo = c.RegistrationNo,
                     Industry = c.Industry,
@@ -91,9 +94,11 @@ namespace ERPBackend.API.Controllers
             return new CompanyDto
             {
                 Id = company.Id,
+                Branch = company.Branch,
                 CompanyNameEn = company.CompanyNameEn,
                 CompanyNameBn = company.CompanyNameBn,
-                Address = company.Address,
+                AddressEn = company.AddressEn,
+                AddressBn = company.AddressBn,
                 PhoneNumber = company.PhoneNumber,
                 RegistrationNo = company.RegistrationNo,
                 Industry = company.Industry,
@@ -116,9 +121,11 @@ namespace ERPBackend.API.Controllers
 
             var company = new Company
             {
+                Branch = createCompanyDto.Branch,
                 CompanyNameEn = createCompanyDto.CompanyNameEn,
                 CompanyNameBn = createCompanyDto.CompanyNameBn,
-                Address = createCompanyDto.Address,
+                AddressEn = createCompanyDto.AddressEn,
+                AddressBn = createCompanyDto.AddressBn,
                 PhoneNumber = createCompanyDto.PhoneNumber,
                 RegistrationNo = createCompanyDto.RegistrationNo,
                 Industry = createCompanyDto.Industry,
@@ -126,6 +133,15 @@ namespace ERPBackend.API.Controllers
                 Status = createCompanyDto.Status,
                 Founded = createCompanyDto.Founded
             };
+
+            if (company.Branch == BranchType.Primary)
+            {
+                var otherCompanies = await _context.Companies.Where(c => c.Branch == BranchType.Primary).ToListAsync();
+                foreach (var other in otherCompanies)
+                {
+                    other.Branch = BranchType.Secondary;
+                }
+            }
 
             if (createCompanyDto.Logo != null)
             {
@@ -143,9 +159,11 @@ namespace ERPBackend.API.Controllers
             return CreatedAtAction(nameof(GetCompany), new { id = company.Id }, new CompanyDto
             {
                 Id = company.Id,
+                Branch = company.Branch,
                 CompanyNameEn = company.CompanyNameEn,
                 CompanyNameBn = company.CompanyNameBn,
-                Address = company.Address,
+                AddressEn = company.AddressEn,
+                AddressBn = company.AddressBn,
                 PhoneNumber = company.PhoneNumber,
                 RegistrationNo = company.RegistrationNo,
                 Industry = company.Industry,
@@ -173,9 +191,11 @@ namespace ERPBackend.API.Controllers
                 return BadRequest("Registration number already exists.");
             }
 
+            company.Branch = updateCompanyDto.Branch;
             company.CompanyNameEn = updateCompanyDto.CompanyNameEn;
             company.CompanyNameBn = updateCompanyDto.CompanyNameBn;
-            company.Address = updateCompanyDto.Address;
+            company.AddressEn = updateCompanyDto.AddressEn;
+            company.AddressBn = updateCompanyDto.AddressBn;
             company.PhoneNumber = updateCompanyDto.PhoneNumber;
             company.RegistrationNo = updateCompanyDto.RegistrationNo;
             company.Industry = updateCompanyDto.Industry;
@@ -183,6 +203,17 @@ namespace ERPBackend.API.Controllers
             company.Status = updateCompanyDto.Status;
             company.Founded = updateCompanyDto.Founded;
             company.UpdatedAt = DateTime.UtcNow;
+
+            if (company.Branch == BranchType.Primary)
+            {
+                var otherCompanies = await _context.Companies
+                    .Where(c => c.Branch == BranchType.Primary && c.Id != id)
+                    .ToListAsync();
+                foreach (var other in otherCompanies)
+                {
+                    other.Branch = BranchType.Secondary;
+                }
+            }
 
             if (updateCompanyDto.Logo != null)
             {

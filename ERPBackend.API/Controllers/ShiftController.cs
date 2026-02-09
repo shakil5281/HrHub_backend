@@ -22,9 +22,19 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/shift
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ShiftDto>>> GetShifts()
+        public async Task<ActionResult<IEnumerable<ShiftDto>>> GetShifts(string? companyName, int? companyId)
         {
-            return await _context.Shifts
+            var query = _context.Shifts.AsQueryable();
+            if (companyId.HasValue)
+            {
+                query = query.Where(s => s.CompanyId == companyId);
+            }
+            else if (!string.IsNullOrEmpty(companyName))
+            {
+                query = query.Where(s => s.CompanyName == companyName);
+            }
+
+            return await query
                 .Select(s => new ShiftDto
                 {
                     Id = s.Id,
@@ -36,6 +46,8 @@ namespace ERPBackend.API.Controllers
                     LunchTimeStart = s.LunchTimeStart,
                     LunchHour = s.LunchHour,
                     Weekends = s.Weekends,
+                    CompanyId = s.CompanyId,
+                    CompanyName = s.CompanyName,
                     Status = s.Status
                 })
                 .ToListAsync();
@@ -59,6 +71,8 @@ namespace ERPBackend.API.Controllers
                 LunchTimeStart = s.LunchTimeStart,
                 LunchHour = s.LunchHour,
                 Weekends = s.Weekends,
+                CompanyId = s.CompanyId,
+                CompanyName = s.CompanyName,
                 Status = s.Status
             };
         }
@@ -79,6 +93,8 @@ namespace ERPBackend.API.Controllers
                 LunchTimeStart = dto.LunchTimeStart,
                 LunchHour = dto.LunchHour,
                 Weekends = dto.Weekends,
+                CompanyId = dto.CompanyId,
+                CompanyName = dto.CompanyName,
                 Status = dto.Status
             };
 
@@ -96,6 +112,8 @@ namespace ERPBackend.API.Controllers
                 LunchTimeStart = shift.LunchTimeStart,
                 LunchHour = shift.LunchHour,
                 Weekends = shift.Weekends,
+                CompanyId = shift.CompanyId,
+                CompanyName = shift.CompanyName,
                 Status = shift.Status
             });
         }
@@ -117,6 +135,8 @@ namespace ERPBackend.API.Controllers
             shift.LunchTimeStart = dto.LunchTimeStart;
             shift.LunchHour = dto.LunchHour;
             shift.Weekends = dto.Weekends;
+            shift.CompanyId = dto.CompanyId;
+            shift.CompanyName = dto.CompanyName;
             shift.Status = dto.Status;
 
             await _context.SaveChangesAsync();

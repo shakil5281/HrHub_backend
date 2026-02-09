@@ -1,6 +1,7 @@
 ﻿using ERPBackend.Core.Constants;
 using ERPBackend.Core.DTOs;
 using ERPBackend.Core.Models;
+using ERPBackend.Core.Entities;
 using ERPBackend.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,75 +31,39 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/attendance/daily-report
         [HttpGet("daily-report")]
-        public async Task<ActionResult<IEnumerable<AttendanceDto>>> GetDailyReport(
-            [FromQuery] DateTime date,
-            [FromQuery] int? departmentId,
-            [FromQuery] string? status,
-            [FromQuery] string? searchTerm)
+        public async Task<ActionResult<IEnumerable<AttendanceDto>>> GetDailyReport([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var query = _context.Attendances
-                    .Include(a => a.Employee)
-                        .ThenInclude(e => e!.Department)
-                    .Include(a => a.Employee)
-                        .ThenInclude(e => e!.Designation)
-                    .Include(a => a.Employee)
-                        .ThenInclude(e => e!.Shift)
-                    .Where(a => a.Date.Date == date.Date)
-                    .AsQueryable();
-
-                if (departmentId.HasValue)
-                    query = query.Where(a => a.Employee!.DepartmentId == departmentId.Value);
-
-                if (!string.IsNullOrEmpty(status) && status != "all")
-                    query = query.Where(a => a.Status == status);
-
-                if (!string.IsNullOrEmpty(searchTerm))
-                {
-                    query = query.Where(a => a.Employee!.FullNameEn.Contains(searchTerm) || 
-                                           a.Employee!.EmployeeId.Contains(searchTerm));
-                }
-
-                var result = await query.Select(a => new AttendanceDto
-                {
-                    Id = a.Id,
-                    EmployeeId = a.EmployeeId,
-                    EmployeeIdCard = a.Employee != null ? a.Employee.EmployeeId : "",
-                    EmployeeName = a.Employee != null ? a.Employee.FullNameEn : "",
-                    Department = (a.Employee != null && a.Employee.Department != null) ? a.Employee.Department.NameEn : "N/A",
-                    Designation = (a.Employee != null && a.Employee.Designation != null) ? a.Employee.Designation.NameEn : "N/A",
-                    Shift = (a.Employee != null && a.Employee.Shift != null) ? a.Employee.Shift.NameEn : "N/A",
-                    Date = a.Date,
-                    InTime = a.InTime,
-                    OutTime = a.OutTime,
-                    Status = a.Status,
-                    OTHours = a.OTHours
-                }).ToListAsync();
-                
+                var result = await GetDailyReportInternal(filters);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching the daily report.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching the daily report.", error = ex.Message });
             }
         }
 
         // GET: api/attendance/daily-report/export/excel
         [HttpGet("daily-report/export/excel")]
-        public async Task<IActionResult> ExportDailyReportToExcel(
-            [FromQuery] DateTime date,
-            [FromQuery] int? departmentId,
-            [FromQuery] string? status,
-            [FromQuery] string? searchTerm)
+        public async Task<IActionResult> ExportDailyReportToExcel([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var data = await GetDailyReportInternal(date, departmentId, status, searchTerm);
-                var company = await _context.Set<Company>().FirstOrDefaultAsync();
-                
+                var data = (await GetDailyReportInternal(filters)).ToList();
+                Company? company = null;
+                if (!string.IsNullOrEmpty(filters.CompanyName))
+                {
+                    company = await _context.Set<Company>()
+                        .FirstOrDefaultAsync(c => c.CompanyNameEn == filters.CompanyName);
+                }
+
+                company ??= await _context.Set<Company>().FirstOrDefaultAsync();
+
                 using (var package = new ExcelPackage())
                 {
+                    var date = filters.Date ?? DateTime.Today;
                     // Create Section Wise Sheet
                     var sectionSheet = package.Workbook.Worksheets.Add("Section Wise");
                     CreateAttendanceWorksheet(sectionSheet, data, company, date, "Section");
@@ -108,23 +73,26 @@ namespace ERPBackend.API.Controllers
                     CreateAttendanceWorksheet(lineSheet, data, company, date, "Line");
 
                     var content = package.GetAsByteArray();
-                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"DailyAttendanceReport_{date:yyyyMMdd}.xlsx");
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        $"DailyAttendanceReport_{DateTime.Now:yyyyMMdd}.xlsx");
                 }
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while exporting to Excel.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while exporting to Excel.", error = ex.Message });
             }
         }
 
-        private void CreateAttendanceWorksheet(ExcelWorksheet worksheet, IEnumerable<AttendanceDto> data, Company? company, DateTime date, string groupBy)
+        private void CreateAttendanceWorksheet(ExcelWorksheet worksheet, IEnumerable<AttendanceDto> data,
+            Company? company, DateTime date, string groupBy)
         {
             // 0. Page Setup
-            worksheet.PrinterSettings.Orientation = OfficeOpenXml.eOrientation.Landscape;
+            worksheet.PrinterSettings.Orientation = eOrientation.Landscape;
             worksheet.PrinterSettings.FitToPage = true;
             worksheet.PrinterSettings.FitToWidth = 1;
             worksheet.PrinterSettings.FitToHeight = 0;
-            worksheet.PrinterSettings.PaperSize = OfficeOpenXml.ePaperSize.A4;
+            worksheet.PrinterSettings.PaperSize = ePaperSize.A4;
             worksheet.PrinterSettings.TopMargin = 0.5m;
             worksheet.PrinterSettings.BottomMargin = 0.5m;
             worksheet.PrinterSettings.LeftMargin = 0.5m;
@@ -132,8 +100,8 @@ namespace ERPBackend.API.Controllers
 
             // 1. Header Section
             string companyName = company?.CompanyNameEn ?? "HR HUB";
-            string address = company?.Address ?? "Industrial Area, Dhaka, Bangladesh";
-            
+            string address = company?.AddressEn ?? "Industrial Area, Dhaka, Bangladesh";
+
             worksheet.Cells["A1:J1"].Merge = true;
             worksheet.Cells["A1"].Value = companyName;
             worksheet.Cells["A1"].Style.Font.Size = 16;
@@ -185,7 +153,7 @@ namespace ERPBackend.API.Controllers
             int currentRow = headerRow + 1;
             int sl = 1;
 
-            var groupedData = groupBy == "Section" 
+            var groupedData = groupBy == "Section"
                 ? data.OrderBy(x => x.Section).ThenBy(x => x.EmployeeName).GroupBy(x => x.Section)
                 : data.OrderBy(x => x.Line).ThenBy(x => x.EmployeeName).GroupBy(x => x.Line);
 
@@ -196,7 +164,8 @@ namespace ERPBackend.API.Controllers
                 worksheet.Cells[currentRow, 1].Value = $"{groupBy}: {group.Key}";
                 worksheet.Cells[currentRow, 1].Style.Font.Bold = true;
                 worksheet.Cells[currentRow, 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                worksheet.Cells[currentRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(240, 240, 240));
+                worksheet.Cells[currentRow, 1].Style.Fill.BackgroundColor
+                    .SetColor(System.Drawing.Color.FromArgb(240, 240, 240));
                 currentRow++;
 
                 foreach (var item in group)
@@ -219,7 +188,7 @@ namespace ERPBackend.API.Controllers
                         "Off Day" => "OFF",
                         _ => item.Status
                     };
-                    
+
                     var statusCell = worksheet.Cells[currentRow, 9];
                     statusCell.Value = statusShort;
                     statusCell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
@@ -240,6 +209,7 @@ namespace ERPBackend.API.Controllers
                         worksheet.Cells[currentRow, i].Style.Border.Left.Style = ExcelBorderStyle.Thin;
                         worksheet.Cells[currentRow, i].Style.Border.Right.Style = ExcelBorderStyle.Thin;
                     }
+
                     currentRow++;
                 }
             }
@@ -247,7 +217,7 @@ namespace ERPBackend.API.Controllers
             // 4. Summary Footer Section
             currentRow += 2;
             int summaryStartRow = currentRow;
-            
+
             worksheet.Cells[currentRow, 2].Value = $"Summary Statistics ({groupBy} Wise)";
             worksheet.Cells[currentRow, 2].Style.Font.Bold = true;
             worksheet.Cells[currentRow, 2].Style.Font.UnderLine = true;
@@ -258,7 +228,8 @@ namespace ERPBackend.API.Controllers
             currentRow++;
 
             worksheet.Cells[currentRow, 2].Value = "Present (P)";
-            worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status.StartsWith("Present") || x.Status == "Late");
+            worksheet.Cells[currentRow, 3].Value =
+                data.Count(x => x.Status.StartsWith("Present") || x.Status == "Late");
             worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Green);
             currentRow++;
 
@@ -292,15 +263,12 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/attendance/daily-report/export/pdf
         [HttpGet("daily-report/export/pdf")]
-        public async Task<IActionResult> ExportDailyReportToPdf(
-            [FromQuery] DateTime date,
-            [FromQuery] int? departmentId,
-            [FromQuery] string? status,
-            [FromQuery] string? searchTerm)
+        public async Task<IActionResult> ExportDailyReportToPdf([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var data = await GetDailyReportInternal(date, departmentId, status, searchTerm);
+                var data = (await GetDailyReportInternal(filters)).ToList();
+                var date = filters.Date ?? DateTime.Today;
 
                 var document = Document.Create(container =>
                 {
@@ -315,7 +283,8 @@ namespace ERPBackend.API.Controllers
                         {
                             row.RelativeItem().Column(col =>
                             {
-                                col.Item().Text("Daily Attendance Report").FontSize(16).SemiBold().FontColor(Colors.Blue.Medium);
+                                col.Item().Text("Daily Attendance Report").FontSize(16).SemiBold()
+                                    .FontColor(Colors.Blue.Medium);
                                 col.Item().Text($"Date: {date:dd MMMM yyyy}").FontSize(10);
                             });
                         });
@@ -326,9 +295,9 @@ namespace ERPBackend.API.Controllers
                             {
                                 columns.ConstantColumn(25); // SL
                                 columns.ConstantColumn(80); // Emp ID
-                                columns.RelativeColumn();   // Name
-                                columns.RelativeColumn();   // Dept
-                                columns.RelativeColumn();   // Desig
+                                columns.RelativeColumn(); // Name
+                                columns.RelativeColumn(); // Dept
+                                columns.RelativeColumn(); // Desig
                                 columns.ConstantColumn(50); // In
                                 columns.ConstantColumn(50); // Out
                                 columns.ConstantColumn(60); // Status
@@ -337,41 +306,42 @@ namespace ERPBackend.API.Controllers
 
                             table.Header(header =>
                             {
-                                header.Cell().Element(CellStyle).Text("SL");
-                                header.Cell().Element(CellStyle).Text("Emp ID");
-                                header.Cell().Element(CellStyle).Text("Name");
-                                header.Cell().Element(CellStyle).Text("Dept");
-                                header.Cell().Element(CellStyle).Text("Desig");
-                                header.Cell().Element(CellStyle).Text("In");
-                                header.Cell().Element(CellStyle).Text("Out");
-                                header.Cell().Element(CellStyle).Text("Status");
-                                header.Cell().Element(CellStyle).Text("OT");
+                                header.Cell().Element(HeaderCellStyle).Text("SL");
+                                header.Cell().Element(HeaderCellStyle).Text("Emp ID");
+                                header.Cell().Element(HeaderCellStyle).Text("Name");
+                                header.Cell().Element(HeaderCellStyle).Text("Dept");
+                                header.Cell().Element(HeaderCellStyle).Text("Desig");
+                                header.Cell().Element(HeaderCellStyle).Text("In");
+                                header.Cell().Element(HeaderCellStyle).Text("Out");
+                                header.Cell().Element(HeaderCellStyle).Text("Status");
+                                header.Cell().Element(HeaderCellStyle).Text("OT");
 
-                                static IContainer CellStyle(IContainer container)
+                                static IContainer HeaderCellStyle(IContainer container)
                                 {
                                     return container.DefaultTextStyle(x => x.SemiBold())
-                                                    .PaddingVertical(5)
-                                                    .BorderBottom(1)
-                                                    .BorderColor(Colors.Black);
+                                        .PaddingVertical(5)
+                                        .BorderBottom(1)
+                                        .BorderColor(Colors.Black);
                                 }
                             });
 
                             int slCount = 1;
                             foreach (var item in data)
                             {
-                                table.Cell().Element(CellStyle).Text(slCount++.ToString());
-                                table.Cell().Element(CellStyle).Text(item.EmployeeIdCard);
-                                table.Cell().Element(CellStyle).Text(item.EmployeeName);
-                                table.Cell().Element(CellStyle).Text(item.Department);
-                                table.Cell().Element(CellStyle).Text(item.Designation);
-                                table.Cell().Element(CellStyle).Text(item.InTime ?? "-");
-                                table.Cell().Element(CellStyle).Text(item.OutTime ?? "-");
-                                table.Cell().Element(CellStyle).Text(item.Status);
-                                table.Cell().Element(CellStyle).Text(item.OTHours.ToString());
+                                table.Cell().Element(DataCellStyle).Text(slCount++.ToString());
+                                table.Cell().Element(DataCellStyle).Text(item.EmployeeIdCard);
+                                table.Cell().Element(DataCellStyle).Text(item.EmployeeName);
+                                table.Cell().Element(DataCellStyle).Text(item.Department);
+                                table.Cell().Element(DataCellStyle).Text(item.Designation);
+                                table.Cell().Element(DataCellStyle).Text(item.InTime ?? "-");
+                                table.Cell().Element(DataCellStyle).Text(item.OutTime ?? "-");
+                                table.Cell().Element(DataCellStyle).Text(item.Status);
+                                table.Cell().Element(DataCellStyle).Text(item.OTHours.ToString());
 
-                                static IContainer CellStyle(IContainer container)
+                                static IContainer DataCellStyle(IContainer container)
                                 {
-                                    return container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3);
+                                    return container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
+                                        .PaddingVertical(3);
                                 }
                             }
                         });
@@ -391,41 +361,31 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while exporting to PDF.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while exporting to PDF.", error = ex.Message });
             }
         }
 
-        private async Task<IEnumerable<AttendanceDto>> GetDailyReportInternal(
-            DateTime date,
-            int? departmentId,
-            string? status,
-            string? searchTerm)
+        private async Task<IEnumerable<AttendanceDto>> GetDailyReportInternal(CommonFilterDto filters)
         {
             var query = _context.Attendances
                 .Include(a => a.Employee)
-                    .ThenInclude(e => e!.Department)
+                .ThenInclude(e => e!.Department)
                 .Include(a => a.Employee)
-                    .ThenInclude(e => e!.Section)
+                .ThenInclude(e => e!.Section)
                 .Include(a => a.Employee)
-                    .ThenInclude(e => e!.Line)
+                .ThenInclude(e => e!.Line)
                 .Include(a => a.Employee)
-                    .ThenInclude(e => e!.Designation)
+                .ThenInclude(e => e!.Designation)
                 .Include(a => a.Employee)
-                    .ThenInclude(e => e!.Shift)
-                .Where(a => a.Date.Date == date.Date)
+                .ThenInclude(e => e!.Shift)
+                .Include(a => a.Employee)
+                .ThenInclude(e => e!.Group)
+                .Include(a => a.Employee)
+                .ThenInclude(e => e!.Floor)
                 .AsQueryable();
 
-            if (departmentId.HasValue)
-                query = query.Where(a => a.Employee != null && a.Employee.DepartmentId == departmentId.Value);
-
-            if (!string.IsNullOrEmpty(status) && status != "all")
-                query = query.Where(a => a.Status == status);
-
-            if (!string.IsNullOrEmpty(searchTerm))
-            {
-                query = query.Where(a => a.Employee != null && (a.Employee.FullNameEn.Contains(searchTerm) ||
-                                       a.Employee.EmployeeId.Contains(searchTerm)));
-            }
+            query = ApplyAttendanceFilters(query, filters);
 
             return await query.Select(a => new AttendanceDto
             {
@@ -433,10 +393,14 @@ namespace ERPBackend.API.Controllers
                 EmployeeId = a.EmployeeId,
                 EmployeeIdCard = a.Employee != null ? a.Employee.EmployeeId : "",
                 EmployeeName = a.Employee != null ? a.Employee.FullNameEn : "",
-                Department = (a.Employee != null && a.Employee.Department != null) ? a.Employee.Department.NameEn : "N/A",
+                Department = (a.Employee != null && a.Employee.Department != null)
+                    ? a.Employee.Department.NameEn
+                    : "N/A",
                 Section = (a.Employee != null && a.Employee.Section != null) ? a.Employee.Section.NameEn : "N/A",
                 Line = (a.Employee != null && a.Employee.Line != null) ? a.Employee.Line.NameEn : "N/A",
-                Designation = (a.Employee != null && a.Employee.Designation != null) ? a.Employee.Designation.NameEn : "N/A",
+                Designation = (a.Employee != null && a.Employee.Designation != null)
+                    ? a.Employee.Designation.NameEn
+                    : "N/A",
                 Shift = (a.Employee != null && a.Employee.Shift != null) ? a.Employee.Shift.NameEn : "N/A",
                 Date = a.Date,
                 InTime = a.InTime,
@@ -448,14 +412,19 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/attendance/summary
         [HttpGet("summary")]
-        public async Task<ActionResult<AttendanceSummaryDto>> GetSummary([FromQuery] DateTime date)
+        public async Task<ActionResult<AttendanceSummaryDto>> GetSummary([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var totalHeadcount = await _context.Employees.CountAsync(e => e.IsActive);
-                var attendances = await _context.Attendances
-                    .Where(a => a.Date.Date == date.Date)
-                    .ToListAsync();
+                var date = filters.Date ?? DateTime.Today;
+
+                var employeeQuery = _context.Employees.Where(e => e.IsActive).AsQueryable();
+                employeeQuery = ApplyEmployeeFilters(employeeQuery, filters);
+                var totalHeadcount = await employeeQuery.CountAsync();
+
+                var attendanceQuery = _context.Attendances.Where(a => a.Date.Date == date.Date).AsQueryable();
+                attendanceQuery = ApplyAttendanceFilters(attendanceQuery, filters);
+                var attendances = await attendanceQuery.ToListAsync();
 
                 var present = attendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var late = attendances.Count(a => a.Status == "Late");
@@ -474,50 +443,52 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching the attendance summary.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching the attendance summary.", error = ex.Message });
             }
         }
 
         // GET: api/attendance/daily-summary
         [HttpGet("daily-summary")]
-        public async Task<ActionResult<DailySummaryResponseDto>> GetDailySummary(
-            [FromQuery] DateTime date,
-            [FromQuery] int? departmentId)
+        public async Task<ActionResult<DailySummaryResponseDto>> GetDailySummary([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var summary = await GetDailySummaryInternal(date, departmentId);
+                var summary = await GetDailySummaryInternal(filters);
                 return Ok(summary);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching the daily summary.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching the daily summary.", error = ex.Message });
             }
         }
 
-        private async Task<DailySummaryResponseDto> GetDailySummaryInternal(DateTime date, int? departmentId)
+        private async Task<DailySummaryResponseDto> GetDailySummaryInternal(CommonFilterDto filters)
         {
+            DateTime date = filters.Date ?? DateTime.Today;
+
             // 1. Fetch all active employees with their details to calculate total headcount per group
-            var allEmployees = await _context.Employees
+            var employeeQuery = _context.Employees
                 .Where(e => e.IsActive)
                 .Include(e => e.Department)
                 .Include(e => e.Section)
                 .Include(e => e.Designation)
                 .Include(e => e.Line)
                 .Include(e => e.Group)
-                .ToListAsync();
+                .AsQueryable();
+
+            employeeQuery = ApplyEmployeeFilters(employeeQuery, filters);
+            var allEmployees = await employeeQuery.ToListAsync();
 
             // 2. Fetch all attendance for the date
-            var attendances = await _context.Attendances
+            var attendanceQuery = _context.Attendances
                 .Include(a => a.Employee)
                 .Where(a => a.Date.Date == date.Date)
-                .ToListAsync();
+                .AsQueryable();
 
-            if (departmentId.HasValue)
-            {
-                allEmployees = allEmployees.Where(e => e.DepartmentId == departmentId.Value).ToList();
-                attendances = attendances.Where(a => a.Employee?.DepartmentId == departmentId.Value).ToList();
-            }
+            attendanceQuery = ApplyAttendanceFilters(attendanceQuery, filters);
+            var attendances = await attendanceQuery.ToListAsync();
 
             // Filter attendances to only include active employees to ensure rate consistency
             var activeEmpIds = allEmployees.Select(e => e.Id).ToHashSet();
@@ -548,7 +519,7 @@ namespace ERPBackend.API.Controllers
             {
                 var empIds = allEmployees.Where(e => e.DepartmentId == dept!.Id).Select(e => e.Id).ToHashSet();
                 var deptAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
-                
+
                 var p = deptAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = deptAttendances.Count(a => a.Status == "Late");
                 var ab = deptAttendances.Count(a => a.Status == "Absent");
@@ -692,8 +663,11 @@ namespace ERPBackend.API.Controllers
             // 9. Department + Section Wise Summary
             var deptSectionSummaries = allEmployees
                 .Where(e => e.Department != null && e.Section != null)
-                .GroupBy(e => new { e.DepartmentId, DepartmentName = e.Department!.NameEn, e.SectionId, SectionName = e.Section!.NameEn })
-                .Select(g => 
+                .GroupBy(e => new
+                {
+                    e.DepartmentId, DepartmentName = e.Department!.NameEn, e.SectionId, SectionName = e.Section!.NameEn
+                })
+                .Select(g =>
                 {
                     var empIds = g.Select(e => e.Id).ToHashSet();
                     var dsAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
@@ -736,21 +710,27 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/attendance/daily-summary/export/excel
         [HttpGet("daily-summary/export/excel")]
-        public async Task<IActionResult> ExportDailySummaryToExcel(
-            [FromQuery] DateTime date,
-            [FromQuery] int? departmentId)
+        public async Task<IActionResult> ExportDailySummaryToExcel([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var summaryData = await GetDailySummaryInternal(date, departmentId);
-                var company = await _context.Set<Company>().FirstOrDefaultAsync();
-                
+                var date = filters.Date ?? DateTime.Today;
+                var summaryData = await GetDailySummaryInternal(filters);
+                Company? company = null;
+                if (!string.IsNullOrEmpty(filters.CompanyName))
+                {
+                    company = await _context.Set<Company>()
+                        .FirstOrDefaultAsync(c => c.CompanyNameEn == filters.CompanyName);
+                }
+
+                company ??= await _context.Set<Company>().FirstOrDefaultAsync();
+
                 using (var package = new ExcelPackage())
                 {
                     // 1. Overall Summary Sheet
                     var summarySheet = package.Workbook.Worksheets.Add("Overall Summary");
                     AddSummaryHeader(summarySheet, company, "Overall Attendance Summary", date, 6);
-                    
+
                     int row = 7;
                     string[] summaryHeaders = { "Metric", "Count" };
                     for (int i = 0; i < summaryHeaders.Length; i++)
@@ -758,16 +738,23 @@ namespace ERPBackend.API.Controllers
                         summarySheet.Cells[row, i + 1].Value = summaryHeaders[i];
                         summarySheet.Cells[row, i + 1].Style.Font.Bold = true;
                         summarySheet.Cells[row, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                        summarySheet.Cells[row, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                        summarySheet.Cells[row, i + 1].Style.Fill.BackgroundColor
+                            .SetColor(System.Drawing.Color.LightGray);
                     }
+
                     row++;
 
                     AddSummaryRow(summarySheet, ref row, "Total Headcount", summaryData.OverallSummary.TotalHeadcount);
-                    AddSummaryRow(summarySheet, ref row, "Present", summaryData.OverallSummary.PresentCount, System.Drawing.Color.Green);
-                    AddSummaryRow(summarySheet, ref row, "Late", summaryData.OverallSummary.LateCount, System.Drawing.Color.Orange);
-                    AddSummaryRow(summarySheet, ref row, "Absent", summaryData.OverallSummary.AbsentCount, System.Drawing.Color.Red);
-                    AddSummaryRow(summarySheet, ref row, "On Leave", summaryData.OverallSummary.LeaveCount, System.Drawing.Color.Blue);
-                    AddSummaryRow(summarySheet, ref row, "Attendance Rate (%)", summaryData.OverallSummary.AttendanceRate);
+                    AddSummaryRow(summarySheet, ref row, "Present", summaryData.OverallSummary.PresentCount,
+                        System.Drawing.Color.Green);
+                    AddSummaryRow(summarySheet, ref row, "Late", summaryData.OverallSummary.LateCount,
+                        System.Drawing.Color.Orange);
+                    AddSummaryRow(summarySheet, ref row, "Absent", summaryData.OverallSummary.AbsentCount,
+                        System.Drawing.Color.Red);
+                    AddSummaryRow(summarySheet, ref row, "On Leave", summaryData.OverallSummary.LeaveCount,
+                        System.Drawing.Color.Blue);
+                    AddSummaryRow(summarySheet, ref row, "Attendance Rate (%)",
+                        summaryData.OverallSummary.AttendanceRate);
 
                     summarySheet.Cells[7, 1, row - 1, 2].Style.Border.Top.Style = ExcelBorderStyle.Thin;
                     summarySheet.Cells[7, 1, row - 1, 2].Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
@@ -779,47 +766,73 @@ namespace ERPBackend.API.Controllers
                     // 2. Department Wise Sheet
                     var deptSheet = package.Workbook.Worksheets.Add("Department Wise");
                     AddSummaryTableHeader(deptSheet, company, "Department Wise Summary", date, 8);
-                    FillSummaryTable(deptSheet, summaryData.DepartmentSummaries.Select(d => new { Name = d.DepartmentName, d.TotalEmployees, d.Present, d.Absent, d.Late, d.OnLeave, d.AttendanceRate }));
+                    FillSummaryTable(deptSheet,
+                        summaryData.DepartmentSummaries.Select(d => new
+                        {
+                            Name = d.DepartmentName, d.TotalEmployees, d.Present, d.Absent, d.Late, d.OnLeave,
+                            d.AttendanceRate
+                        }));
 
                     // 3. Section Wise Sheet
                     var secSheet = package.Workbook.Worksheets.Add("Section Wise");
                     AddSummaryTableHeader(secSheet, company, "Section Wise Summary", date, 8);
-                    FillSummaryTable(secSheet, summaryData.SectionSummaries.Select(s => new { Name = s.SectionName, s.TotalEmployees, s.Present, s.Absent, s.Late, s.OnLeave, s.AttendanceRate }));
+                    FillSummaryTable(secSheet,
+                        summaryData.SectionSummaries.Select(s => new
+                        {
+                            Name = s.SectionName, s.TotalEmployees, s.Present, s.Absent, s.Late, s.OnLeave,
+                            s.AttendanceRate
+                        }));
 
                     // 4. Designation Wise Sheet
                     var desigSheet = package.Workbook.Worksheets.Add("Designation Wise");
                     AddSummaryTableHeader(desigSheet, company, "Designation Wise Summary", date, 8);
-                    FillSummaryTable(desigSheet, summaryData.DesignationSummaries.Select(d => new { Name = d.DesignationName, d.TotalEmployees, d.Present, d.Absent, d.Late, d.OnLeave, d.AttendanceRate }));
+                    FillSummaryTable(desigSheet,
+                        summaryData.DesignationSummaries.Select(d => new
+                        {
+                            Name = d.DesignationName, d.TotalEmployees, d.Present, d.Absent, d.Late, d.OnLeave,
+                            d.AttendanceRate
+                        }));
 
                     // 5. Line Wise Sheet
                     var lineSheet = package.Workbook.Worksheets.Add("Line Wise");
                     AddSummaryTableHeader(lineSheet, company, "Line Wise Summary", date, 8);
-                    FillSummaryTable(lineSheet, summaryData.LineSummaries.Select(l => new { Name = l.LineName, l.TotalEmployees, l.Present, l.Absent, l.Late, l.OnLeave, l.AttendanceRate }));
+                    FillSummaryTable(lineSheet,
+                        summaryData.LineSummaries.Select(l => new
+                        {
+                            Name = l.LineName, l.TotalEmployees, l.Present, l.Absent, l.Late, l.OnLeave,
+                            l.AttendanceRate
+                        }));
 
                     // 6. Group Wise Sheet
                     var groupSheet = package.Workbook.Worksheets.Add("Group Wise");
                     AddSummaryTableHeader(groupSheet, company, "Group Wise Summary", date, 8);
-                    FillSummaryTable(groupSheet, summaryData.GroupSummaries.Select(g => new { Name = g.GroupName, g.TotalEmployees, g.Present, g.Absent, g.Late, g.OnLeave, g.AttendanceRate }));
+                    FillSummaryTable(groupSheet,
+                        summaryData.GroupSummaries.Select(g => new
+                        {
+                            Name = g.GroupName, g.TotalEmployees, g.Present, g.Absent, g.Late, g.OnLeave,
+                            g.AttendanceRate
+                        }));
 
                     var content = package.GetAsByteArray();
-                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"DailyAttendanceSummary_{date:yyyyMMdd}.xlsx");
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        $"DailyAttendanceSummary_{date:yyyyMMdd}.xlsx");
                 }
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while exporting summary to Excel.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while exporting summary to Excel.", error = ex.Message });
             }
         }
 
         // GET: api/attendance/daily-summary/export/pdf
         [HttpGet("daily-summary/export/pdf")]
-        public async Task<IActionResult> ExportDailySummaryToPdf(
-            [FromQuery] DateTime date,
-            [FromQuery] int? departmentId)
+        public async Task<IActionResult> ExportDailySummaryToPdf([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var summaryData = await GetDailySummaryInternal(date, departmentId);
+                var date = filters.Date ?? DateTime.Today;
+                var summaryData = await GetDailySummaryInternal(filters);
                 var company = await _context.Set<Company>().FirstOrDefaultAsync();
                 string companyName = company?.CompanyNameEn ?? "HR HUB";
 
@@ -834,14 +847,18 @@ namespace ERPBackend.API.Controllers
 
                         page.Header().Column(col =>
                         {
-                            col.Item().AlignCenter().Text(companyName).FontSize(16).Bold().FontColor(Colors.Blue.Medium);
-                            col.Item().AlignCenter().Text(company?.Address ?? "").FontSize(9);
-                            col.Item().PaddingTop(5).AlignCenter().Text("Daily Attendance Summary Report").FontSize(12).Bold().Underline();
+                            col.Item().AlignCenter().Text(companyName).FontSize(16).Bold()
+                                .FontColor(Colors.Blue.Medium);
+                            col.Item().AlignCenter().Text(company?.AddressEn ?? "").FontSize(9);
+                            col.Item().PaddingTop(5).AlignCenter().Text("Daily Attendance Summary Report").FontSize(12)
+                                .Bold().Underline();
                             col.Item().AlignCenter().Text($"Date: {date:dd MMMM yyyy}").FontSize(10);
-                            if (departmentId.HasValue)
+                            if (filters.DepartmentId.HasValue)
                             {
-                                var deptName = summaryData.DepartmentSummaries.FirstOrDefault()?.DepartmentName ?? "Selected Department";
-                                col.Item().AlignCenter().Text($"Filtered by Department: {deptName}").FontSize(9).Italic();
+                                var deptName = summaryData.DepartmentSummaries.FirstOrDefault()?.DepartmentName ??
+                                               "Selected Department";
+                                col.Item().AlignCenter().Text($"Filtered by Department: {deptName}").FontSize(9)
+                                    .Italic();
                             }
                         });
 
@@ -864,26 +881,37 @@ namespace ERPBackend.API.Controllers
                                 });
 
                                 table.Cell().Element(CellContentStyle).Text("Total Headcount");
-                                table.Cell().Element(CellContentStyle).Text(summaryData.OverallSummary.TotalHeadcount.ToString());
+                                table.Cell().Element(CellContentStyle)
+                                    .Text(summaryData.OverallSummary.TotalHeadcount.ToString());
 
                                 table.Cell().Element(CellContentStyle).Text("Present");
-                                table.Cell().Element(CellContentStyle).Text(summaryData.OverallSummary.PresentCount.ToString()).FontColor(Colors.Green.Medium);
+                                table.Cell().Element(CellContentStyle)
+                                    .Text(summaryData.OverallSummary.PresentCount.ToString())
+                                    .FontColor(Colors.Green.Medium);
 
                                 table.Cell().Element(CellContentStyle).Text("Absent");
-                                table.Cell().Element(CellContentStyle).Text(summaryData.OverallSummary.AbsentCount.ToString()).FontColor(Colors.Red.Medium);
+                                table.Cell().Element(CellContentStyle)
+                                    .Text(summaryData.OverallSummary.AbsentCount.ToString())
+                                    .FontColor(Colors.Red.Medium);
 
                                 table.Cell().Element(CellContentStyle).Text("On Leave");
-                                table.Cell().Element(CellContentStyle).Text(summaryData.OverallSummary.LeaveCount.ToString()).FontColor(Colors.Blue.Medium);
+                                table.Cell().Element(CellContentStyle)
+                                    .Text(summaryData.OverallSummary.LeaveCount.ToString())
+                                    .FontColor(Colors.Blue.Medium);
 
                                 table.Cell().Element(CellContentStyle).Text("Attendance Rate");
-                                table.Cell().Element(CellContentStyle).Text($"{summaryData.OverallSummary.AttendanceRate}%").Bold();
+                                table.Cell().Element(CellContentStyle)
+                                    .Text($"{summaryData.OverallSummary.AttendanceRate}%").Bold();
                             });
 
                             // Department Summaries
-                            col.Item().Element(c => AddDepartmentSummarySection(c, "2. Department Wise Summary", summaryData.DepartmentSummaries));
-                            
+                            col.Item().Element(c =>
+                                AddDepartmentSummarySection(c, "2. Department Wise Summary",
+                                    summaryData.DepartmentSummaries));
+
                             // Section Summaries
-                            col.Item().Element(c => AddSectionSummarySection(c, "3. Section Wise Summary", summaryData.SectionSummaries));
+                            col.Item().Element(c =>
+                                AddSectionSummarySection(c, "3. Section Wise Summary", summaryData.SectionSummaries));
                         });
 
                         page.Footer().AlignCenter().Text(x =>
@@ -903,7 +931,8 @@ namespace ERPBackend.API.Controllers
             }
         }
 
-        private void AddDepartmentSummarySection(IContainer container, string title, IEnumerable<DepartmentDailySummaryDto> data)
+        private void AddDepartmentSummarySection(IContainer container, string title,
+            IEnumerable<DepartmentDailySummaryDto> data)
         {
             container.Column(column =>
             {
@@ -913,7 +942,7 @@ namespace ERPBackend.API.Controllers
                     table.ColumnsDefinition(columns =>
                     {
                         columns.ConstantColumn(25); // SL
-                        columns.RelativeColumn();   // Name
+                        columns.RelativeColumn(); // Name
                         columns.ConstantColumn(40); // Total
                         columns.ConstantColumn(40); // Pres
                         columns.ConstantColumn(40); // Abs
@@ -947,7 +976,8 @@ namespace ERPBackend.API.Controllers
             });
         }
 
-        private void AddSectionSummarySection(IContainer container, string title, IEnumerable<SectionDailySummaryDto> data)
+        private void AddSectionSummarySection(IContainer container, string title,
+            IEnumerable<SectionDailySummaryDto> data)
         {
             container.Column(column =>
             {
@@ -957,7 +987,7 @@ namespace ERPBackend.API.Controllers
                     table.ColumnsDefinition(columns =>
                     {
                         columns.ConstantColumn(25); // SL
-                        columns.RelativeColumn();   // Name
+                        columns.RelativeColumn(); // Name
                         columns.ConstantColumn(40); // Total
                         columns.ConstantColumn(40); // Pres
                         columns.ConstantColumn(40); // Abs
@@ -994,26 +1024,27 @@ namespace ERPBackend.API.Controllers
         private IContainer CellStyle(IContainer container)
         {
             return container.DefaultTextStyle(x => x.SemiBold())
-                            .PaddingVertical(5)
-                            .BorderBottom(1)
-                            .BorderColor(Colors.Grey.Lighten2)
-                            .Background(Colors.Grey.Lighten4)
-                            .PaddingHorizontal(5)
-                            .AlignCenter();
+                .PaddingVertical(5)
+                .BorderBottom(1)
+                .BorderColor(Colors.Grey.Lighten2)
+                .Background(Colors.Grey.Lighten4)
+                .PaddingHorizontal(5)
+                .AlignCenter();
         }
 
         private IContainer CellContentStyle(IContainer container)
         {
             return container.PaddingVertical(3)
-                            .BorderBottom(1)
-                            .BorderColor(Colors.Grey.Lighten3)
-                            .PaddingHorizontal(5);
+                .BorderBottom(1)
+                .BorderColor(Colors.Grey.Lighten3)
+                .PaddingHorizontal(5);
         }
 
-        private void AddSummaryHeader(ExcelWorksheet worksheet, Company? company, string title, DateTime date, int columns)
+        private void AddSummaryHeader(ExcelWorksheet worksheet, Company? company, string title, DateTime date,
+            int columns)
         {
             string companyName = company?.CompanyNameEn ?? "HR HUB";
-            string address = company?.Address ?? "Industrial Area, Dhaka, Bangladesh";
+            string address = company?.AddressEn ?? "Industrial Area, Dhaka, Bangladesh";
             string colRange = $"A1:{(char)('A' + columns - 1)}";
 
             worksheet.Cells[$"{colRange}1"].Merge = true;
@@ -1046,7 +1077,8 @@ namespace ERPBackend.API.Controllers
             worksheet.PrinterSettings.PaperSize = OfficeOpenXml.ePaperSize.A4;
         }
 
-        private void AddSummaryRow(ExcelWorksheet sheet, ref int row, string metric, object value, System.Drawing.Color? color = null)
+        private void AddSummaryRow(ExcelWorksheet sheet, ref int row, string metric, object value,
+            System.Drawing.Color? color = null)
         {
             sheet.Cells[row, 1].Value = metric;
             sheet.Cells[row, 2].Value = value;
@@ -1054,7 +1086,8 @@ namespace ERPBackend.API.Controllers
             row++;
         }
 
-        private void AddSummaryTableHeader(ExcelWorksheet sheet, Company? company, string title, DateTime date, int columns)
+        private void AddSummaryTableHeader(ExcelWorksheet sheet, Company? company, string title, DateTime date,
+            int columns)
         {
             AddSummaryHeader(sheet, company, title, date, columns);
             int row = 6;
@@ -1094,8 +1127,10 @@ namespace ERPBackend.API.Controllers
                     sheet.Cells[row, i].Style.Border.Left.Style = ExcelBorderStyle.Thin;
                     sheet.Cells[row, i].Style.Border.Right.Style = ExcelBorderStyle.Thin;
                 }
+
                 row++;
             }
+
             sheet.Cells.AutoFitColumns();
             sheet.Column(1).Width = 5;
             sheet.Column(2).Width = 30;
@@ -1123,9 +1158,9 @@ namespace ERPBackend.API.Controllers
 
                 // Get attendance records for the date range
                 var attendances = await _context.Attendances
-                    .Where(a => a.EmployeeId == employeeId && 
-                               a.Date.Date >= fromDate.Date && 
-                               a.Date.Date <= toDate.Date)
+                    .Where(a => a.EmployeeId == employeeId &&
+                                a.Date.Date >= fromDate.Date &&
+                                a.Date.Date <= toDate.Date)
                     .OrderBy(a => a.Date)
                     .ToListAsync();
 
@@ -1139,19 +1174,19 @@ namespace ERPBackend.API.Controllers
                 // Create job card records
                 var jobCardRecords = new List<JobCardDto>();
                 int presentDays = 0, absentDays = 0, weekendDays = 0, holidayDays = 0;
-                decimal totalOT = 0;
+                decimal totalOt = 0;
                 int totalLate = 0, totalEarly = 0;
 
                 foreach (var date in allDates)
                 {
                     var attendance = attendances.FirstOrDefault(a => a.Date.Date == date.Date);
                     var dayName = date.ToString("ddd");
-                    
+
                     // Determine if weekend (Friday/Saturday based on your business logic)
                     bool isWeekend = dayName == "Fri"; // Adjust based on your weekend days
 
                     JobCardDto record;
-                    
+
                     if (attendance != null)
                     {
                         // Calculate late minutes (assuming shift starts at 9:00 AM)
@@ -1163,7 +1198,9 @@ namespace ERPBackend.API.Controllers
                         }
 
                         // Calculate total hours (assuming 9 hours standard)
-                        decimal totalHours = attendance.Status == "Present" || attendance.Status == "Late" ? 9 + attendance.OTHours : 0;
+                        decimal totalHours = attendance.Status == "Present" || attendance.Status == "Late"
+                            ? 9 + attendance.OTHours
+                            : 0;
 
                         record = new JobCardDto
                         {
@@ -1185,7 +1222,7 @@ namespace ERPBackend.API.Controllers
                         else if (attendance.Status == "Off Day") weekendDays++;
                         else if (attendance.Status == "Holiday") holidayDays++;
 
-                        totalOT += attendance.OTHours;
+                        totalOt += attendance.OTHours;
                         totalLate += lateMinutes;
                     }
                     else if (isWeekend)
@@ -1247,7 +1284,7 @@ namespace ERPBackend.API.Controllers
                         AbsentDays = absentDays,
                         WeekendDays = weekendDays,
                         HolidayDays = holidayDays,
-                        TotalOTHours = totalOT,
+                        TotalOTHours = totalOt,
                         TotalLateMinutes = totalLate,
                         TotalEarlyMinutes = totalEarly
                     },
@@ -1260,13 +1297,15 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching the job card.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching the job card.", error = ex.Message });
             }
         }
 
         // POST: api/attendance/manual-entry
         [HttpPost("manual-entry")]
-        public async Task<ActionResult<ManualAttendanceResponseDto>> CreateManualEntry([FromBody] ManualAttendanceDto dto)
+        public async Task<ActionResult<ManualAttendanceResponseDto>> CreateManualEntry(
+            [FromBody] ManualAttendanceDto dto)
         {
             try
             {
@@ -1354,7 +1393,8 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while creating manual entry.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while creating manual entry.", error = ex.Message });
             }
         }
 
@@ -1404,7 +1444,8 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching manual entry history.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching manual entry history.", error = ex.Message });
             }
         }
 
@@ -1437,8 +1478,8 @@ namespace ERPBackend.API.Controllers
                     employeesQuery = employeesQuery.Where(e => e.SectionId == sectionId.Value);
 
                 if (!string.IsNullOrWhiteSpace(searchTerm))
-                    employeesQuery = employeesQuery.Where(e => 
-                        e.EmployeeId.Contains(searchTerm) || 
+                    employeesQuery = employeesQuery.Where(e =>
+                        e.EmployeeId.Contains(searchTerm) ||
                         e.FullNameEn.Contains(searchTerm));
 
                 var employees = await employeesQuery.ToListAsync();
@@ -1451,7 +1492,7 @@ namespace ERPBackend.API.Controllers
                 // Find missing entries
                 var missingEntries = new List<MissingEntryDto>();
                 int idCounter = 1;
-                
+
                 foreach (var employee in employees)
                 {
                     // Check each date in the range
@@ -1461,8 +1502,8 @@ namespace ERPBackend.API.Controllers
                         if (date.DayOfWeek == DayOfWeek.Friday)
                             continue;
 
-                        var attendance = attendances.FirstOrDefault(a => 
-                            a.EmployeeId == employee.Id && 
+                        var attendance = attendances.FirstOrDefault(a =>
+                            a.EmployeeId == employee.Id &&
                             a.Date.Date == date.Date);
 
                         if (attendance != null)
@@ -1472,7 +1513,7 @@ namespace ERPBackend.API.Controllers
                             bool missingOut = string.IsNullOrWhiteSpace(attendance.OutTime);
 
                             // Only show if exactly one is missing (excluding "Both (No Punch)")
-                            if (missingIn ^ missingOut) 
+                            if (missingIn ^ missingOut)
                             {
                                 string missingType = missingIn ? "In Time" : "Out Time";
                                 string status = "Pending";
@@ -1516,7 +1557,8 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching missing entries.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching missing entries.", error = ex.Message });
             }
         }
 
@@ -1546,8 +1588,8 @@ namespace ERPBackend.API.Controllers
                     query = query.Where(a => a.Employee!.DesignationId == designationId.Value);
 
                 if (!string.IsNullOrWhiteSpace(searchTerm))
-                    query = query.Where(a => 
-                        a.Employee!.EmployeeId.Contains(searchTerm) || 
+                    query = query.Where(a =>
+                        a.Employee!.EmployeeId.Contains(searchTerm) ||
                         a.Employee!.FullNameEn.Contains(searchTerm));
 
                 var absences = await query.ToListAsync();
@@ -1559,7 +1601,7 @@ namespace ERPBackend.API.Controllers
                     {
                         var empAbsences = g.OrderBy(a => a.Date).ToList();
                         var result = new List<AbsenteeismRecordDto>();
- 
+
                         for (int i = 0; i < empAbsences.Count; i++)
                         {
                             var attendance = empAbsences[i];
@@ -1611,20 +1653,18 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching absenteeism records.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching absenteeism records.", error = ex.Message });
             }
         }
 
         // GET: api/attendance/daily-ot-sheet
         [HttpGet("daily-ot-sheet")]
-        public async Task<ActionResult<OTSheetResponseDto>> GetDailyOTSheet(
-            [FromQuery] DateTime date,
-            [FromQuery] int? departmentId,
-            [FromQuery] int? designationId,
-            [FromQuery] string? searchTerm)
+        public async Task<ActionResult<OTSheetResponseDto>> GetDailyOtSheet([FromQuery] CommonFilterDto filters)
         {
             try
             {
+                var date = filters.Date ?? DateTime.Today;
                 var query = _context.Attendances
                     .Include(a => a.Employee)
                     .ThenInclude(e => e!.Department)
@@ -1633,16 +1673,7 @@ namespace ERPBackend.API.Controllers
                     .Where(a => a.Date.Date == date.Date)
                     .Where(a => a.OTHours > 0);
 
-                if (departmentId.HasValue)
-                    query = query.Where(a => a.Employee!.DepartmentId == departmentId.Value);
-
-                if (designationId.HasValue)
-                    query = query.Where(a => a.Employee!.DesignationId == designationId.Value);
-
-                if (!string.IsNullOrWhiteSpace(searchTerm))
-                    query = query.Where(a => 
-                        a.Employee!.EmployeeId.Contains(searchTerm) || 
-                        a.Employee!.FullNameEn.Contains(searchTerm));
+                query = ApplyAttendanceFilters(query, filters);
 
                 var records = await query
                     .Select(a => new DailyOTSheetDto
@@ -1671,22 +1702,26 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching OT sheet.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching OT sheet.", error = ex.Message });
             }
         }
 
         // GET: api/attendance/daily-ot-summary
         [HttpGet("daily-ot-summary")]
-        public async Task<ActionResult<OTSummaryResponseDto>> GetDailyOTSummary([FromQuery] DateTime date)
+        public async Task<ActionResult<OTSummaryResponseDto>> GetDailyOtSummary([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var records = await _context.Attendances
+                var date = filters.Date ?? DateTime.Today;
+                var query = _context.Attendances
                     .Include(a => a.Employee)
                     .ThenInclude(e => e!.Department)
                     .Where(a => a.Date.Date == date.Date)
-                    .Where(a => a.OTHours > 0)
-                    .ToListAsync();
+                    .Where(a => a.OTHours > 0);
+
+                query = ApplyAttendanceFilters(query, filters);
+                var records = await query.ToListAsync();
 
                 int summaryId = 1;
                 var departmentSummaries = records
@@ -1713,7 +1748,8 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching OT summary.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching OT summary.", error = ex.Message });
             }
         }
 
@@ -1734,7 +1770,7 @@ namespace ERPBackend.API.Controllers
                 var status = statuses[random.Next(statuses.Length)];
                 var inTime = status == "Absent" || status == "On Leave" ? null : "09:00 AM";
                 var outTime = status == "Absent" || status == "On Leave" ? null : "06:00 PM";
-                
+
                 _context.Attendances.Add(new Attendance
                 {
                     EmployeeId = emp.Id,
@@ -1742,7 +1778,7 @@ namespace ERPBackend.API.Controllers
                     InTime = inTime,
                     OutTime = outTime,
                     Status = status,
-                    OTHours = (status == "Present" && emp.IsOTEnabled) ? (decimal)(random.NextDouble() * 2) : 0,
+                    OTHours = (status == "Present" && emp.IsOtEnabled) ? (decimal)(random.NextDouble() * 2) : 0,
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = "SystemMock"
                 });
@@ -1774,7 +1810,7 @@ namespace ERPBackend.API.Controllers
 
                 var employees = await employeesQuery.ToListAsync();
                 var shifts = await _context.Shifts.ToListAsync();
-                
+
                 var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "System";
 
                 int processedCount = 0;
@@ -1787,7 +1823,8 @@ namespace ERPBackend.API.Controllers
                         .ToListAsync();
 
                     var leaves = await _context.LeaveApplications
-                        .Where(l => l.Status == "Approved" && l.StartDate.Date <= date.Date && l.EndDate.Date >= date.Date)
+                        .Where(l => l.Status == "Approved" && l.StartDate.Date <= date.Date &&
+                                    l.EndDate.Date >= date.Date)
                         .ToListAsync();
 
                     var existingAttendances = await _context.Attendances
@@ -1818,26 +1855,27 @@ namespace ERPBackend.API.Controllers
                         {
                             status = "Off Day";
                         }
-                        else if (attendance != null && (!string.IsNullOrEmpty(attendance.InTime) || !string.IsNullOrEmpty(attendance.OutTime)))
+                        else if (attendance != null && (!string.IsNullOrEmpty(attendance.InTime) ||
+                                                        !string.IsNullOrEmpty(attendance.OutTime)))
                         {
                             // Re-classify In/Out times based on user rules (cutoff at 11:00 AM)
                             var rawIn = attendance.InTime;
                             var rawOut = attendance.OutTime;
-                            
+
                             var p1 = ParseTime(rawIn);
                             var p2 = ParseTime(rawOut);
-                            
+
                             TimeSpan? actualIn = null;
                             TimeSpan? actualOut = null;
-                            
+
                             var cutoff = new TimeSpan(11, 0, 0); // 11:00 AM
-                            
+
                             // Collect all unique non-null times
                             var allTimes = new List<TimeSpan>();
                             if (p1.HasValue) allTimes.Add(p1.Value);
                             if (p2.HasValue && (!p1.HasValue || p1.Value != p2.Value)) allTimes.Add(p2.Value);
-                            
-                            foreach(var t in allTimes)
+
+                            foreach (var t in allTimes)
                             {
                                 if (t <= cutoff)
                                 {
@@ -1848,16 +1886,17 @@ namespace ERPBackend.API.Controllers
                                     if (actualOut == null || t > actualOut) actualOut = t; // Later punch is Out
                                 }
                             }
-                            
-                            attendance.InTime = actualIn?.ToString(@"hh\:mm\:ss");
-                            attendance.OutTime = actualOut?.ToString(@"hh\:mm\:ss");
+
+                            attendance.InTime = actualIn?.ToString(@"HH\:mm\:ss");
+                            attendance.OutTime = actualOut?.ToString(@"HH\:mm\:ss");
 
                             if (!string.IsNullOrEmpty(attendance.InTime))
                             {
                                 // Calculate Late
                                 var inTime = ParseTime(attendance.InTime);
                                 var shiftInTime = ParseTime(shift.InTime);
-                                var lateLimit = ParseTime(shift.LateInTime) ?? shiftInTime?.Add(TimeSpan.FromMinutes(15));
+                                var lateLimit = ParseTime(shift.LateInTime) ??
+                                                shiftInTime?.Add(TimeSpan.FromMinutes(15));
 
                                 if (inTime > lateLimit)
                                 {
@@ -1874,7 +1913,8 @@ namespace ERPBackend.API.Controllers
                             }
 
                             // Calculate OT
-                            if (emp.IsOTEnabled && !string.IsNullOrEmpty(attendance.OutTime) && !string.IsNullOrEmpty(shift.OutTime))
+                            if (emp.IsOtEnabled && !string.IsNullOrEmpty(attendance.OutTime) &&
+                                !string.IsNullOrEmpty(shift.OutTime))
                             {
                                 var outTime = ParseTime(attendance.OutTime);
                                 var shiftOutTime = ParseTime(shift.OutTime);
@@ -1907,12 +1947,17 @@ namespace ERPBackend.API.Controllers
                                 CreatedBy = userName
                             });
                         }
+
                         processedCount++;
                     }
                 }
 
                 await _context.SaveChangesAsync();
-                return Ok(new { message = $"Successfully processed {processedCount} records from {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}." });
+                return Ok(new
+                {
+                    message =
+                        $"Successfully processed {processedCount} records from {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}."
+                });
             }
             catch (Exception ex)
             {
@@ -1963,7 +2008,11 @@ namespace ERPBackend.API.Controllers
                 }
 
                 await _context.SaveChangesAsync();
-                return Ok(new { message = $"Successfully processed {updatedCount + createdCount} records. (Updated: {updatedCount}, Created: {createdCount})" });
+                return Ok(new
+                {
+                    message =
+                        $"Successfully processed {updatedCount + createdCount} records. (Updated: {updatedCount}, Created: {createdCount})"
+                });
             }
             catch (Exception ex)
             {
@@ -2009,9 +2058,10 @@ namespace ERPBackend.API.Controllers
 
         private bool IsWeekend(DateTime date, string? weekends)
         {
-            if (string.IsNullOrEmpty(weekends)) return false;
+            if (string.IsNullOrEmpty(weekends)) return date.DayOfWeek == DayOfWeek.Friday;
             var dayName = date.DayOfWeek.ToString();
-            return weekends.Split(',').Any(w => w.Trim().Equals(dayName, StringComparison.OrdinalIgnoreCase));
+            return weekends.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Any(w => w.Trim().Equals(dayName, StringComparison.OrdinalIgnoreCase));
         }
 
         private TimeSpan? ParseTime(string? timeStr)
@@ -2019,6 +2069,100 @@ namespace ERPBackend.API.Controllers
             if (string.IsNullOrWhiteSpace(timeStr)) return null;
             if (DateTime.TryParse(timeStr, out DateTime dt)) return dt.TimeOfDay;
             return null;
+        }
+
+        private IQueryable<Attendance> ApplyAttendanceFilters(IQueryable<Attendance> query, CommonFilterDto filters)
+        {
+            if (filters.Date.HasValue)
+                query = query.Where(a => a.Date.Date == filters.Date.Value.Date);
+
+            if (filters.StartDate.HasValue)
+                query = query.Where(a => a.Date.Date >= filters.StartDate.Value.Date);
+
+            if (filters.EndDate.HasValue)
+                query = query.Where(a => a.Date.Date <= filters.EndDate.Value.Date);
+
+            if (!string.IsNullOrEmpty(filters.CompanyName))
+                query = query.Where(a => a.Employee != null && a.Employee.CompanyName == filters.CompanyName);
+
+            if (filters.DepartmentId.HasValue)
+                query = query.Where(a => a.Employee != null && a.Employee.DepartmentId == filters.DepartmentId.Value);
+
+            if (filters.SectionId.HasValue)
+                query = query.Where(a => a.Employee != null && a.Employee.SectionId == filters.SectionId.Value);
+
+            if (filters.DesignationId.HasValue)
+                query = query.Where(a => a.Employee != null && a.Employee.DesignationId == filters.DesignationId.Value);
+
+            if (filters.LineId.HasValue)
+                query = query.Where(a => a.Employee != null && a.Employee.LineId == filters.LineId.Value);
+
+            if (filters.GroupId.HasValue)
+                query = query.Where(a => a.Employee != null && a.Employee.GroupId == filters.GroupId.Value);
+
+            if (filters.ShiftId.HasValue)
+                query = query.Where(a => a.Employee != null && a.Employee.ShiftId == filters.ShiftId.Value);
+
+            if (filters.FloorId.HasValue)
+                query = query.Where(a => a.Employee != null && a.Employee.FloorId == filters.FloorId.Value);
+
+            if (!string.IsNullOrEmpty(filters.Gender))
+                query = query.Where(a => a.Employee != null && a.Employee.Gender == filters.Gender);
+
+            if (!string.IsNullOrEmpty(filters.Religion))
+                query = query.Where(a => a.Employee != null && a.Employee.Religion == filters.Religion);
+
+            if (!string.IsNullOrEmpty(filters.Status) && filters.Status != "all")
+                query = query.Where(a => a.Status == filters.Status);
+
+            if (!string.IsNullOrEmpty(filters.SearchTerm))
+            {
+                query = query.Where(a => a.Employee != null && (a.Employee.FullNameEn.Contains(filters.SearchTerm) ||
+                                                                a.Employee.EmployeeId.Contains(filters.SearchTerm)));
+            }
+
+            return query;
+        }
+
+        private IQueryable<Employee> ApplyEmployeeFilters(IQueryable<Employee> query, CommonFilterDto filters)
+        {
+            if (!string.IsNullOrEmpty(filters.CompanyName))
+                query = query.Where(e => e.CompanyName == filters.CompanyName);
+
+            if (filters.DepartmentId.HasValue)
+                query = query.Where(e => e.DepartmentId == filters.DepartmentId.Value);
+
+            if (filters.SectionId.HasValue)
+                query = query.Where(e => e.SectionId == filters.SectionId.Value);
+
+            if (filters.DesignationId.HasValue)
+                query = query.Where(e => e.DesignationId == filters.DesignationId.Value);
+
+            if (filters.LineId.HasValue)
+                query = query.Where(e => e.LineId == filters.LineId.Value);
+
+            if (filters.GroupId.HasValue)
+                query = query.Where(e => e.GroupId == filters.GroupId.Value);
+
+            if (filters.ShiftId.HasValue)
+                query = query.Where(e => e.ShiftId == filters.ShiftId.Value);
+
+            if (filters.FloorId.HasValue)
+                query = query.Where(e => e.FloorId == filters.FloorId.Value);
+
+            if (!string.IsNullOrEmpty(filters.Gender))
+                query = query.Where(e => e.Gender == filters.Gender);
+
+            if (!string.IsNullOrEmpty(filters.Religion))
+                query = query.Where(e => e.Religion == filters.Religion);
+
+            if (!string.IsNullOrEmpty(filters.SearchTerm))
+            {
+                query = query.Where(e => e.FullNameEn.Contains(filters.SearchTerm) ||
+                                         e.EmployeeId.Contains(filters.SearchTerm));
+            }
+
+            return query;
         }
     }
 }

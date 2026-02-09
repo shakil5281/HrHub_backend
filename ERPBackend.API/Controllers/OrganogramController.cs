@@ -31,6 +31,7 @@ namespace ERPBackend.API.Controllers
             }
 
             return await query
+                .Include(d => d.Company)
                 .Select(d => new DepartmentDto
                 {
                     Id = d.Id,
@@ -82,20 +83,29 @@ namespace ERPBackend.API.Controllers
 
         // --- Sections ---
         [HttpGet("sections")]
-        public async Task<ActionResult<IEnumerable<SectionDto>>> GetSections(int? departmentId)
+        public async Task<ActionResult<IEnumerable<SectionDto>>> GetSections(int? companyId, int? departmentId)
         {
             var query = _context.Sections.AsQueryable();
+            if (companyId.HasValue)
+            {
+                query = query.Where(s => s.CompanyId == companyId);
+            }
+
             if (departmentId.HasValue)
             {
                 query = query.Where(s => s.DepartmentId == departmentId);
             }
 
             return await query
+                .Include(s => s.Company)
+                .Include(s => s.Department)
                 .Select(s => new SectionDto
                 {
                     Id = s.Id,
                     NameEn = s.NameEn,
                     NameBn = s.NameBn,
+                    CompanyId = s.CompanyId,
+                    CompanyName = s.Company != null ? s.Company.CompanyNameEn : null,
                     DepartmentId = s.DepartmentId,
                     DepartmentName = s.Department != null ? s.Department.NameEn : null
                 })
@@ -107,12 +117,16 @@ namespace ERPBackend.API.Controllers
                            UserRoles.HrOfficer + "," + UserRoles.ItOfficer)]
         public async Task<ActionResult<SectionDto>> CreateSection(CreateSectionDto dto)
         {
-            var section = new Section { NameEn = dto.NameEn, NameBn = dto.NameBn, DepartmentId = dto.DepartmentId };
+            var section = new Section
+            {
+                NameEn = dto.NameEn, NameBn = dto.NameBn, CompanyId = dto.CompanyId, DepartmentId = dto.DepartmentId
+            };
             _context.Sections.Add(section);
             await _context.SaveChangesAsync();
             return Ok(new SectionDto
             {
-                Id = section.Id, NameEn = section.NameEn, NameBn = section.NameBn, DepartmentId = section.DepartmentId
+                Id = section.Id, NameEn = section.NameEn, NameBn = section.NameBn, CompanyId = section.CompanyId,
+                DepartmentId = section.DepartmentId
             });
         }
 
@@ -125,6 +139,7 @@ namespace ERPBackend.API.Controllers
             if (section == null) return NotFound();
             section.NameEn = dto.NameEn;
             section.NameBn = dto.NameBn;
+            section.CompanyId = dto.CompanyId;
             section.DepartmentId = dto.DepartmentId;
             await _context.SaveChangesAsync();
             return NoContent();
@@ -144,15 +159,29 @@ namespace ERPBackend.API.Controllers
 
         // --- Designations ---
         [HttpGet("designations")]
-        public async Task<ActionResult<IEnumerable<DesignationDto>>> GetDesignations(int? sectionId)
+        public async Task<ActionResult<IEnumerable<DesignationDto>>> GetDesignations(int? companyId, int? departmentId,
+            int? sectionId)
         {
             var query = _context.Designations.AsQueryable();
+            if (companyId.HasValue)
+            {
+                query = query.Where(d => d.CompanyId == companyId);
+            }
+
+            if (departmentId.HasValue)
+            {
+                query = query.Where(d => d.DepartmentId == departmentId);
+            }
+
             if (sectionId.HasValue)
             {
                 query = query.Where(d => d.SectionId == sectionId);
             }
 
             return await query
+                .Include(d => d.Company)
+                .Include(d => d.Department)
+                .Include(d => d.Section)
                 .Select(d => new DesignationDto
                 {
                     Id = d.Id,
@@ -161,6 +190,10 @@ namespace ERPBackend.API.Controllers
                     NightBill = d.NightBill,
                     HolidayBill = d.HolidayBill,
                     AttendanceBonus = d.AttendanceBonus,
+                    CompanyId = d.CompanyId,
+                    CompanyName = d.Company != null ? d.Company.CompanyNameEn : null,
+                    DepartmentId = d.DepartmentId,
+                    DepartmentName = d.Department != null ? d.Department.NameEn : null,
                     SectionId = d.SectionId,
                     SectionName = d.Section != null ? d.Section.NameEn : null
                 })
@@ -179,6 +212,8 @@ namespace ERPBackend.API.Controllers
                 NightBill = dto.NightBill,
                 HolidayBill = dto.HolidayBill,
                 AttendanceBonus = dto.AttendanceBonus,
+                CompanyId = dto.CompanyId,
+                DepartmentId = dto.DepartmentId,
                 SectionId = dto.SectionId
             };
             _context.Designations.Add(designation);
@@ -191,6 +226,8 @@ namespace ERPBackend.API.Controllers
                 NightBill = designation.NightBill,
                 HolidayBill = designation.HolidayBill,
                 AttendanceBonus = designation.AttendanceBonus,
+                CompanyId = designation.CompanyId,
+                DepartmentId = designation.DepartmentId,
                 SectionId = designation.SectionId
             });
         }
@@ -207,6 +244,8 @@ namespace ERPBackend.API.Controllers
             designation.NightBill = dto.NightBill;
             designation.HolidayBill = dto.HolidayBill;
             designation.AttendanceBonus = dto.AttendanceBonus;
+            designation.CompanyId = dto.CompanyId;
+            designation.DepartmentId = dto.DepartmentId;
             designation.SectionId = dto.SectionId;
             await _context.SaveChangesAsync();
             return NoContent();
@@ -226,20 +265,38 @@ namespace ERPBackend.API.Controllers
 
         // --- Lines ---
         [HttpGet("lines")]
-        public async Task<ActionResult<IEnumerable<LineDto>>> GetLines(int? sectionId)
+        public async Task<ActionResult<IEnumerable<LineDto>>> GetLines(int? companyId, int? departmentId,
+            int? sectionId)
         {
             var query = _context.Lines.AsQueryable();
+            if (companyId.HasValue)
+            {
+                query = query.Where(l => l.CompanyId == companyId);
+            }
+
+            if (departmentId.HasValue)
+            {
+                query = query.Where(l => l.DepartmentId == departmentId);
+            }
+
             if (sectionId.HasValue)
             {
                 query = query.Where(l => l.SectionId == sectionId);
             }
 
             return await query
+                .Include(l => l.Company)
+                .Include(l => l.Department)
+                .Include(l => l.Section)
                 .Select(l => new LineDto
                 {
                     Id = l.Id,
                     NameEn = l.NameEn,
                     NameBn = l.NameBn,
+                    CompanyId = l.CompanyId,
+                    CompanyName = l.Company != null ? l.Company.CompanyNameEn : null,
+                    DepartmentId = l.DepartmentId,
+                    DepartmentName = l.Department != null ? l.Department.NameEn : null,
                     SectionId = l.SectionId,
                     SectionName = l.Section != null ? l.Section.NameEn : null
                 })
@@ -251,11 +308,25 @@ namespace ERPBackend.API.Controllers
                            UserRoles.HrOfficer + "," + UserRoles.ItOfficer)]
         public async Task<ActionResult<LineDto>> CreateLine(CreateLineDto dto)
         {
-            var line = new Line { NameEn = dto.NameEn, NameBn = dto.NameBn, SectionId = dto.SectionId };
+            var line = new Line
+            {
+                NameEn = dto.NameEn,
+                NameBn = dto.NameBn,
+                CompanyId = dto.CompanyId,
+                DepartmentId = dto.DepartmentId,
+                SectionId = dto.SectionId
+            };
             _context.Lines.Add(line);
             await _context.SaveChangesAsync();
             return Ok(new LineDto
-                { Id = line.Id, NameEn = line.NameEn, NameBn = line.NameBn, SectionId = line.SectionId });
+            {
+                Id = line.Id,
+                NameEn = line.NameEn,
+                NameBn = line.NameBn,
+                CompanyId = line.CompanyId,
+                DepartmentId = line.DepartmentId,
+                SectionId = line.SectionId
+            });
         }
 
         [HttpPut("lines/{id}")]
@@ -267,6 +338,8 @@ namespace ERPBackend.API.Controllers
             if (line == null) return NotFound();
             line.NameEn = dto.NameEn;
             line.NameBn = dto.NameBn;
+            line.CompanyId = dto.CompanyId;
+            line.DepartmentId = dto.DepartmentId;
             line.SectionId = dto.SectionId;
             await _context.SaveChangesAsync();
             return NoContent();
@@ -287,14 +360,26 @@ namespace ERPBackend.API.Controllers
 
         // --- Groups ---
         [HttpGet("groups")]
-        public async Task<ActionResult<IEnumerable<GroupDto>>> GetGroups()
+        public async Task<ActionResult<IEnumerable<GroupDto>>> GetGroups(int? companyId, string? companyName)
         {
-            return await _context.Groups
+            var query = _context.Groups.AsQueryable();
+            if (companyId.HasValue)
+            {
+                query = query.Where(g => g.CompanyId == companyId);
+            }
+            else if (!string.IsNullOrEmpty(companyName))
+            {
+                query = query.Where(g => g.CompanyName == companyName);
+            }
+
+            return await query
                 .Select(g => new GroupDto
                 {
                     Id = g.Id,
                     NameEn = g.NameEn,
-                    NameBn = g.NameBn
+                    NameBn = g.NameBn,
+                    CompanyId = g.CompanyId,
+                    CompanyName = g.CompanyName
                 })
                 .ToListAsync();
         }
@@ -304,10 +389,15 @@ namespace ERPBackend.API.Controllers
                            UserRoles.HrOfficer + "," + UserRoles.ItOfficer)]
         public async Task<ActionResult<GroupDto>> CreateGroup(CreateGroupDto dto)
         {
-            var group = new Group { NameEn = dto.NameEn, NameBn = dto.NameBn };
+            var group = new Group
+                { NameEn = dto.NameEn, NameBn = dto.NameBn, CompanyId = dto.CompanyId, CompanyName = dto.CompanyName };
             _context.Groups.Add(group);
             await _context.SaveChangesAsync();
-            return Ok(new GroupDto { Id = group.Id, NameEn = group.NameEn, NameBn = group.NameBn });
+            return Ok(new GroupDto
+            {
+                Id = group.Id, NameEn = group.NameEn, NameBn = group.NameBn, CompanyId = group.CompanyId,
+                CompanyName = group.CompanyName
+            });
         }
 
         [HttpPut("groups/{id}")]
@@ -319,6 +409,8 @@ namespace ERPBackend.API.Controllers
             if (group == null) return NotFound();
             group.NameEn = dto.NameEn;
             group.NameBn = dto.NameBn;
+            group.CompanyId = dto.CompanyId;
+            group.CompanyName = dto.CompanyName;
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -337,14 +429,26 @@ namespace ERPBackend.API.Controllers
 
         // --- Floors ---
         [HttpGet("floors")]
-        public async Task<ActionResult<IEnumerable<FloorDto>>> GetFloors()
+        public async Task<ActionResult<IEnumerable<FloorDto>>> GetFloors(int? companyId, string? companyName)
         {
-            return await _context.Floors
+            var query = _context.Floors.AsQueryable();
+            if (companyId.HasValue)
+            {
+                query = query.Where(f => f.CompanyId == companyId);
+            }
+            else if (!string.IsNullOrEmpty(companyName))
+            {
+                query = query.Where(f => f.CompanyName == companyName);
+            }
+
+            return await query
                 .Select(f => new FloorDto
                 {
                     Id = f.Id,
                     NameEn = f.NameEn,
-                    NameBn = f.NameBn
+                    NameBn = f.NameBn,
+                    CompanyId = f.CompanyId,
+                    CompanyName = f.CompanyName
                 })
                 .ToListAsync();
         }
@@ -354,10 +458,15 @@ namespace ERPBackend.API.Controllers
                            UserRoles.HrOfficer + "," + UserRoles.ItOfficer)]
         public async Task<ActionResult<FloorDto>> CreateFloor(CreateFloorDto dto)
         {
-            var floor = new Floor { NameEn = dto.NameEn, NameBn = dto.NameBn };
+            var floor = new Floor
+                { NameEn = dto.NameEn, NameBn = dto.NameBn, CompanyId = dto.CompanyId, CompanyName = dto.CompanyName };
             _context.Floors.Add(floor);
             await _context.SaveChangesAsync();
-            return Ok(new FloorDto { Id = floor.Id, NameEn = floor.NameEn, NameBn = floor.NameBn });
+            return Ok(new FloorDto
+            {
+                Id = floor.Id, NameEn = floor.NameEn, NameBn = floor.NameBn, CompanyId = floor.CompanyId,
+                CompanyName = floor.CompanyName
+            });
         }
 
         [HttpPut("floors/{id}")]
@@ -369,6 +478,8 @@ namespace ERPBackend.API.Controllers
             if (floor == null) return NotFound();
             floor.NameEn = dto.NameEn;
             floor.NameBn = dto.NameBn;
+            floor.CompanyId = dto.CompanyId;
+            floor.CompanyName = dto.CompanyName;
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -412,7 +523,8 @@ namespace ERPBackend.API.Controllers
             {
                 range.Style.Font.Bold = true;
                 range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(0, 102, 204));
+                range.Style.Font.Color.SetColor(System.Drawing.Color.White);
                 range.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
             }
 
@@ -429,19 +541,6 @@ namespace ERPBackend.API.Controllers
             worksheet.Cells[2, 10].Value = 500;
             worksheet.Cells[2, 11].Value = "Line 1";
             worksheet.Cells[2, 12].Value = "লাইন ১";
-
-            worksheet.Cells[3, 1].Value = "Example Corp";
-            worksheet.Cells[3, 2].Value = "Production";
-            worksheet.Cells[3, 3].Value = "উৎপাদন";
-            worksheet.Cells[3, 4].Value = "Cutting";
-            worksheet.Cells[3, 5].Value = "কাটিং";
-            worksheet.Cells[3, 6].Value = "Supervisor";
-            worksheet.Cells[3, 7].Value = "সুপারভাইজার";
-            worksheet.Cells[3, 8].Value = 50;
-            worksheet.Cells[3, 9].Value = 100;
-            worksheet.Cells[3, 10].Value = 300;
-            worksheet.Cells[3, 11].Value = "Line A";
-            worksheet.Cells[3, 12].Value = "লাইন এ";
 
             worksheet.Cells.AutoFitColumns();
 
@@ -487,139 +586,130 @@ namespace ERPBackend.API.Controllers
                     return BadRequest(result);
                 }
 
-                result.TotalRows = rowCount - 1; // Exclude header
+                result.TotalRows = rowCount - 1;
+
+                // Pre-fetch all companies to reduce DB calls
+                var companies = await _context.Companies.ToListAsync();
+                var strategy = _context.Database.CreateExecutionStrategy();
 
                 for (int row = 2; row <= rowCount; row++)
                 {
-                    try
+                    var currentRow = row; // Local capture for lambda
+                    await strategy.ExecuteAsync(async () =>
                     {
-                        var companyName = worksheet.Cells[row, 1].Text?.Trim();
-                        var deptNameEn = worksheet.Cells[row, 2].Text?.Trim();
-                        var deptNameBn = worksheet.Cells[row, 3].Text?.Trim();
-                        var sectNameEn = worksheet.Cells[row, 4].Text?.Trim();
-                        var sectNameBn = worksheet.Cells[row, 5].Text?.Trim();
-                        var desigNameEn = worksheet.Cells[row, 6].Text?.Trim();
-                        var desigNameBn = worksheet.Cells[row, 7].Text?.Trim();
-
-                        decimal.TryParse(worksheet.Cells[row, 8].Text, out var nightBill);
-                        decimal.TryParse(worksheet.Cells[row, 9].Text, out var holidayBill);
-                        decimal.TryParse(worksheet.Cells[row, 10].Text, out var attendanceBonus);
-
-                        var lineNameEn = worksheet.Cells[row, 11].Text?.Trim();
-                        var lineNameBn = worksheet.Cells[row, 12].Text?.Trim();
-
-                        // Validate required fields
-                        if (string.IsNullOrEmpty(companyName))
+                        using var transaction = await _context.Database.BeginTransactionAsync();
+                        try
                         {
-                            result.Errors.Add(new ImportErrorDto
-                                { RowNumber = row, Field = "Company Name", Message = "Company name is required." });
-                            result.ErrorCount++;
-                            continue;
-                        }
+                            var companyName = worksheet.Cells[currentRow, 1].Text?.Trim();
+                            var deptNameEn = worksheet.Cells[currentRow, 2].Text?.Trim();
+                            var deptNameBn = worksheet.Cells[currentRow, 3].Text?.Trim();
+                            var sectNameEn = worksheet.Cells[currentRow, 4].Text?.Trim();
+                            var sectNameBn = worksheet.Cells[currentRow, 5].Text?.Trim();
+                            var desigNameEn = worksheet.Cells[currentRow, 6].Text?.Trim();
+                            var desigNameBn = worksheet.Cells[currentRow, 7].Text?.Trim();
 
-                        if (string.IsNullOrEmpty(deptNameEn))
-                        {
-                            result.Errors.Add(new ImportErrorDto
+                            decimal.TryParse(worksheet.Cells[currentRow, 8].Text, out var nightBill);
+                            decimal.TryParse(worksheet.Cells[currentRow, 9].Text, out var holidayBill);
+                            decimal.TryParse(worksheet.Cells[currentRow, 10].Text, out var attendanceBonus);
+
+                            var lineNameEn = worksheet.Cells[currentRow, 11].Text?.Trim();
+                            var lineNameBn = worksheet.Cells[currentRow, 12].Text?.Trim();
+
+                            if (string.IsNullOrEmpty(companyName) || string.IsNullOrEmpty(deptNameEn))
                             {
-                                RowNumber = row, Field = "Department Name (EN)",
-                                Message = "Department name (English) is required."
-                            });
-                            result.ErrorCount++;
-                            continue;
-                        }
-
-                        // Find or skip if company doesn't exist
-                        var company = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyNameEn == companyName);
-                        if (company == null)
-                        {
-                            result.Warnings.Add(new ImportWarningDto
-                                { RowNumber = row, Message = $"Company '{companyName}' not found. Row skipped." });
-                            result.WarningCount++;
-                            continue;
-                        }
-
-                        // Upsert Department
-                        var dept = await _context.Departments.FirstOrDefaultAsync(d =>
-                            d.NameEn == deptNameEn && d.CompanyId == company.Id);
-                        if (dept == null)
-                        {
-                            dept = new Department
-                            {
-                                NameEn = deptNameEn,
-                                NameBn = deptNameBn ?? "",
-                                CompanyId = company.Id
-                            };
-                            _context.Departments.Add(dept);
-                            await _context.SaveChangesAsync();
-                            result.CreatedCount++;
-                        }
-                        else
-                        {
-                            dept.NameBn = deptNameBn ?? dept.NameBn;
-                            await _context.SaveChangesAsync();
-                            result.UpdatedCount++;
-                            result.Warnings.Add(new ImportWarningDto
-                                { RowNumber = row, Message = $"Department '{deptNameEn}' already exists. Updated." });
-                            result.WarningCount++;
-                        }
-
-                        // Upsert Section (if provided)
-                        if (!string.IsNullOrEmpty(sectNameEn))
-                        {
-                            var section = await _context.Sections.FirstOrDefaultAsync(s =>
-                                s.NameEn == sectNameEn && s.DepartmentId == dept.Id);
-                            if (section == null)
-                            {
-                                section = new Section
+                                result.Errors.Add(new ImportErrorDto
                                 {
-                                    NameEn = sectNameEn,
-                                    NameBn = sectNameBn ?? "",
-                                    DepartmentId = dept.Id
-                                };
-                                _context.Sections.Add(section);
+                                    RowNumber = currentRow, Field = "Validation",
+                                    Message = "Company and Department English names are required."
+                                });
+                                result.ErrorCount++;
+                                return; // Skip this row
+                            }
+
+                            var company = companies.FirstOrDefault(c =>
+                                c.CompanyNameEn.Equals(companyName, StringComparison.OrdinalIgnoreCase));
+                            if (company == null)
+                            {
+                                result.Warnings.Add(new ImportWarningDto
+                                {
+                                    RowNumber = currentRow, Message = $"Company '{companyName}' not found. Row skipped."
+                                });
+                                result.WarningCount++;
+                                return; // Skip this row
+                            }
+
+                            // 1. Department
+                            var dept = await _context.Departments
+                                .Include(d => d.Sections)
+                                .FirstOrDefaultAsync(d => d.NameEn == deptNameEn && d.CompanyId == company.Id);
+
+                            if (dept == null)
+                            {
+                                dept = new Department
+                                    { NameEn = deptNameEn, NameBn = deptNameBn, CompanyId = company.Id };
+                                _context.Departments.Add(dept);
                                 await _context.SaveChangesAsync();
                                 result.CreatedCount++;
                             }
-                            else
+                            else if (!string.IsNullOrEmpty(deptNameBn) && dept.NameBn != deptNameBn)
                             {
-                                section.NameBn = sectNameBn ?? section.NameBn;
-                                await _context.SaveChangesAsync();
+                                dept.NameBn = deptNameBn;
                                 result.UpdatedCount++;
                             }
 
-                            // Upsert Designation (if provided)
-                            if (!string.IsNullOrEmpty(desigNameEn))
+                            // 2. Section
+                            Section? section = null;
+                            if (!string.IsNullOrEmpty(sectNameEn))
                             {
-                                var designation = await _context.Designations.FirstOrDefaultAsync(d =>
-                                    d.NameEn == desigNameEn && d.SectionId == section.Id);
-                                if (designation == null)
+                                section = await _context.Sections.FirstOrDefaultAsync(s =>
+                                    s.NameEn == sectNameEn && s.DepartmentId == dept.Id);
+                                if (section == null)
                                 {
-                                    designation = new Designation
+                                    section = new Section
                                     {
-                                        NameEn = desigNameEn,
-                                        NameBn = desigNameBn ?? "",
-                                        NightBill = nightBill,
-                                        HolidayBill = holidayBill,
-                                        AttendanceBonus = attendanceBonus,
-                                        SectionId = section.Id
+                                        NameEn = sectNameEn, NameBn = sectNameBn, CompanyId = company.Id,
+                                        DepartmentId = dept.Id
                                     };
-                                    _context.Designations.Add(designation);
+                                    _context.Sections.Add(section);
                                     await _context.SaveChangesAsync();
                                     result.CreatedCount++;
                                 }
-                                else
+                                else if (!string.IsNullOrEmpty(sectNameBn) && section.NameBn != sectNameBn)
                                 {
-                                    designation.NameBn = desigNameBn ?? designation.NameBn;
-                                    designation.NightBill = nightBill;
-                                    designation.HolidayBill = holidayBill;
-                                    designation.AttendanceBonus = attendanceBonus;
-                                    await _context.SaveChangesAsync();
+                                    section.NameBn = sectNameBn;
                                     result.UpdatedCount++;
                                 }
                             }
 
-                            // Upsert Line (if provided)
-                            if (!string.IsNullOrEmpty(lineNameEn))
+                            // 3. Designation
+                            if (section != null && !string.IsNullOrEmpty(desigNameEn))
+                            {
+                                var desig = await _context.Designations.FirstOrDefaultAsync(d =>
+                                    d.NameEn == desigNameEn && d.SectionId == section.Id);
+                                if (desig == null)
+                                {
+                                    desig = new Designation
+                                    {
+                                        NameEn = desigNameEn, NameBn = desigNameBn, CompanyId = company.Id,
+                                        DepartmentId = dept.Id, SectionId = section.Id,
+                                        NightBill = nightBill, HolidayBill = holidayBill,
+                                        AttendanceBonus = attendanceBonus
+                                    };
+                                    _context.Designations.Add(desig);
+                                    result.CreatedCount++;
+                                }
+                                else
+                                {
+                                    desig.NameBn = desigNameBn ?? desig.NameBn;
+                                    desig.NightBill = nightBill;
+                                    desig.HolidayBill = holidayBill;
+                                    desig.AttendanceBonus = attendanceBonus;
+                                    result.UpdatedCount++;
+                                }
+                            }
+
+                            // 4. Line
+                            if (section != null && !string.IsNullOrEmpty(lineNameEn))
                             {
                                 var line = await _context.Lines.FirstOrDefaultAsync(l =>
                                     l.NameEn == lineNameEn && l.SectionId == section.Id);
@@ -627,40 +717,38 @@ namespace ERPBackend.API.Controllers
                                 {
                                     line = new Line
                                     {
-                                        NameEn = lineNameEn,
-                                        NameBn = lineNameBn ?? "",
-                                        SectionId = section.Id
+                                        NameEn = lineNameEn, NameBn = lineNameBn, CompanyId = company.Id,
+                                        DepartmentId = dept.Id, SectionId = section.Id
                                     };
                                     _context.Lines.Add(line);
-                                    await _context.SaveChangesAsync();
                                     result.CreatedCount++;
                                 }
-                                else
+                                else if (!string.IsNullOrEmpty(lineNameBn) && line.NameBn != lineNameBn)
                                 {
-                                    line.NameBn = lineNameBn ?? line.NameBn;
-                                    await _context.SaveChangesAsync();
+                                    line.NameBn = lineNameBn;
                                     result.UpdatedCount++;
                                 }
                             }
-                        }
 
-                        result.SuccessCount++;
-                    }
-                    catch (Exception ex)
-                    {
-                        result.Errors.Add(new ImportErrorDto
-                            { RowNumber = row, Field = "General", Message = ex.Message });
-                        result.ErrorCount++;
-                    }
+                            await _context.SaveChangesAsync();
+                            await transaction.CommitAsync();
+                            result.SuccessCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            result.Errors.Add(new ImportErrorDto
+                                { RowNumber = currentRow, Field = "Transaction", Message = ex.Message });
+                            result.ErrorCount++;
+                        }
+                    });
                 }
 
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                result.Errors.Add(new ImportErrorDto
-                    { RowNumber = 0, Field = "File", Message = $"Failed to process file: {ex.Message}" });
-                return BadRequest(result);
+                return BadRequest(new { Message = $"Failed to process file: {ex.Message}" });
             }
         }
     }

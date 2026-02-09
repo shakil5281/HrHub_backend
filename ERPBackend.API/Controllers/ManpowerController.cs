@@ -19,7 +19,8 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," + UserRoles.HrOfficer)]
+        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," +
+                           UserRoles.HrOfficer)]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetManpower(
             [FromQuery] int? departmentId,
             [FromQuery] int? sectionId,
@@ -29,7 +30,12 @@ namespace ERPBackend.API.Controllers
             [FromQuery] int? groupId,
             [FromQuery] int? floorId,
             [FromQuery] string? status,
-            [FromQuery] string? searchTerm)
+            [FromQuery] string? searchTerm,
+            [FromQuery] string? companyName,
+            [FromQuery] DateTime? joinDateFrom,
+            [FromQuery] DateTime? joinDateTo,
+            [FromQuery] string? gender,
+            [FromQuery] string? religion)
         {
             var query = _context.Employees
                 .Include(e => e.Department)
@@ -66,11 +72,26 @@ namespace ERPBackend.API.Controllers
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(e => e.Status == status);
 
+            if (!string.IsNullOrEmpty(companyName))
+                query = query.Where(e => e.CompanyName == companyName);
+
+            if (joinDateFrom.HasValue)
+                query = query.Where(e => e.JoinDate >= joinDateFrom.Value);
+
+            if (joinDateTo.HasValue)
+                query = query.Where(e => e.JoinDate <= joinDateTo.Value);
+
+            if (!string.IsNullOrEmpty(gender))
+                query = query.Where(e => e.Gender == gender);
+
+            if (!string.IsNullOrEmpty(religion))
+                query = query.Where(e => e.Religion == religion);
+
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                query = query.Where(e => 
-                    e.EmployeeId.Contains(searchTerm) || 
-                    e.FullNameEn.Contains(searchTerm) || 
+                query = query.Where(e =>
+                    e.EmployeeId.Contains(searchTerm) ||
+                    e.FullNameEn.Contains(searchTerm) ||
                     (e.FullNameBn != null && e.FullNameBn.Contains(searchTerm)) ||
                     (e.PhoneNumber != null && e.PhoneNumber.Contains(searchTerm))
                 );
@@ -112,13 +133,48 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpGet("summary")]
-        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," + UserRoles.HrOfficer)]
-        public async Task<ActionResult<ManpowerSummaryDto>> GetSummary()
+        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," +
+                           UserRoles.HrOfficer)]
+        public async Task<ActionResult<ManpowerSummaryDto>> GetSummary(
+            [FromQuery] int? departmentId,
+            [FromQuery] int? sectionId,
+            [FromQuery] int? designationId,
+            [FromQuery] int? lineId,
+            [FromQuery] int? shiftId,
+            [FromQuery] int? groupId,
+            [FromQuery] int? floorId,
+            [FromQuery] string? status,
+            [FromQuery] string? companyName,
+            [FromQuery] DateTime? joinDateFrom,
+            [FromQuery] DateTime? joinDateTo,
+            [FromQuery] string? gender,
+            [FromQuery] string? religion)
         {
-            var allEmployees = await _context.Employees
+            var query = _context.Employees
                 .Include(e => e.Department)
+                .Include(e => e.Section)
                 .Include(e => e.Designation)
-                .ToListAsync();
+                .Include(e => e.Line)
+                .Include(e => e.Shift)
+                .Include(e => e.Group)
+                .Include(e => e.Floor)
+                .AsQueryable();
+
+            if (departmentId.HasValue) query = query.Where(e => e.DepartmentId == departmentId.Value);
+            if (sectionId.HasValue) query = query.Where(e => e.SectionId == sectionId.Value);
+            if (designationId.HasValue) query = query.Where(e => e.DesignationId == designationId.Value);
+            if (lineId.HasValue) query = query.Where(e => e.LineId == lineId.Value);
+            if (shiftId.HasValue) query = query.Where(e => e.ShiftId == shiftId.Value);
+            if (groupId.HasValue) query = query.Where(e => e.GroupId == groupId.Value);
+            if (floorId.HasValue) query = query.Where(e => e.FloorId == floorId.Value);
+            if (!string.IsNullOrEmpty(status)) query = query.Where(e => e.Status == status);
+            if (!string.IsNullOrEmpty(companyName)) query = query.Where(e => e.CompanyName == companyName);
+            if (joinDateFrom.HasValue) query = query.Where(e => e.JoinDate >= joinDateFrom.Value);
+            if (joinDateTo.HasValue) query = query.Where(e => e.JoinDate <= joinDateTo.Value);
+            if (!string.IsNullOrEmpty(gender)) query = query.Where(e => e.Gender == gender);
+            if (!string.IsNullOrEmpty(religion)) query = query.Where(e => e.Religion == religion);
+
+            var allEmployees = await query.ToListAsync();
 
             var total = allEmployees.Count;
             if (total == 0) return Ok(new ManpowerSummaryDto());

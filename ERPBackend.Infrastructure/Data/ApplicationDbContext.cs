@@ -29,7 +29,7 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<ManpowerRequirement> ManpowerRequirements { get; set; } = null!;
         public DbSet<Attendance> Attendances { get; set; } = null!;
         public DbSet<CounselingRecord> CounselingRecords { get; set; } = null!;
-        public DbSet<OTDeduction> OTDeductions { get; set; } = null!;
+        public DbSet<OTDeduction> OtDeductions { get; set; } = null!;
         public DbSet<MonthlySalarySheet> MonthlySalarySheets { get; set; } = null!;
         public DbSet<DailySalarySheet> DailySalarySheets { get; set; } = null!;
         public DbSet<AdvanceSalary> AdvanceSalaries { get; set; } = null!;
@@ -40,7 +40,6 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<Transfer> Transfers { get; set; } = null!;
         public DbSet<Separation> Separations { get; set; } = null!;
         public DbSet<AttendanceLog> AttendanceLogs { get; set; } = null!;
-
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -98,13 +97,13 @@ namespace ERPBackend.Infrastructure.Data
 
             // Employee unique indexes
             builder.Entity<Employee>()
-                .HasIndex(e => e.EmployeeId)
+                .HasIndex(e => new { e.EmployeeId, e.CompanyName })
                 .IsUnique();
 
             builder.Entity<Employee>()
-                .HasIndex(e => e.Proximity)
+                .HasIndex(e => new { e.Proximity, e.CompanyName })
                 .IsUnique()
-                .HasFilter("[Proximity] IS NOT NULL");
+                .HasFilter("[Proximity] IS NOT NULL AND [CompanyName] IS NOT NULL");
 
             // Optional relation to ApplicationUser
             builder.Entity<Employee>()
@@ -118,7 +117,7 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(r => r.Employee)
                 .WithMany()
                 .HasForeignKey(r => r.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<EmployeeShiftRoster>()
                 .HasOne(r => r.Shift)
@@ -130,7 +129,7 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(a => a.Employee)
                 .WithMany()
                 .HasForeignKey(a => a.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ManpowerRequirement Relationships
             builder.Entity<ManpowerRequirement>()
@@ -149,49 +148,49 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(c => c.Employee)
                 .WithMany()
                 .HasForeignKey(c => c.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<OTDeduction>()
                 .HasOne(o => o.Employee)
                 .WithMany()
                 .HasForeignKey(o => o.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<MonthlySalarySheet>()
                 .HasOne(s => s.Employee)
                 .WithMany()
                 .HasForeignKey(s => s.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<DailySalarySheet>()
                 .HasOne(s => s.Employee)
                 .WithMany()
                 .HasForeignKey(s => s.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<AdvanceSalary>()
                 .HasOne(a => a.Employee)
                 .WithMany()
                 .HasForeignKey(a => a.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<SalaryIncrement>()
                 .HasOne(i => i.Employee)
                 .WithMany()
                 .HasForeignKey(i => i.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Bonus>()
                 .HasOne(b => b.Employee)
                 .WithMany()
                 .HasForeignKey(b => b.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<LeaveApplication>()
                 .HasOne(l => l.Employee)
                 .WithMany()
                 .HasForeignKey(l => l.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<LeaveApplication>()
                 .HasOne(l => l.LeaveType)
@@ -199,12 +198,99 @@ namespace ERPBackend.Infrastructure.Data
                 .HasForeignKey(l => l.LeaveTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Section Relationships
+            builder.Entity<Section>()
+                .HasOne(s => s.Company)
+                .WithMany()
+                .HasForeignKey(s => s.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Section>()
+                .HasOne(s => s.Department)
+                .WithMany(d => d.Sections)
+                .HasForeignKey(s => s.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Designation Relationships
+            builder.Entity<Designation>()
+                .HasOne(d => d.Company)
+                .WithMany()
+                .HasForeignKey(d => d.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Designation>()
+                .HasOne(d => d.Department)
+                .WithMany()
+                .HasForeignKey(d => d.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Designation>()
+                .HasOne(d => d.Section)
+                .WithMany(s => s.Designations)
+                .HasForeignKey(d => d.SectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Line Relationships
+            builder.Entity<Line>()
+                .HasOne(l => l.Company)
+                .WithMany()
+                .HasForeignKey(l => l.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Line>()
+                .HasOne(l => l.Department)
+                .WithMany()
+                .HasForeignKey(l => l.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Line>()
+                .HasOne(l => l.Section)
+                .WithMany(s => s.Lines)
+                .HasForeignKey(l => l.SectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Shift Configurations
+            builder.Entity<Shift>()
+                .HasOne(s => s.Company)
+                .WithMany()
+                .HasForeignKey(s => s.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Shift>()
+                .HasIndex(s => new { s.NameEn, s.CompanyId })
+                .IsUnique()
+                .HasFilter("[CompanyId] IS NOT NULL");
+
+            // Group Configurations
+            builder.Entity<Group>()
+                .HasOne(g => g.Company)
+                .WithMany()
+                .HasForeignKey(g => g.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Group>()
+                .HasIndex(g => new { g.NameEn, g.CompanyId })
+                .IsUnique()
+                .HasFilter("[CompanyId] IS NOT NULL");
+
+            // Floor Configurations
+            builder.Entity<Floor>()
+                .HasOne(f => f.Company)
+                .WithMany()
+                .HasForeignKey(f => f.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Floor>()
+                .HasIndex(f => new { f.NameEn, f.CompanyId })
+                .IsUnique()
+                .HasFilter("[CompanyId] IS NOT NULL");
+
             // Transfer Configurations
             builder.Entity<Transfer>()
                 .HasOne(t => t.Employee)
                 .WithMany()
                 .HasForeignKey(t => t.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Transfer>()
                 .HasOne(t => t.FromDepartment)
@@ -235,6 +321,24 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(s => s.Employee)
                 .WithMany()
                 .HasForeignKey(s => s.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Attendance>()
+                .HasOne(a => a.Company)
+                .WithMany()
+                .HasForeignKey(a => a.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AttendanceLog>()
+                .HasOne(l => l.Employee)
+                .WithMany()
+                .HasForeignKey(l => l.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<AttendanceLog>()
+                .HasOne(l => l.Company)
+                .WithMany()
+                .HasForeignKey(l => l.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

@@ -29,7 +29,7 @@ namespace ERPBackend.API.Controllers
         public async Task<ActionResult<IEnumerable<LeaveTypeDto>>> GetLeaveTypes()
         {
             var types = await _context.LeaveTypes.Where(t => t.IsActive).ToListAsync();
-            return Ok(types.Select(t => new LeaveTypeDto
+            var result = types.Select(t => new LeaveTypeDto
             {
                 Id = t.Id,
                 Name = t.Name,
@@ -37,7 +37,8 @@ namespace ERPBackend.API.Controllers
                 YearlyLimit = t.YearlyLimit,
                 IsCarryForward = t.IsCarryForward,
                 Description = t.Description
-            }));
+            }).ToList();
+            return Ok(result);
         }
 
         [HttpGet("applications/{id}")]
@@ -191,7 +192,11 @@ namespace ERPBackend.API.Controllers
             var worksheet = package.Workbook.Worksheets.Add("Leave Applications");
 
             // Headers
-            string[] headers = { "ID", "Employee ID", "Employee Name", "Type", "Start Date", "End Date", "Days", "Status", "Applied Date", "Reason" };
+            string[] headers =
+            {
+                "ID", "Employee ID", "Employee Name", "Type", "Start Date", "End Date", "Days", "Status",
+                "Applied Date", "Reason"
+            };
             for (int i = 0; i < headers.Length; i++)
             {
                 worksheet.Cells[1, i + 1].Value = headers[i];
@@ -222,7 +227,8 @@ namespace ERPBackend.API.Controllers
             package.SaveAs(stream);
             stream.Position = 0;
 
-            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Leave_Applications.xlsx");
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "Leave_Applications.xlsx");
         }
 
         [HttpGet("export/pdf/{id}")]
@@ -239,7 +245,14 @@ namespace ERPBackend.API.Controllers
 
                 if (app == null) return NotFound("Leave Application not found");
 
-                var company = await _context.Companies.FirstOrDefaultAsync();
+                Company? company = app.Employee?.Department?.Company;
+                if (company == null && !string.IsNullOrEmpty(app.Employee?.CompanyName))
+                {
+                    company = await _context.Companies.FirstOrDefaultAsync(c =>
+                        c.CompanyNameEn == app.Employee.CompanyName);
+                }
+
+                company ??= await _context.Companies.FirstOrDefaultAsync();
                 var balances = await GetLeaveBalancesInternal(app.EmployeeId);
 
                 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
@@ -247,10 +260,16 @@ namespace ERPBackend.API.Controllers
                 var document = QuestPDF.Fluent.Document.Create(container =>
                 {
                     // Styles
-                    static IContainer LabelStyle(IContainer container) => container.Padding(2).DefaultTextStyle(x => x.SemiBold());
-                    static IContainer ValueStyle(IContainer container) => container.BorderBottom(0.5f).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).Padding(2);
+                    static IContainer LabelStyle(IContainer container) =>
+                        container.Padding(2).DefaultTextStyle(x => x.SemiBold());
+
+                    static IContainer ValueStyle(IContainer container) => container.BorderBottom(0.5f)
+                        .BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).Padding(2);
+
                     // AlignCenter on Container
-                    static IContainer HeaderStyle(IContainer container) => container.Border(1).BorderColor(QuestPDF.Helpers.Colors.Black).Background(QuestPDF.Helpers.Colors.Grey.Lighten3).Padding(2).AlignCenter();
+                    static IContainer HeaderStyle(IContainer container) => container.Border(1)
+                        .BorderColor(QuestPDF.Helpers.Colors.Black).Background(QuestPDF.Helpers.Colors.Grey.Lighten3)
+                        .Padding(2).AlignCenter();
 
                     void DrawPage(QuestPDF.Fluent.PageDescriptor page, bool isBangla)
                     {
@@ -265,16 +284,21 @@ namespace ERPBackend.API.Controllers
                                 row.RelativeItem().Column(c =>
                                 {
                                     c.Item().AlignCenter().Text(company?.CompanyNameEn ?? "HR HUB COMPOSITE LTD.")
-                                        .Style(TextStyle.Default.Bold().FontSize(20).FontColor(QuestPDF.Helpers.Colors.Blue.Darken2));
-                                    c.Item().AlignCenter().Text(company?.Address ?? "123, Garments Avenue, Dhaka, Bangladesh").FontSize(10);
+                                        .Style(TextStyle.Default.Bold().FontSize(20)
+                                            .FontColor(QuestPDF.Helpers.Colors.Blue.Darken2));
+                                    c.Item().AlignCenter()
+                                        .Text(company?.AddressEn ?? "123, Garments Avenue, Dhaka, Bangladesh")
+                                        .FontSize(10);
                                 });
                             });
-                            col.Item().PaddingVertical(10).AlignCenter().Text(isBangla ? "ছুটির আবেদন ফর্ম" : "LEAVE APPLICATION FORM").Underline().Bold().FontSize(16);
+                            col.Item().PaddingVertical(10).AlignCenter()
+                                .Text(isBangla ? "ছুটির আবেদন ফর্ম" : "LEAVE APPLICATION FORM").Underline().Bold()
+                                .FontSize(16);
                         });
 
                         page.Content().PaddingVertical(10).Column(col =>
                         {
-                             // Date
+                            // Date
                             col.Item().AlignRight().Text($"Date: {DateTime.Now:dd MMM yyyy}");
 
                             // Employee Info Table
@@ -301,11 +325,13 @@ namespace ERPBackend.API.Controllers
                                 table.Cell().Element(LabelStyle).Text(isBangla ? "সেকশন:" : "Section:");
                                 table.Cell().Element(ValueStyle).Text(app.Employee?.Section?.NameEn ?? "");
                                 table.Cell().Element(LabelStyle).Text(isBangla ? "যোগদান:" : "Join Date:");
-                                table.Cell().Element(ValueStyle).Text(app.Employee?.JoinDate.ToString("dd MMM yyyy") ?? "");
+                                table.Cell().Element(ValueStyle)
+                                    .Text(app.Employee?.JoinDate.ToString("dd MMM yyyy") ?? "");
                             });
 
-                             // Leave Details
-                            col.Item().PaddingTop(20).Text(isBangla ? "ছুটির বিবরণ:" : "Leave Details:").Bold().FontSize(12);
+                            // Leave Details
+                            col.Item().PaddingTop(20).Text(isBangla ? "ছুটির বিবরণ:" : "Leave Details:").Bold()
+                                .FontSize(12);
                             col.Item().Table(table =>
                             {
                                 table.ColumnsDefinition(columns =>
@@ -333,7 +359,8 @@ namespace ERPBackend.API.Controllers
                             col.Item().PaddingTop(5).Text($"Reason: {app.Reason}").Italic();
 
                             // Leave Balance Summary
-                            col.Item().PaddingTop(20).Text(isBangla ? "ছুটির স্থিতি:" : "Leave Balance Summary:").Bold().FontSize(12);
+                            col.Item().PaddingTop(20).Text(isBangla ? "ছুটির স্থিতি:" : "Leave Balance Summary:").Bold()
+                                .FontSize(12);
                             col.Item().Table(table =>
                             {
                                 table.ColumnsDefinition(columns =>
@@ -364,16 +391,22 @@ namespace ERPBackend.API.Controllers
                             // Signatures
                             col.Item().PaddingTop(50).Row(row =>
                             {
-                                row.RelativeItem().Column(c => {
-                                    c.Item().BorderTop(1).AlignCenter().Text(isBangla ? "আবেদনকারীর স্বাক্ষর" : "Applicant Signature");
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().BorderTop(1).AlignCenter()
+                                        .Text(isBangla ? "আবেদনকারীর স্বাক্ষর" : "Applicant Signature");
                                 });
                                 row.ConstantItem(20);
-                                row.RelativeItem().Column(c => {
-                                    c.Item().BorderTop(1).AlignCenter().Text(isBangla ? "সুপারিশকারী" : "Recommended By");
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().BorderTop(1).AlignCenter()
+                                        .Text(isBangla ? "সুপারিশকারী" : "Recommended By");
                                 });
                                 row.ConstantItem(20);
-                                row.RelativeItem().Column(c => {
-                                    c.Item().BorderTop(1).AlignCenter().Text(isBangla ? "অনুমোদনকারী" : "Approved By");
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().BorderTop(1).AlignCenter()
+                                        .Text(isBangla ? "অনুমোদনকারী" : "Approved By");
                                 });
                             });
                         });
@@ -388,11 +421,12 @@ namespace ERPBackend.API.Controllers
 
                 using var stream = new MemoryStream();
                 document.GeneratePdf(stream);
-                return File(stream.ToArray(), "application/pdf", $"Leave_Application_{app.Employee?.EmployeeId}_{id}.pdf");
+                return File(stream.ToArray(), "application/pdf",
+                    $"Leave_Application_{app.Employee?.EmployeeId}_{id}.pdf");
             }
             catch (Exception ex)
             {
-                 return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = ex.Message });
             }
         }
 
@@ -401,7 +435,8 @@ namespace ERPBackend.API.Controllers
         {
             var types = await _context.LeaveTypes.Where(t => t.IsActive).ToListAsync();
             var applications = await _context.LeaveApplications
-                .Where(l => l.EmployeeId == employeeId && l.Status == "Approved" && l.StartDate.Year == DateTime.Now.Year)
+                .Where(l => l.EmployeeId == employeeId && l.Status == "Approved" &&
+                            l.StartDate.Year == DateTime.Now.Year)
                 .ToListAsync();
 
             return types.Select(t => new LeaveBalanceDto
@@ -428,21 +463,31 @@ namespace ERPBackend.API.Controllers
 
                 if (app == null) return NotFound("Leave Application not found");
 
-                var company = await _context.Companies.FirstOrDefaultAsync();
+                Company? company = app.Employee?.Department?.Company;
+                if (company == null && !string.IsNullOrEmpty(app.Employee?.CompanyName))
+                {
+                    company = await _context.Companies.FirstOrDefaultAsync(c =>
+                        c.CompanyNameEn == app.Employee.CompanyName);
+                }
+
+                company ??= await _context.Companies.FirstOrDefaultAsync();
                 var balances = await GetLeaveBalancesInternal(app.EmployeeId);
 
                 var sb = new System.Text.StringBuilder();
-                
+
                 // Helper to generate a page
                 void GenerateHtmlPage(bool isBangla)
                 {
                     sb.Append("<div style='page-break-after: always; padding: 20px;'>");
-                    
+
                     // Header
                     sb.Append($"<div style='text-align:center; margin-bottom: 20px;'>");
-                    sb.Append($"<h2 style='margin:0; color:#1a365d'>{(company?.CompanyNameEn ?? "HR HUB COMPOSITE LTD.")}</h2>");
-                    sb.Append($"<p style='margin:0; font-size:12px'>{(company?.Address ?? "123, Garments Avenue, Dhaka, Bangladesh")}</p>");
-                    sb.Append($"<h3 style='text-decoration: underline; margin-top:10px'>{(isBangla ? "ছুটির আবেদন ফর্ম" : "LEAVE APPLICATION FORM")}</h3>");
+                    sb.Append(
+                        $"<h2 style='margin:0; color:#1a365d'>{(company?.CompanyNameEn ?? "HR HUB COMPOSITE LTD.")}</h2>");
+                    sb.Append(
+                        $"<p style='margin:0; font-size:12px'>{(company?.AddressEn ?? "123, Garments Avenue, Dhaka, Bangladesh")}</p>");
+                    sb.Append(
+                        $"<h3 style='text-decoration: underline; margin-top:10px'>{(isBangla ? "ছুটির আবেদন ফর্ম" : "LEAVE APPLICATION FORM")}</h3>");
                     sb.Append("</div>");
 
                     // Date
@@ -450,40 +495,54 @@ namespace ERPBackend.API.Controllers
 
                     // Employee Info
                     sb.Append("<table style='width:100%; border-collapse: collapse; margin-bottom: 20px;'>");
-                    string Row(string l1, string v1, string l2, string v2) => 
+
+                    string Row(string l1, string v1, string l2, string v2) =>
                         $"<tr><td style='width:15%; font-weight:bold; padding:5px'>{l1}</td><td style='width:35%; border-bottom:1px solid #ddd; padding:5px'>{v1}</td><td style='width:15%; font-weight:bold; padding:5px'>{l2}</td><td style='width:35%; border-bottom:1px solid #ddd; padding:5px'>{v2}</td></tr>";
-                    
-                    sb.Append(Row(isBangla ? "নাম:" : "Name:", app.Employee?.FullNameEn ?? "", isBangla ? "আইডি:" : "ID:", app.Employee?.EmployeeId ?? ""));
-                    sb.Append(Row(isBangla ? "পদবী:" : "Designation:", app.Employee?.Designation?.NameEn ?? "", isBangla ? "বিভাগ:" : "Department:", app.Employee?.Department?.NameEn ?? ""));
-                    sb.Append(Row(isBangla ? "সেকশন:" : "Section:", app.Employee?.Section?.NameEn ?? "", isBangla ? "যোগদান:" : "Join Date:", app.Employee?.JoinDate.ToString("dd MMM yyyy") ?? ""));
+
+                    sb.Append(Row(isBangla ? "নাম:" : "Name:", app.Employee?.FullNameEn ?? "",
+                        isBangla ? "আইডি:" : "ID:", app.Employee?.EmployeeId ?? ""));
+                    sb.Append(Row(isBangla ? "পদবী:" : "Designation:", app.Employee?.Designation?.NameEn ?? "",
+                        isBangla ? "বিভাগ:" : "Department:", app.Employee?.Department?.NameEn ?? ""));
+                    sb.Append(Row(isBangla ? "সেকশন:" : "Section:", app.Employee?.Section?.NameEn ?? "",
+                        isBangla ? "যোগদান:" : "Join Date:", app.Employee?.JoinDate.ToString("dd MMM yyyy") ?? ""));
                     sb.Append("</table>");
 
                     // Leave Details
                     sb.Append($"<h4>{(isBangla ? "ছুটির বিবরণ:" : "Leave Details:")}</h4>");
-                    sb.Append("<table border='1' style='width:100%; border-collapse:collapse; margin-bottom:20px; text-align:center'>");
-                    sb.Append($"<tr style='background-color:#f0f0f0'><th>{(isBangla ? "ধরন" : "Type")}</th><th>{(isBangla ? "শুরু" : "From")}</th><th>{(isBangla ? "শেষ" : "To")}</th><th>{(isBangla ? "দিন" : "Days")}</th></tr>");
-                    sb.Append($"<tr><td>{app.LeaveType?.Name}</td><td>{app.StartDate:dd MMM yyyy}</td><td>{app.EndDate:dd MMM yyyy}</td><td>{app.TotalDays}</td></tr>");
+                    sb.Append(
+                        "<table border='1' style='width:100%; border-collapse:collapse; margin-bottom:20px; text-align:center'>");
+                    sb.Append(
+                        $"<tr style='background-color:#f0f0f0'><th>{(isBangla ? "ধরন" : "Type")}</th><th>{(isBangla ? "শুরু" : "From")}</th><th>{(isBangla ? "শেষ" : "To")}</th><th>{(isBangla ? "দিন" : "Days")}</th></tr>");
+                    sb.Append(
+                        $"<tr><td>{app.LeaveType?.Name}</td><td>{app.StartDate:dd MMM yyyy}</td><td>{app.EndDate:dd MMM yyyy}</td><td>{app.TotalDays}</td></tr>");
                     sb.Append("</table>");
                     sb.Append($"<p><b>Reason:</b> {app.Reason}</p>");
 
                     // Balance
                     sb.Append($"<h4>{(isBangla ? "ছুটির স্থিতি:" : "Leave Balance Summary:")}</h4>");
-                    sb.Append("<table border='1' style='width:100%; border-collapse:collapse; margin-bottom:40px; text-align:center'>");
-                    sb.Append($"<tr style='background-color:#f0f0f0'><th>{(isBangla ? "ধরন" : "Leave Type")}</th><th>{(isBangla ? "বরাদ্দ" : "Allocated")}</th><th>{(isBangla ? "ভোগকৃত" : "Enjoyed")}</th><th>{(isBangla ? "অবশিষ্ট" : "Balance")}</th></tr>");
-                    foreach(var b in balances)
+                    sb.Append(
+                        "<table border='1' style='width:100%; border-collapse:collapse; margin-bottom:40px; text-align:center'>");
+                    sb.Append(
+                        $"<tr style='background-color:#f0f0f0'><th>{(isBangla ? "ধরন" : "Leave Type")}</th><th>{(isBangla ? "বরাদ্দ" : "Allocated")}</th><th>{(isBangla ? "ভোগকৃত" : "Enjoyed")}</th><th>{(isBangla ? "অবশিষ্ট" : "Balance")}</th></tr>");
+                    foreach (var b in balances)
                     {
-                        sb.Append($"<tr><td>{b.LeaveTypeName}</td><td>{b.TotalAllocated}</td><td>{b.TotalTaken}</td><td>{b.Balance}</td></tr>");
+                        sb.Append(
+                            $"<tr><td>{b.LeaveTypeName}</td><td>{b.TotalAllocated}</td><td>{b.TotalTaken}</td><td>{b.Balance}</td></tr>");
                     }
+
                     sb.Append("</table>");
 
                     // Signatures
                     sb.Append("<table style='width:100%; margin-top:50px; text-align:center'>");
                     sb.Append("<tr>");
-                    sb.Append($"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "আবেদনকারী" : "Applicant")}</td>");
+                    sb.Append(
+                        $"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "আবেদনকারী" : "Applicant")}</td>");
                     sb.Append("<td style='width:5%'></td>");
-                    sb.Append($"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "সুপারিশকারী" : "Recommended By")}</td>");
+                    sb.Append(
+                        $"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "সুপারিশকারী" : "Recommended By")}</td>");
                     sb.Append("<td style='width:5%'></td>");
-                    sb.Append($"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "অনুমোদনকারী" : "Approved By")}</td>");
+                    sb.Append(
+                        $"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "অনুমোদনকারী" : "Approved By")}</td>");
                     sb.Append("</tr>");
                     sb.Append("</table>");
 
@@ -492,7 +551,7 @@ namespace ERPBackend.API.Controllers
 
                 sb.Append("<html><body>");
                 GenerateHtmlPage(false); // English
-                GenerateHtmlPage(true);  // Bangla
+                GenerateHtmlPage(true); // Bangla
                 sb.Append("</body></html>");
 
                 var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
@@ -510,7 +569,8 @@ namespace ERPBackend.API.Controllers
         {
             var types = await _context.LeaveTypes.Where(t => t.IsActive).ToListAsync();
             var applications = await _context.LeaveApplications
-                .Where(l => l.EmployeeId == employeeId && l.Status == "Approved" && l.StartDate.Year == DateTime.Now.Year)
+                .Where(l => l.EmployeeId == employeeId && l.Status == "Approved" &&
+                            l.StartDate.Year == DateTime.Now.Year)
                 .ToListAsync();
 
             var balances = types.Select(t => new LeaveBalanceDto
@@ -554,12 +614,16 @@ namespace ERPBackend.API.Controllers
                 .ThenInclude(e => e!.Department)
                 .Include(l => l.LeaveType)
                 .Where(l => l.Status == "Approved" &&
-                           ((l.StartDate >= startDate && l.StartDate <= endDate) ||
-                            (l.EndDate >= startDate && l.EndDate <= endDate)))
+                            ((l.StartDate >= startDate && l.StartDate <= endDate) ||
+                             (l.EndDate >= startDate && l.EndDate <= endDate)))
                 .ToListAsync();
 
             var report = applications
-                .GroupBy(l => new { l.EmployeeId, l.Employee!.FullNameEn, EmployeeIdCard = l.Employee.EmployeeId, Dept = l.Employee.Department?.NameEn ?? "N/A" })
+                .GroupBy(l => new
+                {
+                    l.EmployeeId, l.Employee!.FullNameEn, EmployeeIdCard = l.Employee.EmployeeId,
+                    Dept = l.Employee.Department?.NameEn ?? "N/A"
+                })
                 .Select(g => new
                 {
                     EmployeeId = g.Key.EmployeeId,
@@ -569,7 +633,10 @@ namespace ERPBackend.API.Controllers
                     SickLeave = g.Where(x => x.LeaveType!.Code == "SL").Sum(x => x.TotalDays),
                     CasualLeave = g.Where(x => x.LeaveType!.Code == "CL").Sum(x => x.TotalDays),
                     EarnedLeave = g.Where(x => x.LeaveType!.Code == "EL").Sum(x => x.TotalDays),
-                    OtherLeave = g.Where(x => x.LeaveType!.Code != "SL" && x.LeaveType!.Code != "CL" && x.LeaveType!.Code != "EL").Sum(x => x.TotalDays),
+                    OtherLeave =
+                        g.Where(x =>
+                                x.LeaveType!.Code != "SL" && x.LeaveType!.Code != "CL" && x.LeaveType!.Code != "EL")
+                            .Sum(x => x.TotalDays),
                     TotalDays = g.Sum(x => x.TotalDays)
                 })
                 .ToList();

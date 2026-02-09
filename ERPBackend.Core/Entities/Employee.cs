@@ -17,7 +17,7 @@ namespace ERPBackend.Core.Entities
 
         [StringLength(200)] public string? FullNameBn { get; set; }
 
-        [StringLength(50)] public string? NID { get; set; }
+        [StringLength(50)] public string? Nid { get; set; }
 
         [StringLength(50)] public string? Proximity { get; set; }
 
@@ -102,8 +102,11 @@ namespace ERPBackend.Core.Entities
         [StringLength(20)] public string? EmergencyContactPhone { get; set; }
         [StringLength(500)] public string? EmergencyContactAddress { get; set; }
 
+        [StringLength(200)] public string? CompanyName { get; set; }
+        [StringLength(20)] public string? BloodGroup { get; set; }
+
         public bool IsActive { get; set; } = true;
-        public bool IsOTEnabled { get; set; } = false;
+        public bool IsOtEnabled { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

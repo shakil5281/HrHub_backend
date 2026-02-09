@@ -11,12 +11,17 @@ namespace ERPBackend.Core.Models
         public int EmployeeId { get; set; }
         [ForeignKey(nameof(EmployeeId))] public virtual Employee? Employee { get; set; }
 
+        public int? CompanyId { get; set; }
+        [ForeignKey(nameof(CompanyId))] public virtual Company? Company { get; set; }
+
         public DateTime Date { get; set; }
 
         [StringLength(10)] public string? InTime { get; set; }
         [StringLength(10)] public string? OutTime { get; set; }
 
-        [Required] [StringLength(20)] public string Status { get; set; } = "Absent"; // Present, Late, Absent, On Leave, Off Day, Holiday
+        [Required]
+        [StringLength(20)]
+        public string Status { get; set; } = "Absent"; // Present, Late, Absent, On Leave, Off Day, Holiday
 
         [Column(TypeName = "decimal(18,2)")] public decimal OTHours { get; set; }
 
@@ -25,7 +30,7 @@ namespace ERPBackend.Core.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public string? CreatedBy { get; set; }
-        
+
         public DateTime? UpdatedAt { get; set; }
         public string? UpdatedBy { get; set; }
     }

@@ -11,18 +11,18 @@ namespace ERPBackend.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class OTDeductionController : ControllerBase
+    public class OtDeductionController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
 
-        public OTDeductionController(ApplicationDbContext context)
+        public OtDeductionController(ApplicationDbContext context)
         {
             _context = context;
         }
 
         // GET: api/OTDeduction
         [HttpGet]
-        public async Task<ActionResult<OTDeductionResponseDto>> GetOTDeductions(
+        public async Task<ActionResult<OTDeductionResponseDto>> GetOtDeductions(
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate,
             [FromQuery] int? employeeId,
@@ -32,7 +32,7 @@ namespace ERPBackend.API.Controllers
         {
             try
             {
-                var query = _context.OTDeductions
+                var query = _context.OtDeductions
                     .Include(o => o.Employee)
                     .ThenInclude(e => e!.Department)
                     .Include(o => o.Employee)
@@ -94,17 +94,18 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching OT deduction records.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching OT deduction records.", error = ex.Message });
             }
         }
 
         // GET: api/OTDeduction/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<OTDeductionDto>> GetOTDeduction(int id)
+        public async Task<ActionResult<OTDeductionDto>> GetOtDeduction(int id)
         {
             try
             {
-                var o = await _context.OTDeductions
+                var o = await _context.OtDeductions
                     .Include(o => o.Employee)
                     .ThenInclude(e => e!.Department)
                     .Include(o => o.Employee)
@@ -132,13 +133,14 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching OT deduction record.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching OT deduction record.", error = ex.Message });
             }
         }
 
         // POST: api/OTDeduction
         [HttpPost]
-        public async Task<ActionResult<OTDeductionDto>> CreateOTDeduction([FromBody] CreateOTDeductionDto dto)
+        public async Task<ActionResult<OTDeductionDto>> CreateOtDeduction([FromBody] CreateOTDeductionDto dto)
         {
             try
             {
@@ -164,10 +166,10 @@ namespace ERPBackend.API.Controllers
                     CreatedBy = userName
                 };
 
-                _context.OTDeductions.Add(o);
+                _context.OtDeductions.Add(o);
                 await _context.SaveChangesAsync();
 
-                return CreatedAtAction(nameof(GetOTDeduction), new { id = o.Id }, new OTDeductionDto
+                return CreatedAtAction(nameof(GetOtDeduction), new { id = o.Id }, new OTDeductionDto
                 {
                     Id = o.Id,
                     EmployeeId = employee.Id,
@@ -185,19 +187,20 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while creating OT deduction record.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while creating OT deduction record.", error = ex.Message });
             }
         }
 
         // PUT: api/OTDeduction/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateOTDeduction(int id, [FromBody] CreateOTDeductionDto dto)
+        public async Task<IActionResult> UpdateOtDeduction(int id, [FromBody] CreateOTDeductionDto dto)
         {
             try
             {
                 var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
 
-                var o = await _context.OTDeductions.FindAsync(id);
+                var o = await _context.OtDeductions.FindAsync(id);
                 if (o == null)
                     return NotFound(new { message = "OT deduction record not found" });
 
@@ -215,28 +218,30 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while updating OT deduction record.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while updating OT deduction record.", error = ex.Message });
             }
         }
 
         // DELETE: api/OTDeduction/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteOTDeduction(int id)
+        public async Task<IActionResult> DeleteOtDeduction(int id)
         {
             try
             {
-                var o = await _context.OTDeductions.FindAsync(id);
+                var o = await _context.OtDeductions.FindAsync(id);
                 if (o == null)
                     return NotFound(new { message = "OT deduction record not found" });
 
-                _context.OTDeductions.Remove(o);
+                _context.OtDeductions.Remove(o);
                 await _context.SaveChangesAsync();
 
                 return Ok(new { message = "OT deduction record deleted successfully" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while deleting OT deduction record.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while deleting OT deduction record.", error = ex.Message });
             }
         }
     }
