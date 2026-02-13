@@ -123,6 +123,47 @@ namespace ERPBackend.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("bank-sheet")]
+        public async Task<ActionResult<IEnumerable<BankSheetDto>>> GetBankSheet(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? departmentId,
+            [FromQuery] string? searchTerm)
+        {
+            var query = _context.MonthlySalarySheets
+                .Include(s => s.Employee)
+                .ThenInclude(e => e!.Department)
+                .Where(s => s.Year == year && s.Month == month && s.Employee != null && !string.IsNullOrEmpty(s.Employee.BankAccountNo));
+
+            if (departmentId.HasValue)
+            {
+                query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+            }
+
+            var records = await query.ToListAsync();
+
+            var result = records.Select(s => new BankSheetDto
+            {
+                Id = s.Id,
+                EmployeeId = s.EmployeeId,
+                EmployeeIdCard = s.Employee?.EmployeeId ?? "",
+                EmployeeName = s.Employee?.FullNameEn ?? "",
+                Department = s.Employee?.Department?.NameEn ?? "",
+                BankName = s.Employee?.BankName ?? "",
+                BankAccountNo = s.Employee?.BankAccountNo ?? "",
+                BankBranchName = s.Employee?.BankBranchName ?? "",
+                NetPayable = s.NetPayable,
+                Status = s.Status
+            }).ToList();
+
+            return Ok(result);
+        }
+
         [HttpGet("summary")]
         public async Task<ActionResult<SalarySummaryDto>> GetSalarySummary([FromQuery] int year, [FromQuery] int month)
         {
@@ -458,6 +499,71 @@ namespace ERPBackend.API.Controllers
             string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
             return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
                 $"Salary_Sheet_{monthName}_{year}.xlsx");
+        }
+
+        [HttpGet("export-bank-sheet")]
+        public async Task<IActionResult> ExportBankSheet(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? departmentId,
+            [FromQuery] string? searchTerm)
+        {
+            var query = _context.MonthlySalarySheets
+                .Include(s => s.Employee)
+                .ThenInclude(e => e!.Department)
+                .Where(s => s.Year == year && s.Month == month && s.Employee != null && !string.IsNullOrEmpty(s.Employee.BankAccountNo));
+
+            if (departmentId.HasValue)
+            {
+                query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+            }
+
+            var records = await query.ToListAsync();
+
+            using var package = new OfficeOpenXml.ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add($"Bank Advice {month}-{year}");
+
+            // Headers for Bank Advice
+            var headers = new[]
+            {
+                "SL", "Employee ID", "Account Holder Name", "Bank Name", "Branch", "Account Number", "Amount (BDT)"
+            };
+
+            for (int i = 0; i < headers.Length; i++)
+            {
+                worksheet.Cells[1, i + 1].Value = headers[i];
+                worksheet.Cells[1, i + 1].Style.Font.Bold = true;
+                worksheet.Cells[1, i + 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                worksheet.Cells[1, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightSkyBlue);
+            }
+
+            int row = 2;
+            foreach (var s in records)
+            {
+                worksheet.Cells[row, 1].Value = row - 1;
+                worksheet.Cells[row, 2].Value = s.Employee?.EmployeeId;
+                worksheet.Cells[row, 3].Value = s.Employee?.FullNameEn;
+                worksheet.Cells[row, 4].Value = s.Employee?.BankName;
+                worksheet.Cells[row, 5].Value = s.Employee?.BankBranchName;
+                worksheet.Cells[row, 6].Value = s.Employee?.BankAccountNo;
+                worksheet.Cells[row, 7].Value = s.NetPayable;
+                row++;
+            }
+
+            worksheet.Cells.AutoFitColumns();
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                $"Bank_Advice_{monthName}_{year}.xlsx");
         }
 
         [HttpPost("bonus")]

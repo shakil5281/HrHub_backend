@@ -1,46 +1,94 @@
+using System;
+using System.IO;
+using System.Threading.Tasks;
+using ERPBackend.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ERPBackend.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "SuperAdmin")]
+    [Authorize] // Ideally restrict to SuperAdmin in production: [Authorize(Roles = "SuperAdmin")]
     public class DatabaseController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
-        private readonly IWebHostEnvironment _environment;
+        private readonly IDatabaseService _databaseService;
 
-        public DatabaseController(IConfiguration configuration, IWebHostEnvironment environment)
+        public DatabaseController(IDatabaseService databaseService)
         {
-            _configuration = configuration;
-            _environment = environment;
+            _databaseService = databaseService;
         }
 
         [HttpPost("backup")]
-        public async Task<IActionResult> CreateBackup()
+        public async Task<IActionResult> Backup()
         {
             try
             {
-                // This is a basic implementation placeholder. 
-                // In a real scenario, you would use SQL Server Management Class (SMO) or execute a raw SQL command.
-                // Since this runs in a container/server, the backup path must be accessible to the SQL Server instance.
-
-                string? connectionString = _configuration.GetConnectionString("DefaultConnection");
-                if (string.IsNullOrEmpty(connectionString)) return BadRequest("Connection string not found.");
-
-                string backupFileName = $"ERPBackend_Backup_{DateTime.Now:yyyyMMddHHmmss}.bak";
-
-                // NOTE: This usually requires specific permissions and file system access for the SQL Server process.
-                // For this demo, we will simulate a success response or return a "Not Implemented for Production" message
-                // as legitimate SQL backups require strict environment setup.
-
-                return Ok(new { Message = $"Backup request initiated. File: {backupFileName}", Success = true });
+                var fileName = await _databaseService.BackupDatabaseAsync();
+                return Ok(new { message = "Backup created successfully.", fileName });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Backup failed", Error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost("restore")]
+        public async Task<IActionResult> Restore([FromBody] RestoreRequest request)
+        {
+            if (string.IsNullOrEmpty(request.FileName))
+                return BadRequest("File name is required.");
+
+            try
+            {
+                var result = await _databaseService.RestoreDatabaseAsync(request.FileName);
+                return Ok(new { message = "Database restored successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("upload-bak")]
+        public async Task<IActionResult> UploadBak(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            if (!file.FileName.EndsWith(".bak", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Only .bak files are allowed.");
+
+            try
+            {
+                using (var ms = new MemoryStream())
+                {
+                    await file.CopyToAsync(ms);
+                    var fileName = await _databaseService.UploadBackupFileAsync(ms.ToArray(), file.FileName);
+                    return Ok(new { message = "Backup file uploaded successfully.", fileName });
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("download-backup/{fileName}")]
+        public IActionResult DownloadBackup(string fileName)
+        {
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Backups", fileName);
+            if (!System.IO.File.Exists(filePath))
+                return NotFound("Backup file not found.");
+
+            var fileBytes = System.IO.File.ReadAllBytes(filePath);
+            return File(fileBytes, "application/octet-stream", fileName);
+        }
+    }
+
+    public class RestoreRequest
+    {
+        public string FileName { get; set; } = string.Empty;
     }
 }

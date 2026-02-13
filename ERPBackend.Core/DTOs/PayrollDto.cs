@@ -150,4 +150,18 @@ namespace ERPBackend.Core.DTOs
         public int Year { get; set; }
         public int Month { get; set; }
     }
+
+    public class BankSheetDto
+    {
+        public int Id { get; set; }
+        public int EmployeeId { get; set; }
+        public string EmployeeIdCard { get; set; } = string.Empty;
+        public string EmployeeName { get; set; } = string.Empty;
+        public string BankName { get; set; } = string.Empty;
+        public string BankAccountNo { get; set; } = string.Empty;
+        public string BankBranchName { get; set; } = string.Empty;
+        public decimal NetPayable { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string Department { get; set; } = string.Empty;
+    }
 }

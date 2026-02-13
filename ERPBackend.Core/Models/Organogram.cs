@@ -91,6 +91,8 @@ namespace ERPBackend.Core.Models
         [StringLength(100)] public string? NameBn { get; set; }
         [Required] [StringLength(10)] public string InTime { get; set; } = "09:00";
         [Required] [StringLength(10)] public string OutTime { get; set; } = "17:00";
+        [StringLength(10)] public string? ActualInTime { get; set; }
+        [StringLength(10)] public string? ActualOutTime { get; set; }
         [StringLength(10)] public string? LateInTime { get; set; }
         [StringLength(10)] public string? LunchTimeStart { get; set; }
         [Column(TypeName = "decimal(18,2)")] public decimal LunchHour { get; set; } = 1.0m;

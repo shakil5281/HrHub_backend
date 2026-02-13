@@ -1398,6 +1398,80 @@ namespace ERPBackend.API.Controllers
             }
         }
 
+        // POST: api/attendance/manual-entry/bulk
+        [HttpPost("bulk")]
+        public async Task<IActionResult> CreateBulkManualEntry([FromBody] List<ManualAttendanceDto> dtos)
+        {
+            try
+            {
+                if (dtos == null || !dtos.Any())
+                    return BadRequest("No attendance data provided");
+
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+
+                var employeeIds = dtos.Select(d => d.EmployeeId).Distinct().ToList();
+                var employees = await _context.Employees
+                    .Where(e => employeeIds.Contains(e.Id))
+                    .ToDictionaryAsync(e => e.Id);
+
+                var dates = dtos.Select(d => d.Date.Date).Distinct().ToList();
+                var existingAttendances = await _context.Attendances
+                    .Where(a => employeeIds.Contains(a.EmployeeId) && dates.Contains(a.Date.Date))
+                    .ToListAsync();
+                
+                var newAttendances = new List<Attendance>();
+                int updatedCount = 0;
+
+                foreach (var dto in dtos)
+                {
+                    if (!employees.ContainsKey(dto.EmployeeId)) continue;
+
+                    var existing = existingAttendances
+                        .FirstOrDefault(a => a.EmployeeId == dto.EmployeeId && a.Date.Date == dto.Date.Date);
+
+                    if (existing != null)
+                    {
+                        existing.InTime = dto.InTime;
+                        existing.OutTime = dto.OutTime;
+                        existing.Status = dto.Status;
+                        existing.Reason = dto.Reason;
+                        existing.Remarks = dto.Remarks;
+                        existing.UpdatedAt = DateTime.UtcNow;
+                        existing.UpdatedBy = userName;
+                        updatedCount++;
+                    }
+                    else
+                    {
+                        newAttendances.Add(new Attendance
+                        {
+                            EmployeeId = dto.EmployeeId,
+                            Date = dto.Date.Date,
+                            InTime = dto.InTime,
+                            OutTime = dto.OutTime,
+                            Status = dto.Status,
+                            OTHours = 0, // Calculate if needed
+                            Reason = dto.Reason,
+                            Remarks = dto.Remarks,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = userName
+                        });
+                    }
+                }
+
+                if (newAttendances.Any())
+                    _context.Attendances.AddRange(newAttendances);
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = $"Processed {dtos.Count} entries. Created: {newAttendances.Count}, Updated: {updatedCount}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while processing bulk entries.", error = ex.Message });
+            }
+        }
+
         // GET: api/attendance/manual-entry/history
         [HttpGet("manual-entry/history")]
         public async Task<ActionResult<IEnumerable<ManualAttendanceHistoryDto>>> GetManualEntryHistory(

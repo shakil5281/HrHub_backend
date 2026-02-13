@@ -1448,7 +1448,9 @@ namespace ERPBackend.API.Controllers
             if (!allowedExtensions.Contains(extension))
                 return BadRequest("Only .jpg, .jpeg, and .png files are allowed");
 
-            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "employees", type);
+            var webRootPath = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
+            var uploadsFolder = Path.Combine(webRootPath, "uploads", "employees", type);
+            
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 

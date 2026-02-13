@@ -188,11 +188,11 @@ namespace ERPBackend.Services.Services
             int? groupId = null,
             int? companyId = null)
         {
-            // 1. Fetch relevant logs: From current date 07:15 AM to next date 07:14 AM (to cover the Out window)
-            var endTime = date.Date.AddDays(1).AddHours(7).AddMinutes(14);
+            // 1. Fetch relevant logs: From current date 00:00 AM to next date 10:00 AM (to cover night shifts)
+            var endTime = date.Date.AddDays(1).AddHours(10);
 
             var allLogs = await _context.AttendanceLogs
-                .Where(l => l.LogTime >= date.Date && l.LogTime <= endTime) // Fetch slightly more to be safe
+                .Where(l => l.LogTime >= date.Date && l.LogTime <= endTime) 
                 .ToListAsync();
 
             // 2. Fetch all active employees
@@ -242,7 +242,31 @@ namespace ERPBackend.Services.Services
 
             foreach (var emp in activeEmployees)
             {
-                var empLogs = allLogs.Where(l => l.EmployeeId == emp.Id).OrderBy(l => l.LogTime).ToList();
+                var shift = emp.Shift;
+                
+                // Determine search window for In/Out punches
+                DateTime inWindowStart = date.Date.AddHours(6); // Default
+                DateTime outWindowEnd = date.Date.AddDays(1).AddHours(10); // Default
+
+                if (shift != null)
+                {
+                    if (TimeSpan.TryParse(shift.ActualInTime, out var aIn))
+                        inWindowStart = date.Date.Add(aIn);
+                    
+                    if (TimeSpan.TryParse(shift.ActualOutTime, out var aOut))
+                    {
+                        // If ActualOut < ActualIn (or Shift In), it implies next day
+                        if (TimeSpan.TryParse(shift.InTime, out var sIn) && aOut < sIn)
+                            outWindowEnd = date.Date.AddDays(1).Add(aOut);
+                        else
+                            outWindowEnd = date.Date.Add(aOut);
+                    }
+                }
+
+                var empLogs = allLogs.Where(l => l.EmployeeId == emp.Id && l.LogTime >= inWindowStart && l.LogTime <= outWindowEnd)
+                    .OrderBy(l => l.LogTime)
+                    .ToList();
+
                 var leave = leaves.FirstOrDefault(l => l.EmployeeId == emp.Id);
                 var roster = rosters.FirstOrDefault(r => r.EmployeeId == emp.Id);
 
@@ -264,52 +288,35 @@ namespace ERPBackend.Services.Services
                     attendance.CompanyId = emp.Department?.CompanyId;
                 }
 
-                string status = "Absent";
+                // Logic: Use punch starting inTime and last out time
+                // If actual outTime < inTime (time of day), it implies next day
+                
+                var inTimeLog = empLogs.FirstOrDefault();
+                var outTimeLog = empLogs.Count > 1 ? empLogs.LastOrDefault() : null;
+
                 string? inTimeStr = null;
                 string? outTimeStr = null;
+                string status = "Absent";
 
-                if (leave != null)
+                if (inTimeLog != null)
                 {
-                    status = "On Leave";
-                }
-                else if (roster?.IsOffDay == true || IsWeekend(date, emp.Shift?.Weekends))
-                {
-                    status = "Off Day";
-                }
-                else
-                {
-                    // In Time logic: Only 07:15 AM to 11:00 AM
-                    var inTimeLog = empLogs.FirstOrDefault(l =>
-                        l.LogTime >= date.Date.AddHours(7).AddMinutes(15) &&
-                        l.LogTime <= date.Date.AddHours(11));
+                    inTimeStr = inTimeLog.LogTime.ToString("HH:mm:ss");
+                    status = "Present";
 
-                    // Out Time logic: 11:01 AM to next date 07:14 AM
-                    var outTimeLog = empLogs.LastOrDefault(l =>
-                        l.LogTime >= date.Date.AddHours(11).AddMinutes(1) &&
-                        l.LogTime <= date.Date.AddDays(1).AddHours(7).AddMinutes(14));
-
-                    var shift = emp.Shift;
-
-                    if (inTimeLog != null)
+                    // Late calculation relative to Shift InTime
+                    if (shift != null && !string.IsNullOrEmpty(shift.InTime))
                     {
-                        inTimeStr = inTimeLog.LogTime.ToString("HH:mm:ss");
-                        status = "Present";
-
-                        // Late calculation
-                        if (shift != null && !string.IsNullOrEmpty(shift.InTime))
+                        if (TimeSpan.TryParse(shift.InTime, out var shiftInTime))
                         {
-                            if (TimeSpan.TryParse(shift.InTime, out var shiftInTime))
-                            {
-                                var punchInTime = inTimeLog.LogTime.TimeOfDay;
-                                // Use LateInTime if defined, else 15 min grace
-                                var lateLimit = TimeSpan.TryParse(shift.LateInTime, out var lLimit)
-                                    ? lLimit
-                                    : shiftInTime.Add(TimeSpan.FromMinutes(15));
+                            var punchInTime = inTimeLog.LogTime.TimeOfDay;
+                            // Use LateInTime if defined, else 15 min grace
+                            var lateLimit = TimeSpan.TryParse(shift.LateInTime, out var lLimit)
+                                ? lLimit
+                                : shiftInTime.Add(TimeSpan.FromMinutes(15));
 
-                                if (punchInTime > lateLimit)
-                                {
-                                    status = "Late";
-                                }
+                            if (punchInTime > lateLimit)
+                            {
+                                status = "Late";
                             }
                         }
                     }
@@ -317,35 +324,15 @@ namespace ERPBackend.Services.Services
                     if (outTimeLog != null)
                     {
                         outTimeStr = outTimeLog.LogTime.ToString("HH:mm:ss");
-                        // If we have an out time but no in time, it's still some form of presence (One Punch)
-                        if (inTimeLog == null)
-                        {
-                            status = "Present (Out Only)";
-                        }
 
-                        // Calculate OT
+                        // Calculate OT if enabled
                         if (emp.IsOtEnabled && shift != null && !string.IsNullOrEmpty(shift.OutTime) &&
                             TimeSpan.TryParse(shift.OutTime, out var shiftOutTimeValue))
                         {
                             var shiftOutTime = shiftOutTimeValue;
-                            // Construct Shift Out DateTime
-                            // Shift Out is strictly on the date (or next day if overnight, but here specific logic: 11:01 AM to next date 07:14 AM covers it)
-                            // Usually Shift Out Time is relative to day start.
-                            // If Shift In is 08:00 and Out is 17:00.
-                            // If In 20:00 and Out 05:00 (Next Day).
-
                             DateTime shiftOutDateTime = date.Date.Add(shiftOutTime);
-                            // If shiftOutTime < shiftInTime, it might be next day?
-                            // Simple logic: If punchOutLog is > shiftOutDateTime, it is OT.
-                            // However, we need to handle overnight shifts carefully.
-                            // For simplicity, assuming if shiftOutTime is small (e.g. 05:00), it implies next day if InTime is large.
-                            // But here let's rely on the fact we matched an outTimeLog that is logically "after" work.
 
-                            // Let's assume standard day shift for now or rely on strict date comparison
-                            // If we matched the OutTimeLog in the window [11:01 AM, Next 07:14 AM]
-                            // And Shift Out is say 17:00 (5 PM).
-
-                            // Handle cross-day shift out time logic if needed (e.g. if OutTime < InTime)
+                            // Handle overnight shift: If Shift Out < Shift In, Shift Out is next day
                             if (TimeSpan.TryParse(shift.InTime, out var sIn) && shiftOutTime < sIn)
                             {
                                 shiftOutDateTime = date.Date.AddDays(1).Add(shiftOutTime);
@@ -354,11 +341,20 @@ namespace ERPBackend.Services.Services
                             if (outTimeLog.LogTime > shiftOutDateTime)
                             {
                                 var otDuration = outTimeLog.LogTime - shiftOutDateTime;
-                                // Round to 2 decimal places
                                 attendance.OTHours = (decimal)Math.Round(otDuration.TotalHours, 2);
                             }
                         }
                     }
+                    else if (status == "Present")
+                    {
+                        // Check if we should search specifically for next day out time if no out time was found in current window
+                        // However, current window [date, date + 1 day 07:14] already covers most night shifts.
+                    }
+                }
+                else
+                {
+                    // No punches found
+                    status = leave != null ? "On Leave" : (roster?.IsOffDay == true || IsWeekend(date, emp.Shift?.Weekends) ? "Off Day" : "Absent");
                 }
 
                 // Finalize Assignment

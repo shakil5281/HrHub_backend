@@ -30,6 +30,10 @@ builder.Services.AddDbContext<CashbookDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("CashbookConnection"),
         sqlServerOptionsAction: sqlOptions => { sqlOptions.EnableRetryOnFailure(); }));
 
+builder.Services.AddDbContext<ProductionDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ProductionConnection"),
+        sqlServerOptionsAction: sqlOptions => { sqlOptions.EnableRetryOnFailure(); }));
+
 // 2. Identity
 // 2. Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -46,6 +50,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 // 3. Custom Services
 // 4. Custom Services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 
 if (OperatingSystem.IsWindows())
 {

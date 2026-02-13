@@ -94,6 +94,8 @@ namespace ERPBackend.Core.DTOs
         public string? NameBn { get; set; }
         public string InTime { get; set; } = string.Empty;
         public string OutTime { get; set; } = string.Empty;
+        public string? ActualInTime { get; set; }
+        public string? ActualOutTime { get; set; }
         public string? LateInTime { get; set; }
         public string? LunchTimeStart { get; set; }
         public decimal LunchHour { get; set; }
@@ -109,6 +111,8 @@ namespace ERPBackend.Core.DTOs
         public string? NameBn { get; set; }
         [Required] public string InTime { get; set; } = string.Empty;
         [Required] public string OutTime { get; set; } = string.Empty;
+        public string? ActualInTime { get; set; }
+        public string? ActualOutTime { get; set; }
         public string? LateInTime { get; set; }
         public string? LunchTimeStart { get; set; }
         public decimal LunchHour { get; set; } = 1.0m;

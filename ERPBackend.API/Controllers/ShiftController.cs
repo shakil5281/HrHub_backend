@@ -42,6 +42,8 @@ namespace ERPBackend.API.Controllers
                     NameBn = s.NameBn,
                     InTime = s.InTime,
                     OutTime = s.OutTime,
+                    ActualInTime = s.ActualInTime,
+                    ActualOutTime = s.ActualOutTime,
                     LateInTime = s.LateInTime,
                     LunchTimeStart = s.LunchTimeStart,
                     LunchHour = s.LunchHour,
@@ -67,6 +69,8 @@ namespace ERPBackend.API.Controllers
                 NameBn = s.NameBn,
                 InTime = s.InTime,
                 OutTime = s.OutTime,
+                ActualInTime = s.ActualInTime,
+                ActualOutTime = s.ActualOutTime,
                 LateInTime = s.LateInTime,
                 LunchTimeStart = s.LunchTimeStart,
                 LunchHour = s.LunchHour,
@@ -89,6 +93,8 @@ namespace ERPBackend.API.Controllers
                 NameBn = dto.NameBn,
                 InTime = dto.InTime,
                 OutTime = dto.OutTime,
+                ActualInTime = dto.ActualInTime,
+                ActualOutTime = dto.ActualOutTime,
                 LateInTime = dto.LateInTime,
                 LunchTimeStart = dto.LunchTimeStart,
                 LunchHour = dto.LunchHour,
@@ -108,6 +114,8 @@ namespace ERPBackend.API.Controllers
                 NameBn = shift.NameBn,
                 InTime = shift.InTime,
                 OutTime = shift.OutTime,
+                ActualInTime = shift.ActualInTime,
+                ActualOutTime = shift.ActualOutTime,
                 LateInTime = shift.LateInTime,
                 LunchTimeStart = shift.LunchTimeStart,
                 LunchHour = shift.LunchHour,
@@ -131,6 +139,8 @@ namespace ERPBackend.API.Controllers
             shift.NameBn = dto.NameBn;
             shift.InTime = dto.InTime;
             shift.OutTime = dto.OutTime;
+            shift.ActualInTime = dto.ActualInTime;
+            shift.ActualOutTime = dto.ActualOutTime;
             shift.LateInTime = dto.LateInTime;
             shift.LunchTimeStart = dto.LunchTimeStart;
             shift.LunchHour = dto.LunchHour;
