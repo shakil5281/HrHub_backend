@@ -102,6 +102,11 @@ namespace ERPBackend.Core.Entities
         [StringLength(20)] public string? EmergencyContactPhone { get; set; }
         [StringLength(500)] public string? EmergencyContactAddress { get; set; }
 
+        // Company Relation
+        public int? CompanyId { get; set; }
+        [ForeignKey(nameof(CompanyId))] public virtual Company? Company { get; set; }
+
+        // Kept for backward compatibility and Excel imports
         [StringLength(200)] public string? CompanyName { get; set; }
         [StringLength(20)] public string? BloodGroup { get; set; }
 

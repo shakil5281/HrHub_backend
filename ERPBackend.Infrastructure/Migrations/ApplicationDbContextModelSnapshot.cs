@@ -72,6 +72,9 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
                     b.Property<string>("CompanyName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -290,6 +293,8 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DepartmentId");
 
                     b.HasIndex("DesignationId");
@@ -331,6 +336,9 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<DateTime?>("ApprovalDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -356,6 +364,8 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("EmployeeId");
 
@@ -474,19 +484,27 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("EmployeeId")
+                    b.Property<int>("EmployeeCard")
                         .HasColumnType("int");
 
-                    b.Property<string>("InTime")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                    b.Property<string>("EmployeeId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("InTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsManual")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsOffDay")
+                        .HasColumnType("bit");
 
                     b.Property<decimal>("OTHours")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("OutTime")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                    b.Property<DateTime?>("OutTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Reason")
                         .HasMaxLength(100)
@@ -495,6 +513,9 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<string>("Remarks")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ShiftId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -511,7 +532,9 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("CompanyId");
 
-                    b.HasIndex("EmployeeId");
+                    b.HasIndex("EmployeeCard");
+
+                    b.HasIndex("ShiftId");
 
                     b.ToTable("Attendances");
                 });
@@ -534,8 +557,12 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("EmployeeId")
+                    b.Property<int>("EmployeeCard")
                         .HasColumnType("int");
+
+                    b.Property<string>("EmployeeId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("LogTime")
                         .HasColumnType("datetime2");
@@ -548,7 +575,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("CompanyId");
 
-                    b.HasIndex("EmployeeId");
+                    b.HasIndex("EmployeeCard");
 
                     b.ToTable("AttendanceLogs");
                 });
@@ -568,6 +595,9 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -590,6 +620,8 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("EmployeeId");
 
@@ -772,6 +804,9 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
@@ -803,6 +838,8 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("EmployeeId");
 
@@ -1242,6 +1279,9 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<decimal>("BasicSalary")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
                     b.Property<int>("EmployeeId")
                         .HasColumnType("int");
 
@@ -1305,6 +1345,8 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("EmployeeId");
 
@@ -1393,61 +1435,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.ToTable("PostOffices");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.Production", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("BatchId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("DueDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Line")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Priority")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Product")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Productions");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.SalaryIncrement", b =>
                 {
                     b.Property<int>("Id")
@@ -1455,6 +1442,9 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1487,6 +1477,8 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("EmployeeId");
 
@@ -1900,6 +1892,10 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Entities.Employee", b =>
                 {
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId");
+
                     b.HasOne("ERPBackend.Core.Models.Department", "Department")
                         .WithMany()
                         .HasForeignKey("DepartmentId")
@@ -1942,6 +1938,8 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("Company");
+
                     b.Navigation("Department");
 
                     b.Navigation("Designation");
@@ -1961,11 +1959,17 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.AdvanceSalary", b =>
                 {
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId");
+
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("Employee");
                 });
@@ -1979,13 +1983,19 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("EmployeeCard")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("ERPBackend.Core.Models.Shift", "Shift")
+                        .WithMany()
+                        .HasForeignKey("ShiftId");
 
                     b.Navigation("Company");
 
                     b.Navigation("Employee");
+
+                    b.Navigation("Shift");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.AttendanceLog", b =>
@@ -1997,7 +2007,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("EmployeeCard")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2008,11 +2018,17 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.Bonus", b =>
                 {
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId");
+
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("Employee");
                 });
@@ -2030,11 +2046,17 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.DailySalarySheet", b =>
                 {
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId");
+
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("Employee");
                 });
@@ -2201,11 +2223,17 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.MonthlySalarySheet", b =>
                 {
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId");
+
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("Employee");
                 });
@@ -2234,11 +2262,17 @@ namespace ERPBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPBackend.Core.Models.SalaryIncrement", b =>
                 {
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId");
+
                     b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("Employee");
                 });

@@ -68,8 +68,8 @@ namespace ERPBackend.API.Controllers
                     .Select(c => new CounselingRecordDto
                     {
                         Id = c.Id,
-                        EmployeeId = c.EmployeeId,
-                        EmployeeIdCard = c.Employee!.EmployeeId,
+                        EmployeeCard = c.EmployeeId,
+                        EmployeeId = c.Employee!.EmployeeId,
                         EmployeeName = c.Employee!.FullNameEn,
                         Department = c.Employee!.Department!.NameEn,
                         Designation = c.Employee!.Designation!.NameEn,
@@ -103,7 +103,8 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching counseling records.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching counseling records.", error = ex.Message });
             }
         }
 
@@ -126,8 +127,8 @@ namespace ERPBackend.API.Controllers
                 return Ok(new CounselingRecordDto
                 {
                     Id = record.Id,
-                    EmployeeId = record.EmployeeId,
-                    EmployeeIdCard = record.Employee!.EmployeeId,
+                    EmployeeCard = record.EmployeeId,
+                    EmployeeId = record.Employee!.EmployeeId,
                     EmployeeName = record.Employee!.FullNameEn,
                     Department = record.Employee!.Department!.NameEn,
                     Designation = record.Employee!.Designation!.NameEn,
@@ -145,13 +146,15 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching counseling record.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching counseling record.", error = ex.Message });
             }
         }
 
         // POST: api/counseling
         [HttpPost]
-        public async Task<ActionResult<CounselingRecordDto>> CreateCounselingRecord([FromBody] CreateCounselingRecordDto dto)
+        public async Task<ActionResult<CounselingRecordDto>> CreateCounselingRecord(
+            [FromBody] CreateCounselingRecordDto dto)
         {
             try
             {
@@ -160,14 +163,14 @@ namespace ERPBackend.API.Controllers
                 var employee = await _context.Employees
                     .Include(e => e.Department)
                     .Include(e => e.Designation)
-                    .FirstOrDefaultAsync(e => e.Id == dto.EmployeeId);
+                    .FirstOrDefaultAsync(e => e.Id == dto.EmployeeCard);
 
                 if (employee == null)
                     return NotFound(new { message = "Employee not found" });
 
                 var record = new CounselingRecord
                 {
-                    EmployeeId = dto.EmployeeId,
+                    EmployeeId = dto.EmployeeCard,
                     CounselingDate = dto.CounselingDate,
                     IssueType = dto.IssueType,
                     Description = dto.Description,
@@ -186,8 +189,8 @@ namespace ERPBackend.API.Controllers
                 return CreatedAtAction(nameof(GetCounselingRecord), new { id = record.Id }, new CounselingRecordDto
                 {
                     Id = record.Id,
-                    EmployeeId = employee.Id,
-                    EmployeeIdCard = employee.EmployeeId,
+                    EmployeeCard = employee.Id,
+                    EmployeeId = employee.EmployeeId,
                     EmployeeName = employee.FullNameEn,
                     Department = employee.Department!.NameEn,
                     Designation = employee.Designation!.NameEn,
@@ -205,7 +208,8 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while creating counseling record.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while creating counseling record.", error = ex.Message });
             }
         }
 
@@ -238,7 +242,8 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while updating counseling record.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while updating counseling record.", error = ex.Message });
             }
         }
 
@@ -259,7 +264,8 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while deleting counseling record.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while deleting counseling record.", error = ex.Message });
             }
         }
     }

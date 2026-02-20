@@ -79,6 +79,7 @@ namespace ERPBackend.Core.DTOs
         public string? EmergencyContactRelation { get; set; }
         public string? EmergencyContactPhone { get; set; }
         public string? EmergencyContactAddress { get; set; }
+        public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         public string? BloodGroup { get; set; }
 
@@ -156,6 +157,7 @@ namespace ERPBackend.Core.DTOs
         public string? EmergencyContactRelation { get; set; }
         public string? EmergencyContactPhone { get; set; }
         public string? EmergencyContactAddress { get; set; }
+        public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         public string? BloodGroup { get; set; }
         public bool IsOtEnabled { get; set; }
@@ -229,6 +231,7 @@ namespace ERPBackend.Core.DTOs
         public string? EmergencyContactRelation { get; set; }
         public string? EmergencyContactPhone { get; set; }
         public string? EmergencyContactAddress { get; set; }
+        public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         public string? BloodGroup { get; set; }
 
@@ -267,5 +270,24 @@ namespace ERPBackend.Core.DTOs
         public string? LineName { get; set; }
         public string? ShiftName { get; set; }
         public string? GroupName { get; set; }
+    }
+
+    public class EmployeeSimpleDto
+    {
+        public int Id { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
+        public string FullNameEn { get; set; } = string.Empty;
+        public int? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
+        public string? DepartmentName { get; set; }
+        public string? DesignationName { get; set; }
+        public string? SectionName { get; set; }
+        public string? LineName { get; set; }
+        public string? Gender { get; set; }
+        public string? Religion { get; set; }
+        public string? ShiftName { get; set; }
+        public string? Status { get; set; }
+        public string? GroupName { get; set; }
+        public string? FloorName { get; set; }
     }
 }

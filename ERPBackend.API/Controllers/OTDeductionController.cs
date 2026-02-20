@@ -64,8 +64,8 @@ namespace ERPBackend.API.Controllers
                     .Select(o => new OTDeductionDto
                     {
                         Id = o.Id,
-                        EmployeeId = o.EmployeeId,
-                        EmployeeIdCard = o.Employee!.EmployeeId,
+                        EmployeeCard = o.EmployeeId,
+                        EmployeeId = o.Employee!.EmployeeId,
                         EmployeeName = o.Employee!.FullNameEn,
                         Department = o.Employee!.Department!.NameEn,
                         Designation = o.Employee!.Designation!.NameEn,
@@ -118,8 +118,8 @@ namespace ERPBackend.API.Controllers
                 return Ok(new OTDeductionDto
                 {
                     Id = o.Id,
-                    EmployeeId = o.EmployeeId,
-                    EmployeeIdCard = o.Employee!.EmployeeId,
+                    EmployeeCard = o.EmployeeId,
+                    EmployeeId = o.Employee!.EmployeeId,
                     EmployeeName = o.Employee!.FullNameEn,
                     Department = o.Employee!.Department!.NameEn,
                     Designation = o.Employee!.Designation!.NameEn,
@@ -149,14 +149,14 @@ namespace ERPBackend.API.Controllers
                 var employee = await _context.Employees
                     .Include(e => e.Department)
                     .Include(e => e.Designation)
-                    .FirstOrDefaultAsync(e => e.Id == dto.EmployeeId);
+                    .FirstOrDefaultAsync(e => e.Id == dto.EmployeeCard);
 
                 if (employee == null)
                     return NotFound(new { message = "Employee not found" });
 
                 var o = new OTDeduction
                 {
-                    EmployeeId = dto.EmployeeId,
+                    EmployeeId = dto.EmployeeCard,
                     Date = dto.Date,
                     DeductionHours = dto.DeductionHours,
                     Reason = dto.Reason,
@@ -172,8 +172,8 @@ namespace ERPBackend.API.Controllers
                 return CreatedAtAction(nameof(GetOtDeduction), new { id = o.Id }, new OTDeductionDto
                 {
                     Id = o.Id,
-                    EmployeeId = employee.Id,
-                    EmployeeIdCard = employee.EmployeeId,
+                    EmployeeCard = employee.Id,
+                    EmployeeId = employee.EmployeeId,
                     EmployeeName = employee.FullNameEn,
                     Department = employee.Department!.NameEn,
                     Designation = employee.Designation!.NameEn,

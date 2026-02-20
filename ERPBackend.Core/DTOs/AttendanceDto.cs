@@ -3,8 +3,8 @@ namespace ERPBackend.Core.DTOs
     public class AttendanceDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public int EmployeeCard { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
         public string EmployeeName { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
         public string Section { get; set; } = string.Empty;
@@ -12,18 +12,21 @@ namespace ERPBackend.Core.DTOs
         public string Designation { get; set; } = string.Empty;
         public string Shift { get; set; } = string.Empty;
         public DateTime Date { get; set; }
-        public string? InTime { get; set; }
-        public string? OutTime { get; set; }
+        public DateTime? InTime { get; set; }
+        public DateTime? OutTime { get; set; }
         public string Status { get; set; } = string.Empty;
         public decimal OTHours { get; set; }
+        public int? ShiftId { get; set; }
+        public string? ShiftName { get; set; }
+        public bool IsOffDay { get; set; }
     }
 
     public class CreateAttendanceDto
     {
-        public int EmployeeId { get; set; }
+        public int EmployeeCard { get; set; }
         public DateTime Date { get; set; }
-        public string? InTime { get; set; }
-        public string? OutTime { get; set; }
+        public DateTime? InTime { get; set; }
+        public DateTime? OutTime { get; set; }
         public string Status { get; set; } = "Present";
         public decimal OTHours { get; set; }
     }

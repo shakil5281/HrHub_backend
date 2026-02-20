@@ -171,13 +171,13 @@ namespace ERPBackend.API.Controllers
                 foreach (var item in group)
                 {
                     worksheet.Cells[currentRow, 1].Value = sl++;
-                    worksheet.Cells[currentRow, 2].Value = item.EmployeeIdCard;
+                    worksheet.Cells[currentRow, 2].Value = item.EmployeeId;
                     worksheet.Cells[currentRow, 3].Value = item.EmployeeName;
                     worksheet.Cells[currentRow, 4].Value = item.Department;
                     worksheet.Cells[currentRow, 5].Value = item.Designation;
                     worksheet.Cells[currentRow, 6].Value = item.Shift;
-                    worksheet.Cells[currentRow, 7].Value = item.InTime ?? "-";
-                    worksheet.Cells[currentRow, 8].Value = item.OutTime ?? "-";
+                    worksheet.Cells[currentRow, 7].Value = item.InTime?.ToString("HH:mm") ?? "-";
+                    worksheet.Cells[currentRow, 8].Value = item.OutTime?.ToString("HH:mm") ?? "-";
 
                     string statusShort = item.Status switch
                     {
@@ -329,12 +329,12 @@ namespace ERPBackend.API.Controllers
                             foreach (var item in data)
                             {
                                 table.Cell().Element(DataCellStyle).Text(slCount++.ToString());
-                                table.Cell().Element(DataCellStyle).Text(item.EmployeeIdCard);
+                                table.Cell().Element(DataCellStyle).Text(item.EmployeeId);
                                 table.Cell().Element(DataCellStyle).Text(item.EmployeeName);
                                 table.Cell().Element(DataCellStyle).Text(item.Department);
                                 table.Cell().Element(DataCellStyle).Text(item.Designation);
-                                table.Cell().Element(DataCellStyle).Text(item.InTime ?? "-");
-                                table.Cell().Element(DataCellStyle).Text(item.OutTime ?? "-");
+                                table.Cell().Element(DataCellStyle).Text(item.InTime?.ToString("HH:mm") ?? "-");
+                                table.Cell().Element(DataCellStyle).Text(item.OutTime?.ToString("HH:mm") ?? "-");
                                 table.Cell().Element(DataCellStyle).Text(item.Status);
                                 table.Cell().Element(DataCellStyle).Text(item.OTHours.ToString());
 
@@ -383,6 +383,7 @@ namespace ERPBackend.API.Controllers
                 .ThenInclude(e => e!.Group)
                 .Include(a => a.Employee)
                 .ThenInclude(e => e!.Floor)
+                .Include(a => a.Shift)
                 .AsQueryable();
 
             query = ApplyAttendanceFilters(query, filters);
@@ -390,8 +391,8 @@ namespace ERPBackend.API.Controllers
             return await query.Select(a => new AttendanceDto
             {
                 Id = a.Id,
-                EmployeeId = a.EmployeeId,
-                EmployeeIdCard = a.Employee != null ? a.Employee.EmployeeId : "",
+                EmployeeCard = a.EmployeeCard,
+                EmployeeId = a.Employee != null ? a.Employee.EmployeeId : "",
                 EmployeeName = a.Employee != null ? a.Employee.FullNameEn : "",
                 Department = (a.Employee != null && a.Employee.Department != null)
                     ? a.Employee.Department.NameEn
@@ -401,12 +402,15 @@ namespace ERPBackend.API.Controllers
                 Designation = (a.Employee != null && a.Employee.Designation != null)
                     ? a.Employee.Designation.NameEn
                     : "N/A",
-                Shift = (a.Employee != null && a.Employee.Shift != null) ? a.Employee.Shift.NameEn : "N/A",
+                Shift = a.Shift != null ? a.Shift.NameEn : (a.Employee != null && a.Employee.Shift != null ? a.Employee.Shift.NameEn : "N/A"),
                 Date = a.Date,
                 InTime = a.InTime,
                 OutTime = a.OutTime,
                 Status = a.Status,
-                OTHours = a.OTHours
+                OTHours = a.OTHours,
+                ShiftId = a.ShiftId,
+                ShiftName = a.Shift != null ? a.Shift.NameEn : null,
+                IsOffDay = a.IsOffDay
             }).ToListAsync();
         }
 
@@ -492,7 +496,7 @@ namespace ERPBackend.API.Controllers
 
             // Filter attendances to only include active employees to ensure rate consistency
             var activeEmpIds = allEmployees.Select(e => e.Id).ToHashSet();
-            attendances = attendances.Where(a => activeEmpIds.Contains(a.EmployeeId)).ToList();
+            attendances = attendances.Where(a => activeEmpIds.Contains(a.EmployeeCard)).ToList();
 
             // 3. Overall Summary
             var present = attendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
@@ -518,7 +522,7 @@ namespace ERPBackend.API.Controllers
             var departmentSummaries = departments.Select(dept =>
             {
                 var empIds = allEmployees.Where(e => e.DepartmentId == dept!.Id).Select(e => e.Id).ToHashSet();
-                var deptAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
+                var deptAttendances = attendances.Where(a => empIds.Contains(a.EmployeeCard)).ToList();
 
                 var p = deptAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = deptAttendances.Count(a => a.Status == "Late");
@@ -547,7 +551,7 @@ namespace ERPBackend.API.Controllers
             var sectionSummaries = sections.Select(sec =>
             {
                 var empIds = allEmployees.Where(e => e.SectionId == sec!.Id).Select(e => e.Id).ToHashSet();
-                var secAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
+                var secAttendances = attendances.Where(a => empIds.Contains(a.EmployeeCard)).ToList();
 
                 var p = secAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = secAttendances.Count(a => a.Status == "Late");
@@ -576,7 +580,7 @@ namespace ERPBackend.API.Controllers
             var designationSummaries = designations.Select(desig =>
             {
                 var empIds = allEmployees.Where(e => e.DesignationId == desig!.Id).Select(e => e.Id).ToHashSet();
-                var desigAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
+                var desigAttendances = attendances.Where(a => empIds.Contains(a.EmployeeCard)).ToList();
 
                 var p = desigAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = desigAttendances.Count(a => a.Status == "Late");
@@ -605,7 +609,7 @@ namespace ERPBackend.API.Controllers
             var lineSummaries = lines.Select(line =>
             {
                 var empIds = allEmployees.Where(e => e.LineId == line!.Id).Select(e => e.Id).ToHashSet();
-                var lineAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
+                var lineAttendances = attendances.Where(a => empIds.Contains(a.EmployeeCard)).ToList();
 
                 var p = lineAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = lineAttendances.Count(a => a.Status == "Late");
@@ -638,7 +642,7 @@ namespace ERPBackend.API.Controllers
             var groupSummaries = groups.Select(grp =>
             {
                 var empIds = allEmployees.Where(e => e.GroupId == grp.Id).Select(e => e.Id).ToHashSet();
-                var grpAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
+                var grpAttendances = attendances.Where(a => empIds.Contains(a.EmployeeCard)).ToList();
 
                 var p = grpAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                 var l = grpAttendances.Count(a => a.Status == "Late");
@@ -670,7 +674,7 @@ namespace ERPBackend.API.Controllers
                 .Select(g =>
                 {
                     var empIds = g.Select(e => e.Id).ToHashSet();
-                    var dsAttendances = attendances.Where(a => empIds.Contains(a.EmployeeId)).ToList();
+                    var dsAttendances = attendances.Where(a => empIds.Contains(a.EmployeeCard)).ToList();
 
                     var p = dsAttendances.Count(a => a.Status.StartsWith("Present") || a.Status == "Late");
                     var l = dsAttendances.Count(a => a.Status == "Late");
@@ -1138,40 +1142,188 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/attendance/job-card
         [HttpGet("job-card")]
-        public async Task<ActionResult<JobCardResponseDto>> GetJobCard(
-            [FromQuery] int employeeId,
-            [FromQuery] DateTime fromDate,
-            [FromQuery] DateTime toDate)
+        public async Task<ActionResult<JobCardResponseDto>> GetJobCard(int employeeCard, DateTime fromDate,
+            DateTime toDate)
         {
             try
             {
-                // Get employee details
+                var companyId = int.Parse(User.FindFirst("CompanyId")?.Value ?? "0");
+                var from = fromDate.Date;
+                var to = toDate.Date;
+
+                // Get employee details using primary key
                 var employee = await _context.Employees
                     .Include(e => e.Department)
                     .Include(e => e.Designation)
                     .Include(e => e.Section)
                     .Include(e => e.Shift)
-                    .FirstOrDefaultAsync(e => e.Id == employeeId);
+                    .FirstOrDefaultAsync(e => e.Id == employeeCard);
 
                 if (employee == null)
-                    return NotFound(new { message = "Employee not found" });
+                    return NotFound("Employee not found");
 
-                // Get attendance records for the date range
                 var attendances = await _context.Attendances
-                    .Where(a => a.EmployeeId == employeeId &&
-                                a.Date.Date >= fromDate.Date &&
-                                a.Date.Date <= toDate.Date)
+                    .Include(a => a.Shift)
+                    .Where(a => a.EmployeeCard == employeeCard &&
+                                a.Date >= from &&
+                                a.Date <= to)
                     .OrderBy(a => a.Date)
                     .ToListAsync();
 
-                // Generate all dates in range
+                // Get shift roster (with fallback support: fetch all up to 'to' date)
+                var roster = await _context.EmployeeShiftRosters
+                    .Include(r => r.Shift)
+                    .Where(r => r.EmployeeId == employeeCard && r.Date <= to)
+                    .OrderByDescending(r => r.Date)
+                    .ToListAsync();
+
+                // Optimized Log Retrieval: Get logs for the range + 1 day buffer for overnight shifts
+                var minDate = from.AddHours(-6); // Buffer for early morning punches
+                var maxDate = to.AddDays(1).AddHours(14); // Buffer for late night punches/overnight
+
+                // Split the query to avoid OR performance issues on large datasets
+                var dbEmployeeId = employee.Id;
+                var stringEmployeeId = employee.EmployeeId;
+
+                var logs = await _context.AttendanceLogs
+                    .Where(l => (l.EmployeeCard == dbEmployeeId) &&
+                                l.LogTime >= minDate &&
+                                l.LogTime <= maxDate)
+                    .OrderBy(l => l.LogTime)
+                    .ToListAsync();
+
+                // If no logs found via EmployeeCard, try string EmployeeId (for legacy/imported data support)
+                if (logs.Count == 0 && !string.IsNullOrEmpty(stringEmployeeId))
+                {
+                    logs = await _context.AttendanceLogs
+                        .Where(l => l.EmployeeId == stringEmployeeId &&
+                                    l.LogTime >= minDate &&
+                                    l.LogTime <= maxDate)
+                        .OrderBy(l => l.LogTime)
+                        .ToListAsync();
+                }
+
+                // 24-hour overlap logic using RAW LOGS
+                var missingOutAttendance = attendances.Where(a => a.InTime.HasValue && !a.OutTime.HasValue).ToList();
+                Console.WriteLine(
+                    $"[JobCard] Found {missingOutAttendance.Count} attendance records with missing OutTime");
+
+                if (missingOutAttendance.Any())
+                {
+                    // Reuse the logs we already fetched for the entire range
+                    Console.WriteLine($"[JobCard] Using {logs.Count} log entries for processing missing OutTimes");
+
+
+                    Console.WriteLine($"[JobCard] Retrieved {logs.Count} log entries");
+                    foreach (var log in logs)
+                    {
+                        Console.WriteLine($"  - Log: {log.LogTime:yyyy-MM-dd HH:mm:ss}");
+                    }
+
+                    foreach (var att in missingOutAttendance)
+                    {
+                        var inTime = att.InTime!.Value;
+                        Console.WriteLine(
+                            $"[JobCard] Processing Date={att.Date:yyyy-MM-dd}, InTime={inTime:yyyy-MM-dd HH:mm:ss}");
+
+                        var nextDay = att.Date.AddDays(1);
+                        var nextAtt = attendances.FirstOrDefault(a => a.Date.Date == nextDay.Date);
+
+                        // Use shift end time as search limit, not next day's InTime
+                        // Shift ends at 07:10 AM next day, so search up to that time
+                        DateTime searchLimit;
+                        if (!string.IsNullOrEmpty(employee.Shift?.ActualOutTime))
+                        {
+                            // Parse the time string (e.g., "07:10 AM")
+                            if (TimeOnly.TryParse(employee.Shift.ActualOutTime, out var shiftEndTime))
+                            {
+                                searchLimit = new DateTime(nextDay.Year, nextDay.Month, nextDay.Day,
+                                    shiftEndTime.Hour, shiftEndTime.Minute, 0);
+                                Console.WriteLine(
+                                    $"  - Using shift end time as searchLimit={searchLimit:yyyy-MM-dd HH:mm:ss}");
+                            }
+                            else
+                            {
+                                // Parse failed, default to 24 hours
+                                searchLimit = inTime.AddHours(24);
+                                Console.WriteLine(
+                                    $"  - Parse failed, using 24h limit={searchLimit:yyyy-MM-dd HH:mm:ss}");
+                            }
+                        }
+                        else
+                        {
+                            // Fallback: 24 hours from InTime
+                            searchLimit = inTime.AddHours(24);
+                            Console.WriteLine(
+                                $"  - No shift end time, using 24h limit={searchLimit:yyyy-MM-dd HH:mm:ss}");
+                        }
+
+                        var candidateLogs = logs.Where(l => l.LogTime > inTime.AddMinutes(1) && l.LogTime < searchLimit)
+                            .ToList();
+                        Console.WriteLine(
+                            $"  - Found {candidateLogs.Count} candidate logs between {inTime.AddMinutes(1):yyyy-MM-dd HH:mm:ss} and {searchLimit:yyyy-MM-dd HH:mm:ss}");
+
+                        var potentialOut = candidateLogs.LastOrDefault();
+
+                        if (potentialOut != null)
+                        {
+                            Console.WriteLine(
+                                $"  - Using potentialOut={potentialOut.LogTime:yyyy-MM-dd HH:mm:ss} as OutTime");
+                            att.OutTime = potentialOut.LogTime;
+                            if (nextAtt != null && nextAtt.InTime.HasValue)
+                            {
+                                var diff = Math.Abs((nextAtt.InTime.Value - potentialOut.LogTime).TotalMinutes);
+                                if (diff < 5)
+                                {
+                                    Console.WriteLine(
+                                        $"  - Duplicate punch detected (diff={diff:F2} min), clearing next day InTime");
+                                    nextAtt.InTime = null;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"  - No potential OutTime found");
+                        }
+                    }
+                }
+/*
+// 24-hour overlap logic: Check for cross-day punches
+// If an employee punched in early morning (e.g., < 5 AM) on Day X,
+// and Day X-1 has a missing OutTime, assume it belongs to Day X-1.
+foreach (var att in attendances)
+{
+    if (att.InTime.HasValue && att.InTime.Value.Hour < 5)
+    {
+        var prevDate = att.Date.Date.AddDays(-1);
+        var prevAtt = attendances.FirstOrDefault(a => a.Date.Date == prevDate);
+
+        // If previous day exists, has InTime, but NO OutTime
+        if (prevAtt != null && prevAtt.InTime.HasValue && !prevAtt.OutTime.HasValue)
+        {
+            // Move current InTime to previous OutTime
+            prevAtt.OutTime = att.InTime;
+
+            // Mark current InTime as consumed (null) so it doesn't show up as a start for today
+            // Note: This modifies the object in memory only, not DB
+            att.InTime = null;
+
+            // Adjust status if needed?
+            // If current day has no other punches, it might become Absent or Leave depending on logic
+            // For now, we leave status as is, but InTime will be null/empty.
+        }
+    }
+}
+*/
+
+// Generate all dates in range
                 var allDates = new List<DateTime>();
-                for (var date = fromDate.Date; date <= toDate.Date; date = date.AddDays(1))
+                for (var date = from; date <= to; date = date.AddDays(1))
                 {
                     allDates.Add(date);
                 }
 
-                // Create job card records
+// Create job card records
                 var jobCardRecords = new List<JobCardDto>();
                 int presentDays = 0, absentDays = 0, weekendDays = 0, holidayDays = 0;
                 decimal totalOt = 0;
@@ -1180,10 +1332,29 @@ namespace ERPBackend.API.Controllers
                 foreach (var date in allDates)
                 {
                     var attendance = attendances.FirstOrDefault(a => a.Date.Date == date.Date);
+                    
+                    // Fallback logic: 1. Direct match for date, 2. Last submitted roster before date
+                    var employeeRosters = roster.Where(r => r.Date.Date <= date.Date).ToList();
+                    var dayRoster = employeeRosters.FirstOrDefault(r => r.Date.Date == date.Date) 
+                                 ?? employeeRosters.FirstOrDefault(); // roster is already ordered DESC
+
                     var dayName = date.ToString("ddd");
 
-                    // Determine if weekend (Friday/Saturday based on your business logic)
-                    bool isWeekend = dayName == "Fri"; // Adjust based on your weekend days
+                    // Determine if weekend (Friday/Saturday or from Roster)
+                    bool isWeekend = dayRoster?.IsOffDay ?? (dayName == "Fri"); 
+                    // Priority: 1. Attendance Record Shift (if processed), 2. Roster (Direct or Fallback), 3. Default Employee Shift
+                    string? dailyShift = (attendance != null && attendance.Shift != null) 
+                        ? attendance.Shift.NameEn 
+                        : (dayRoster?.Shift?.NameEn ?? employee.Shift?.NameEn);
+                    
+                    int? dailyShiftId = (attendance != null && attendance.ShiftId.HasValue)
+                        ? attendance.ShiftId
+                        : (dayRoster?.ShiftId ?? employee.ShiftId);
+
+                    bool dailyIsOffDay = (attendance != null && attendance.IsOffDay)
+                        ? true
+                        : (dayRoster?.IsOffDay ?? (dayName == "Fri"));
+                    
 
                     JobCardDto record;
 
@@ -1197,32 +1368,64 @@ namespace ERPBackend.API.Controllers
                             lateMinutes = 15; // Default late minutes
                         }
 
-                        // Calculate total hours (assuming 9 hours standard)
-                        decimal totalHours = attendance.Status == "Present" || attendance.Status == "Late"
-                            ? 9 + attendance.OTHours
-                            : 0;
+                        // Calculate total hours based on actual In/Out times if available
+                        decimal totalHours = 0;
+                        decimal otHours = attendance.OTHours;
+
+                        if (employee.IsOtEnabled && attendance.InTime.HasValue && attendance.OutTime.HasValue)
+                        {
+                            var duration = attendance.OutTime.Value - attendance.InTime.Value;
+                            totalHours = (decimal)duration.TotalHours;
+
+                            // Recalculate OT using the 45-minute rounding rule
+                            // Total Hours = 9 (standard) + OT
+                            decimal rawOt = totalHours - 9;
+                            if (rawOt > 0)
+                            {
+                                int otMinutes = (int)((rawOt - (int)rawOt) * 60);
+                                otHours = (int)rawOt + (otMinutes >= 45 ? 1 : 0);
+                            }
+                            else
+                            {
+                                otHours = 0;
+                            }
+                        }
+                        else if (employee.IsOtEnabled && (attendance.Status == "Present" || attendance.Status == "Late"))
+                        {
+                            // Fallback to existing logic if no Punches but Status is Present
+                            otHours = attendance.OTHours; 
+                            totalHours = 9 + otHours;
+                        }
+                        else
+                        {
+                            otHours = 0;
+                            totalHours = (attendance.Status == "Present" || attendance.Status == "Late") ? 9 : 0;
+                        }
 
                         record = new JobCardDto
                         {
                             Date = date.ToString("dd MMM"),
                             Day = dayName,
                             Status = attendance.Status,
-                            InTime = attendance.InTime,
-                            OutTime = attendance.OutTime,
+                            InTime = attendance.InTime?.ToString("HH:mm") ?? "-",
+                            OutTime = attendance.OutTime?.ToString("HH:mm") ?? "-",
                             LateMinutes = lateMinutes,
                             EarlyMinutes = 0,
-                            OTHours = attendance.OTHours,
-                            TotalHours = totalHours,
+                            OTHours = otHours, // Rounding handled above
+                            TotalHours = Math.Round(totalHours, 2),
+                            Shift = dailyShift,
+                            ShiftId = dailyShiftId,
+                            IsOffDay = dailyIsOffDay,
                             Remarks = attendance.Status == "Absent" ? "Uninformed" : ""
                         };
 
                         // Update counters
                         if (attendance.Status == "Present" || attendance.Status == "Late") presentDays++;
                         else if (attendance.Status == "Absent") absentDays++;
-                        else if (attendance.Status == "Off Day") weekendDays++;
+                        else if (attendance.Status == "Off Day" || attendance.IsOffDay) weekendDays++;
                         else if (attendance.Status == "Holiday") holidayDays++;
 
-                        totalOt += attendance.OTHours;
+                        totalOt += otHours;
                         totalLate += lateMinutes;
                     }
                     else if (isWeekend)
@@ -1238,6 +1441,9 @@ namespace ERPBackend.API.Controllers
                             EarlyMinutes = 0,
                             OTHours = 0,
                             TotalHours = 0,
+                            Shift = dailyShift,
+                            ShiftId = dailyShiftId,
+                            IsOffDay = true,
                             Remarks = "Weekly Off"
                         };
                         weekendDays++;
@@ -1268,8 +1474,8 @@ namespace ERPBackend.API.Controllers
                 {
                     Employee = new EmployeeJobCardDto
                     {
-                        EmployeeId = employee.Id,
-                        EmployeeIdCard = employee.EmployeeId,
+                        EmployeeCard = employee.Id,
+                        EmployeeId = employee.EmployeeId,
                         EmployeeName = employee.FullNameEn,
                         Department = employee.Department?.NameEn ?? "N/A",
                         Designation = employee.Designation?.NameEn ?? "N/A",
@@ -1302,28 +1508,30 @@ namespace ERPBackend.API.Controllers
             }
         }
 
-        // POST: api/attendance/manual-entry
+// POST: api/attendance/manual-entry
         [HttpPost("manual-entry")]
         public async Task<ActionResult<ManualAttendanceResponseDto>> CreateManualEntry(
             [FromBody] ManualAttendanceDto dto)
         {
             try
             {
-                // Get current user
+// Get current user
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
 
-                // Validate employee exists
+// Validate employee exists using business key
                 var employee = await _context.Employees
                     .Include(e => e.Department)
-                    .FirstOrDefaultAsync(e => e.Id == dto.EmployeeId);
+                    .FirstOrDefaultAsync(e => e.EmployeeId == dto.EmployeeId && e.CompanyId == dto.CompanyId);
 
                 if (employee == null)
                     return NotFound(new { message = "Employee not found" });
 
-                // Check if attendance already exists for this date
+                int dbEmployeeId = employee.Id;
+
+// Check if attendance already exists for this date
                 var existing = await _context.Attendances
-                    .FirstOrDefaultAsync(a => a.EmployeeId == dto.EmployeeId && a.Date.Date == dto.Date.Date);
+                    .FirstOrDefaultAsync(a => a.EmployeeCard == dbEmployeeId && a.Date.Date == dto.Date.Date);
 
                 if (existing != null)
                 {
@@ -1333,16 +1541,46 @@ namespace ERPBackend.API.Controllers
                     existing.Status = dto.Status;
                     existing.Reason = dto.Reason;
                     existing.Remarks = dto.Remarks;
+                    existing.IsManual = true;
                     existing.UpdatedAt = DateTime.UtcNow;
                     existing.UpdatedBy = userName;
+
+                    // Add manual log entries if In/Out times are provided
+                    if (dto.InTime.HasValue)
+                    {
+                        _context.AttendanceLogs.Add(new AttendanceLog
+                        {
+                            EmployeeCard = dbEmployeeId,
+                            EmployeeId = employee.EmployeeId,
+                            CompanyId = employee.CompanyId,
+                            LogTime = dto.InTime.Value,
+                            DeviceId = "Manual",
+                            VerificationMode = "Manual",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+
+                    if (dto.OutTime.HasValue)
+                    {
+                        _context.AttendanceLogs.Add(new AttendanceLog
+                        {
+                            EmployeeCard = dbEmployeeId,
+                            EmployeeId = employee.EmployeeId,
+                            CompanyId = employee.CompanyId,
+                            LogTime = dto.OutTime.Value,
+                            DeviceId = "Manual",
+                            VerificationMode = "Manual",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
 
                     await _context.SaveChangesAsync();
 
                     return Ok(new ManualAttendanceResponseDto
                     {
                         Id = existing.Id,
-                        EmployeeId = employee.Id,
-                        EmployeeIdCard = employee.EmployeeId,
+                        EmployeeId = employee.EmployeeId,
+                        CompanyId = employee.CompanyId ?? 0,
                         EmployeeName = employee.FullNameEn,
                         Date = existing.Date,
                         InTime = existing.InTime,
@@ -1359,12 +1597,15 @@ namespace ERPBackend.API.Controllers
                     // Create new record
                     var attendance = new Attendance
                     {
-                        EmployeeId = dto.EmployeeId,
+                        EmployeeCard = dbEmployeeId,
+                        EmployeeId = employee.EmployeeId,
+                        CompanyId = employee.CompanyId,
                         Date = dto.Date.Date,
                         InTime = dto.InTime,
                         OutTime = dto.OutTime,
                         Status = dto.Status,
                         OTHours = 0, // Can be calculated based on shift
+                        IsManual = true,
                         Reason = dto.Reason,
                         Remarks = dto.Remarks,
                         CreatedAt = DateTime.UtcNow,
@@ -1372,13 +1613,43 @@ namespace ERPBackend.API.Controllers
                     };
 
                     _context.Attendances.Add(attendance);
+
+                    // Add manual log entries if In/Out times are provided
+                    if (dto.InTime.HasValue)
+                    {
+                        _context.AttendanceLogs.Add(new AttendanceLog
+                        {
+                            EmployeeCard = dbEmployeeId,
+                            EmployeeId = employee.EmployeeId,
+                            CompanyId = employee.CompanyId,
+                            LogTime = dto.InTime.Value,
+                            DeviceId = "Manual",
+                            VerificationMode = "Manual",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+
+                    if (dto.OutTime.HasValue)
+                    {
+                        _context.AttendanceLogs.Add(new AttendanceLog
+                        {
+                            EmployeeCard = dbEmployeeId,
+                            EmployeeId = employee.EmployeeId,
+                            CompanyId = employee.CompanyId,
+                            LogTime = dto.OutTime.Value,
+                            DeviceId = "Manual",
+                            VerificationMode = "Manual",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+
                     await _context.SaveChangesAsync();
 
                     return Ok(new ManualAttendanceResponseDto
                     {
                         Id = attendance.Id,
-                        EmployeeId = employee.Id,
-                        EmployeeIdCard = employee.EmployeeId,
+                        EmployeeId = employee.EmployeeId,
+                        CompanyId = employee.CompanyId ?? 0,
                         EmployeeName = employee.FullNameEn,
                         Date = attendance.Date,
                         InTime = attendance.InTime,
@@ -1398,7 +1669,7 @@ namespace ERPBackend.API.Controllers
             }
         }
 
-        // POST: api/attendance/manual-entry/bulk
+// POST: api/attendance/manual-entry/bulk
         [HttpPost("bulk")]
         public async Task<IActionResult> CreateBulkManualEntry([FromBody] List<ManualAttendanceDto> dtos)
         {
@@ -1411,24 +1682,27 @@ namespace ERPBackend.API.Controllers
                 var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
 
                 var employeeIds = dtos.Select(d => d.EmployeeId).Distinct().ToList();
-                var employees = await _context.Employees
-                    .Where(e => employeeIds.Contains(e.Id))
-                    .ToDictionaryAsync(e => e.Id);
+                var companyId = dtos.FirstOrDefault()?.CompanyId ?? 0;
 
+                var employees = await _context.Employees
+                    .Where(e => employeeIds.Contains(e.EmployeeId) && e.CompanyId == companyId)
+                    .ToDictionaryAsync(e => e.EmployeeId);
+
+                var dbEmployeeIds = employees.Values.Select(e => e.Id).ToList();
                 var dates = dtos.Select(d => d.Date.Date).Distinct().ToList();
                 var existingAttendances = await _context.Attendances
-                    .Where(a => employeeIds.Contains(a.EmployeeId) && dates.Contains(a.Date.Date))
+                    .Where(a => dbEmployeeIds.Contains(a.EmployeeCard) && dates.Contains(a.Date.Date))
                     .ToListAsync();
-                
+
                 var newAttendances = new List<Attendance>();
                 int updatedCount = 0;
 
                 foreach (var dto in dtos)
                 {
-                    if (!employees.ContainsKey(dto.EmployeeId)) continue;
+                    if (!employees.TryGetValue(dto.EmployeeId, out var employee)) continue;
 
                     var existing = existingAttendances
-                        .FirstOrDefault(a => a.EmployeeId == dto.EmployeeId && a.Date.Date == dto.Date.Date);
+                        .FirstOrDefault(a => a.EmployeeCard == employee.Id && a.Date.Date == dto.Date.Date);
 
                     if (existing != null)
                     {
@@ -1437,45 +1711,115 @@ namespace ERPBackend.API.Controllers
                         existing.Status = dto.Status;
                         existing.Reason = dto.Reason;
                         existing.Remarks = dto.Remarks;
+                        existing.IsManual = true;
                         existing.UpdatedAt = DateTime.UtcNow;
                         existing.UpdatedBy = userName;
                         updatedCount++;
+
+                        // Add manual log entries if In/Out times are provided
+                        if (dto.InTime.HasValue)
+                        {
+                            _context.AttendanceLogs.Add(new AttendanceLog
+                            {
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                CompanyId = employee.CompanyId,
+                                LogTime = dto.InTime.Value,
+                                DeviceId = "Manual",
+                                VerificationMode = "Manual",
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+
+                        if (dto.OutTime.HasValue)
+                        {
+                            _context.AttendanceLogs.Add(new AttendanceLog
+                            {
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                CompanyId = employee.CompanyId,
+                                LogTime = dto.OutTime.Value,
+                                DeviceId = "Manual",
+                                VerificationMode = "Manual",
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
                     }
                     else
                     {
-                        newAttendances.Add(new Attendance
+                        var attendance = new Attendance
                         {
-                            EmployeeId = dto.EmployeeId,
+                            EmployeeCard = employee.Id,
+                            EmployeeId = employee.EmployeeId,
+                            CompanyId = employee.CompanyId,
                             Date = dto.Date.Date,
                             InTime = dto.InTime,
                             OutTime = dto.OutTime,
                             Status = dto.Status,
                             OTHours = 0, // Calculate if needed
+                            IsManual = true,
                             Reason = dto.Reason,
                             Remarks = dto.Remarks,
                             CreatedAt = DateTime.UtcNow,
                             CreatedBy = userName
-                        });
+                        };
+                        newAttendances.Add(attendance);
+
+                        // Add manual log entries if In/Out times are provided
+                        if (dto.InTime.HasValue)
+                        {
+                            _context.AttendanceLogs.Add(new AttendanceLog
+                            {
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                CompanyId = employee.CompanyId,
+                                LogTime = dto.InTime.Value,
+                                DeviceId = "Manual",
+                                VerificationMode = "Manual",
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+
+                        if (dto.OutTime.HasValue)
+                        {
+                            _context.AttendanceLogs.Add(new AttendanceLog
+                            {
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                CompanyId = employee.CompanyId,
+                                LogTime = dto.OutTime.Value,
+                                DeviceId = "Manual",
+                                VerificationMode = "Manual",
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
                     }
                 }
+
 
                 if (newAttendances.Any())
                     _context.Attendances.AddRange(newAttendances);
 
                 await _context.SaveChangesAsync();
 
-                return Ok(new { message = $"Processed {dtos.Count} entries. Created: {newAttendances.Count}, Updated: {updatedCount}" });
+                return Ok(new
+                {
+                    message =
+                        $"Processed {dtos.Count} entries. Created: {newAttendances.Count}, Updated: {updatedCount}"
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while processing bulk entries.", error = ex.Message });
+                return StatusCode(500,
+                    new { message = "An error occurred while processing bulk entries.", error = ex.Message });
             }
         }
 
-        // GET: api/attendance/manual-entry/history
+// GET: api/attendance/manual-entry/history
         [HttpGet("manual-entry/history")]
         public async Task<ActionResult<IEnumerable<ManualAttendanceHistoryDto>>> GetManualEntryHistory(
-            [FromQuery] int? employeeId,
+            [FromQuery] string? employeeId,
+            [FromQuery] int? companyId,
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate,
             [FromQuery] int pageSize = 20)
@@ -1487,8 +1831,22 @@ namespace ERPBackend.API.Controllers
                     .Where(a => a.Reason != null) // Only manual entries
                     .AsQueryable();
 
-                if (employeeId.HasValue)
-                    query = query.Where(a => a.EmployeeId == employeeId.Value);
+                if (!string.IsNullOrEmpty(employeeId))
+                {
+                    if (companyId.HasValue)
+                    {
+                        query = query.Where(a =>
+                            a.Employee!.EmployeeId == employeeId && a.CompanyId == companyId.Value);
+                    }
+                    else
+                    {
+                        query = query.Where(a => a.Employee!.EmployeeId == employeeId);
+                    }
+                }
+                else if (companyId.HasValue)
+                {
+                    query = query.Where(a => a.CompanyId == companyId.Value);
+                }
 
                 if (fromDate.HasValue)
                     query = query.Where(a => a.Date.Date >= fromDate.Value.Date);
@@ -1502,7 +1860,7 @@ namespace ERPBackend.API.Controllers
                     .Select(a => new ManualAttendanceHistoryDto
                     {
                         Id = a.Id,
-                        EmployeeIdCard = a.Employee!.EmployeeId,
+                        EmployeeId = a.Employee!.EmployeeId,
                         EmployeeName = a.Employee!.FullNameEn,
                         Date = a.Date,
                         InTime = a.InTime,
@@ -1523,11 +1881,12 @@ namespace ERPBackend.API.Controllers
             }
         }
 
-        // GET: api/attendance/missing-entries
+// GET: api/attendance/missing-entries
         [HttpGet("missing-entries")]
         public async Task<ActionResult<MissingEntryResponseDto>> GetMissingEntries(
             [FromQuery] DateTime fromDate,
             [FromQuery] DateTime toDate,
+            [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
             [FromQuery] int? designationId,
             [FromQuery] int? sectionId,
@@ -1535,85 +1894,93 @@ namespace ERPBackend.API.Controllers
         {
             try
             {
-                // Get all active employees with filters
+// Start with filtered employees
                 var employeesQuery = _context.Employees
                     .Include(e => e.Department)
                     .Include(e => e.Designation)
                     .Include(e => e.Shift)
                     .Where(e => e.IsActive);
 
+// Use the same CommonFilterDto properties for employee filtering
+                if (companyId.HasValue)
+                    employeesQuery = employeesQuery.Where(e => e.CompanyId == companyId.Value);
                 if (departmentId.HasValue)
-                    employeesQuery = employeesQuery.Where(e => e.DepartmentId == departmentId.Value);
-
+                    if (departmentId.HasValue)
+                        employeesQuery = employeesQuery.Where(e => e.DepartmentId == departmentId.Value);
                 if (designationId.HasValue)
                     employeesQuery = employeesQuery.Where(e => e.DesignationId == designationId.Value);
-
-                if (sectionId.HasValue)
-                    employeesQuery = employeesQuery.Where(e => e.SectionId == sectionId.Value);
-
+                if (sectionId.HasValue) employeesQuery = employeesQuery.Where(e => e.SectionId == sectionId.Value);
                 if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
                     employeesQuery = employeesQuery.Where(e =>
                         e.EmployeeId.Contains(searchTerm) ||
                         e.FullNameEn.Contains(searchTerm));
+                }
 
                 var employees = await employeesQuery.ToListAsync();
+                var employeeIds = employees.Select(e => e.Id).ToList();
 
-                // Get all attendance records for the date range
+// Get attendance for these employees in the range
                 var attendances = await _context.Attendances
-                    .Where(a => a.Date.Date >= fromDate.Date && a.Date.Date <= toDate.Date)
+                    .Where(a => employeeIds.Contains(a.EmployeeCard) &&
+                                a.Date.Date >= fromDate.Date &&
+                                a.Date.Date <= toDate.Date)
                     .ToListAsync();
 
-                // Find missing entries
                 var missingEntries = new List<MissingEntryDto>();
                 int idCounter = 1;
 
                 foreach (var employee in employees)
                 {
-                    // Check each date in the range
                     for (var date = fromDate.Date; date <= toDate.Date; date = date.AddDays(1))
                     {
-                        // Skip weekends (Friday for now - can be made configurable)
-                        if (date.DayOfWeek == DayOfWeek.Friday)
-                            continue;
-
+                        // Check if an attendance record exists for this employee/date
                         var attendance = attendances.FirstOrDefault(a =>
-                            a.EmployeeId == employee.Id &&
-                            a.Date.Date == date.Date);
+                            a.EmployeeCard == employee.Id && a.Date.Date == date.Date);
+
+                        bool isMissingIn = false;
+                        bool isMissingOut = false;
+                        string missingType = "";
+                        string entryStatus = "Pending";
 
                         if (attendance != null)
                         {
-                            // Check for missing in/out times
-                            bool missingIn = string.IsNullOrWhiteSpace(attendance.InTime);
-                            bool missingOut = string.IsNullOrWhiteSpace(attendance.OutTime);
+                            isMissingIn = !attendance.InTime.HasValue;
+                            isMissingOut = !attendance.OutTime.HasValue;
 
-                            // Only show if exactly one is missing (excluding "Both (No Punch)")
-                            if (missingIn ^ missingOut)
+                            // Only include if EXACTLY ONE punch is missing
+                            if (isMissingIn ^ isMissingOut)
                             {
-                                string missingType = missingIn ? "In Time" : "Out Time";
-                                string status = "Pending";
-
-                                missingEntries.Add(new MissingEntryDto
-                                {
-                                    Id = idCounter++,
-                                    EmployeeId = employee.Id,
-                                    EmployeeIdCard = employee.EmployeeId,
-                                    EmployeeName = employee.FullNameEn,
-                                    Department = employee.Department?.NameEn ?? "N/A",
-                                    Designation = employee.Designation?.NameEn ?? "N/A",
-                                    Shift = employee.Shift?.NameEn,
-                                    Date = date,
-                                    InTime = attendance.InTime,
-                                    OutTime = attendance.OutTime,
-                                    MissingType = missingType,
-                                    Status = status
-                                });
+                                missingType = isMissingIn ? "In Time" : "Out Time";
+                                entryStatus = "Pending";
                             }
                         }
-                        // We skip the "else" (attendance == null) case because user doesn't want "Both (No Punch)"
+                        // We no longer handle the 'else' (attendance == null) case
+                        // because the user wants to exclude "Both (No Punch)" cases.
+
+                        if (!string.IsNullOrEmpty(missingType))
+                        {
+                            missingEntries.Add(new MissingEntryDto
+                            {
+                                Id = idCounter++,
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                EmployeeName = employee.FullNameEn,
+                                CompanyId = employee.CompanyId,
+                                Department = employee.Department?.NameEn ?? "N/A",
+                                Designation = employee.Designation?.NameEn ?? "N/A",
+                                Shift = employee.Shift?.NameEn,
+                                Date = date,
+                                InTime = attendance?.InTime,
+                                OutTime = attendance?.OutTime,
+                                MissingType = missingType,
+                                Status = entryStatus
+                            });
+                        }
                     }
                 }
 
-                // Calculate summary
+// Calculate summary from the final list
                 var summary = new MissingEntrySummaryDto
                 {
                     TotalMissing = missingEntries.Count,
@@ -1636,11 +2003,12 @@ namespace ERPBackend.API.Controllers
             }
         }
 
-        // GET: api/attendance/absenteeism-records
+// GET: api/attendance/absenteeism-records
         [HttpGet("absenteeism-records")]
         public async Task<ActionResult<AbsenteeismResponseDto>> GetAbsenteeismRecords(
             [FromQuery] DateTime fromDate,
             [FromQuery] DateTime toDate,
+            [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
             [FromQuery] int? designationId,
             [FromQuery] string? searchTerm)
@@ -1655,6 +2023,9 @@ namespace ERPBackend.API.Controllers
                     .Where(a => a.Date.Date >= fromDate.Date && a.Date.Date <= toDate.Date)
                     .Where(a => a.Status == "Absent" || a.Status == "On Leave");
 
+                if (companyId.HasValue)
+                    query = query.Where(a => a.CompanyId == companyId.Value);
+
                 if (departmentId.HasValue)
                     query = query.Where(a => a.Employee!.DepartmentId == departmentId.Value);
 
@@ -1668,9 +2039,9 @@ namespace ERPBackend.API.Controllers
 
                 var absences = await query.ToListAsync();
 
-                // Group by employee to calculate consecutive days
+// Group by employee to calculate consecutive days
                 var records = absences
-                    .GroupBy(a => a.EmployeeId)
+                    .GroupBy(a => a.EmployeeCard)
                     .SelectMany(g =>
                     {
                         var empAbsences = g.OrderBy(a => a.Date).ToList();
@@ -1695,8 +2066,8 @@ namespace ERPBackend.API.Controllers
                             result.Add(new AbsenteeismRecordDto
                             {
                                 Id = attendance.Id,
-                                EmployeeId = attendance.EmployeeId,
-                                EmployeeIdCard = attendance.Employee!.EmployeeId,
+                                EmployeeCard = attendance.EmployeeCard,
+                                EmployeeId = attendance.Employee!.EmployeeId,
                                 EmployeeName = attendance.Employee!.FullNameEn,
                                 Department = attendance.Employee!.Department?.NameEn ?? "N/A",
                                 Designation = attendance.Employee!.Designation?.NameEn ?? "N/A",
@@ -1732,7 +2103,7 @@ namespace ERPBackend.API.Controllers
             }
         }
 
-        // GET: api/attendance/daily-ot-sheet
+// GET: api/attendance/daily-ot-sheet
         [HttpGet("daily-ot-sheet")]
         public async Task<ActionResult<OTSheetResponseDto>> GetDailyOtSheet([FromQuery] CommonFilterDto filters)
         {
@@ -1753,8 +2124,8 @@ namespace ERPBackend.API.Controllers
                     .Select(a => new DailyOTSheetDto
                     {
                         Id = a.Id,
-                        EmployeeId = a.EmployeeId,
-                        EmployeeIdCard = a.Employee!.EmployeeId,
+                        EmployeeCard = a.EmployeeCard,
+                        EmployeeId = a.Employee!.EmployeeId,
                         EmployeeName = a.Employee!.FullNameEn,
                         Department = a.Employee!.Department!.NameEn,
                         Designation = a.Employee!.Designation!.NameEn,
@@ -1781,7 +2152,7 @@ namespace ERPBackend.API.Controllers
             }
         }
 
-        // GET: api/attendance/daily-ot-summary
+// GET: api/attendance/daily-ot-summary
         [HttpGet("daily-ot-summary")]
         public async Task<ActionResult<OTSummaryResponseDto>> GetDailyOtSummary([FromQuery] CommonFilterDto filters)
         {
@@ -1827,7 +2198,7 @@ namespace ERPBackend.API.Controllers
             }
         }
 
-        // POST: api/attendance/seed-mock
+// POST: api/attendance/seed-mock
         [HttpPost("seed-mock")]
         [Authorize(Roles = UserRoles.SuperAdmin)]
         public async Task<IActionResult> SeedMockData([FromQuery] DateTime date)
@@ -1842,12 +2213,16 @@ namespace ERPBackend.API.Controllers
             foreach (var emp in employees)
             {
                 var status = statuses[random.Next(statuses.Length)];
-                var inTime = status == "Absent" || status == "On Leave" ? null : "09:00 AM";
-                var outTime = status == "Absent" || status == "On Leave" ? null : "06:00 PM";
+                var inTime = status == "Absent" || status == "On Leave"
+                    ? (DateTime?)null
+                    : DateTime.Today.AddHours(9); // 09:00 AM
+                var outTime = status == "Absent" || status == "On Leave"
+                    ? (DateTime?)null
+                    : DateTime.Today.AddHours(18); // 06:00 PM
 
                 _context.Attendances.Add(new Attendance
                 {
-                    EmployeeId = emp.Id,
+                    EmployeeCard = emp.Id,
                     Date = date.Date,
                     InTime = inTime,
                     OutTime = outTime,
@@ -1862,7 +2237,7 @@ namespace ERPBackend.API.Controllers
             return Ok("Mock data seeded successfully");
         }
 
-        // POST: api/attendance/process
+// POST: api/attendance/process
         [HttpPost("process")]
         public async Task<IActionResult> ProcessDailyData([FromBody] DailyProcessDto dto)
         {
@@ -1874,7 +2249,7 @@ namespace ERPBackend.API.Controllers
                 if (startDate > endDate)
                     return BadRequest("FromDate must be before or equal to ToDate");
 
-                // Get all active employees
+// Get all active employees
                 var employeesQuery = _context.Employees
                     .Where(e => e.IsActive)
                     .AsQueryable();
@@ -1886,15 +2261,21 @@ namespace ERPBackend.API.Controllers
                 var shifts = await _context.Shifts.ToListAsync();
 
                 var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "System";
+                var empIds = employees.Select(e => e.Id).ToList();
+
+                // Pre-fetch ALL rosters for these employees up to endDate for fallback logic
+                var allRosters = await _context.EmployeeShiftRosters
+                    .Where(r => empIds.Contains(r.EmployeeId) && r.Date.Date <= endDate)
+                    .OrderByDescending(r => r.Date)
+                    .ToListAsync();
 
                 int processedCount = 0;
 
                 for (var date = startDate; date <= endDate; date = date.AddDays(1))
                 {
-                    // Pre-fetch data for the current date to optimize
-                    var rosters = await _context.EmployeeShiftRosters
-                        .Where(r => r.Date.Date == date.Date)
-                        .ToListAsync();
+                    // Pre-filter rosters for the current date or earlier
+                    var relevantRosters = allRosters.Where(r => r.Date.Date <= date.Date).ToList();
+
 
                     var leaves = await _context.LeaveApplications
                         .Where(l => l.Status == "Approved" && l.StartDate.Date <= date.Date &&
@@ -1907,9 +2288,20 @@ namespace ERPBackend.API.Controllers
 
                     foreach (var emp in employees)
                     {
-                        var roster = rosters.FirstOrDefault(r => r.EmployeeId == emp.Id);
+                        // Fallback logic: 1. Direct match for date, 2. Last submitted roster before date
+                        var employeeRosters = relevantRosters.Where(r => r.EmployeeId == emp.Id).ToList();
+                        var roster = employeeRosters.FirstOrDefault(r => r.Date.Date == date.Date) 
+                                     ?? employeeRosters.OrderByDescending(r => r.Date).FirstOrDefault();
+
                         var leave = leaves.FirstOrDefault(l => l.EmployeeId == emp.Id);
-                        var attendance = existingAttendances.FirstOrDefault(a => a.EmployeeId == emp.Id);
+                        var attendance = existingAttendances.FirstOrDefault(a => a.EmployeeCard == emp.Id);
+
+                        // If manual attendance exists, skip processing for this employee/date
+                        if (attendance != null && attendance.IsManual)
+                        {
+                            processedCount++;
+                            continue;
+                        }
 
                         // Determine Shift
                         var shiftId = roster?.ShiftId ?? emp.ShiftId;
@@ -1929,15 +2321,12 @@ namespace ERPBackend.API.Controllers
                         {
                             status = "Off Day";
                         }
-                        else if (attendance != null && (!string.IsNullOrEmpty(attendance.InTime) ||
-                                                        !string.IsNullOrEmpty(attendance.OutTime)))
+                        else if (attendance != null && (attendance.InTime.HasValue ||
+                                                        attendance.OutTime.HasValue))
                         {
                             // Re-classify In/Out times based on user rules (cutoff at 11:00 AM)
                             var rawIn = attendance.InTime;
                             var rawOut = attendance.OutTime;
-
-                            var p1 = ParseTime(rawIn);
-                            var p2 = ParseTime(rawOut);
 
                             TimeSpan? actualIn = null;
                             TimeSpan? actualOut = null;
@@ -1946,8 +2335,9 @@ namespace ERPBackend.API.Controllers
 
                             // Collect all unique non-null times
                             var allTimes = new List<TimeSpan>();
-                            if (p1.HasValue) allTimes.Add(p1.Value);
-                            if (p2.HasValue && (!p1.HasValue || p1.Value != p2.Value)) allTimes.Add(p2.Value);
+                            if (rawIn.HasValue) allTimes.Add(rawIn.Value.TimeOfDay);
+                            if (rawOut.HasValue && (!rawIn.HasValue || rawIn.Value != rawOut.Value))
+                                allTimes.Add(rawOut.Value.TimeOfDay);
 
                             foreach (var t in allTimes)
                             {
@@ -1961,13 +2351,13 @@ namespace ERPBackend.API.Controllers
                                 }
                             }
 
-                            attendance.InTime = actualIn?.ToString(@"HH\:mm\:ss");
-                            attendance.OutTime = actualOut?.ToString(@"HH\:mm\:ss");
+                            attendance.InTime = actualIn.HasValue ? date.Date.Add(actualIn.Value) : (DateTime?)null;
+                            attendance.OutTime = actualOut.HasValue ? date.Date.Add(actualOut.Value) : (DateTime?)null;
 
-                            if (!string.IsNullOrEmpty(attendance.InTime))
+                            if (attendance.InTime.HasValue)
                             {
                                 // Calculate Late
-                                var inTime = ParseTime(attendance.InTime);
+                                var inTime = attendance.InTime.Value.TimeOfDay;
                                 var shiftInTime = ParseTime(shift.InTime);
                                 var lateLimit = ParseTime(shift.LateInTime) ??
                                                 shiftInTime?.Add(TimeSpan.FromMinutes(15));
@@ -1981,21 +2371,21 @@ namespace ERPBackend.API.Controllers
                                     status = "Present";
                                 }
                             }
-                            else if (!string.IsNullOrEmpty(attendance.OutTime))
+                            else if (attendance.OutTime.HasValue)
                             {
                                 status = "Present (Out Only)";
                             }
 
                             // Calculate OT
-                            if (emp.IsOtEnabled && !string.IsNullOrEmpty(attendance.OutTime) &&
+                            if (emp.IsOtEnabled && attendance.OutTime.HasValue &&
                                 !string.IsNullOrEmpty(shift.OutTime))
                             {
-                                var outTime = ParseTime(attendance.OutTime);
+                                var outTime = attendance.OutTime.Value.TimeOfDay;
                                 var shiftOutTime = ParseTime(shift.OutTime);
 
                                 if (outTime > shiftOutTime)
                                 {
-                                    var diff = (outTime.Value - shiftOutTime.Value).TotalHours;
+                                    var diff = (outTime - shiftOutTime.Value).TotalHours;
                                     otHours = (decimal)Math.Max(0, Math.Floor(diff));
                                 }
                             }
@@ -2006,6 +2396,8 @@ namespace ERPBackend.API.Controllers
                         {
                             attendance.Status = status;
                             attendance.OTHours = otHours;
+                            attendance.ShiftId = shiftId;
+                            attendance.IsOffDay = status == "Off Day";
                             attendance.UpdatedAt = DateTime.UtcNow;
                             attendance.UpdatedBy = userName;
                         }
@@ -2013,10 +2405,12 @@ namespace ERPBackend.API.Controllers
                         {
                             _context.Attendances.Add(new Attendance
                             {
-                                EmployeeId = emp.Id,
+                                EmployeeCard = emp.Id,
                                 Date = date,
                                 Status = status,
                                 OTHours = otHours,
+                                ShiftId = shiftId,
+                                IsOffDay = status == "Off Day",
                                 CreatedAt = DateTime.UtcNow,
                                 CreatedBy = userName
                             });
@@ -2048,10 +2442,46 @@ namespace ERPBackend.API.Controllers
                 var updatedCount = 0;
                 var createdCount = 0;
 
+                var employees = await _context.Employees
+                    .Include(e => e.Shift)
+                    .Where(e => dto.EmployeeIds.Contains(e.EmployeeId) &&
+                                (!dto.CompanyId.HasValue || e.CompanyId == dto.CompanyId.Value))
+                    .ToDictionaryAsync(e => e.EmployeeId);
+
                 foreach (var empId in dto.EmployeeIds)
                 {
+                    if (!employees.TryGetValue(empId, out var employee)) continue;
+
                     var existing = await _context.Attendances
-                        .FirstOrDefaultAsync(a => a.EmployeeId == empId && a.Date.Date == dto.Date.Date);
+                        .FirstOrDefaultAsync(a => a.EmployeeCard == employee.Id && a.Date.Date == dto.Date.Date);
+
+                    decimal calculateOt = 0;
+                    if (employee.IsOtEnabled && employee.Shift != null && dto.OutTime.HasValue &&
+                        !string.IsNullOrEmpty(employee.Shift.OutTime) &&
+                        TimeSpan.TryParse(employee.Shift.OutTime, out var officeOutTimeValue))
+                    {
+                        var officeOutDateTime = dto.Date.Date.Add(officeOutTimeValue);
+
+                        // Handle overnight shift: If Office Out < Actual In, Office Out is next day
+                        if (employee.Shift.ActualInTime != null &&
+                            TimeSpan.TryParse(employee.Shift.ActualInTime, out var aIn) &&
+                            officeOutTimeValue < aIn)
+                        {
+                            officeOutDateTime = dto.Date.Date.AddDays(1).Add(officeOutTimeValue);
+                        }
+
+                        if (dto.OutTime.Value > officeOutDateTime)
+                        {
+                            var otDuration = dto.OutTime.Value - officeOutDateTime;
+                            double totalMinutes = otDuration.TotalMinutes;
+
+                            int fullHours = (int)(totalMinutes / 60);
+                            int remainingMinutes = (int)(totalMinutes % 60);
+
+                            if (remainingMinutes >= 45) calculateOt = fullHours + 1;
+                            else calculateOt = fullHours;
+                        }
+                    }
 
                     if (existing != null)
                     {
@@ -2059,24 +2489,89 @@ namespace ERPBackend.API.Controllers
                         existing.OutTime = dto.OutTime;
                         existing.Status = dto.Status;
                         existing.Reason = dto.Reason;
+                        existing.OTHours = calculateOt;
+                        existing.IsManual = true;
                         existing.UpdatedAt = DateTime.UtcNow;
                         existing.UpdatedBy = userName;
                         updatedCount++;
+
+                        // Add manual log entries if In/Out times are provided
+                        if (dto.InTime.HasValue)
+                        {
+                            _context.AttendanceLogs.Add(new AttendanceLog
+                            {
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                CompanyId = employee.CompanyId,
+                                LogTime = dto.InTime.Value,
+                                DeviceId = "Manual",
+                                VerificationMode = "Manual",
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+
+                        if (dto.OutTime.HasValue)
+                        {
+                            _context.AttendanceLogs.Add(new AttendanceLog
+                            {
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                CompanyId = employee.CompanyId,
+                                LogTime = dto.OutTime.Value,
+                                DeviceId = "Manual",
+                                VerificationMode = "Manual",
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
                     }
                     else
                     {
                         var attendance = new Attendance
                         {
-                            EmployeeId = empId,
+                            EmployeeCard = employee.Id,
+                            EmployeeId = employee.EmployeeId,
+                            CompanyId = employee.CompanyId,
                             Date = dto.Date.Date,
                             InTime = dto.InTime,
                             OutTime = dto.OutTime,
                             Status = dto.Status,
                             Reason = dto.Reason,
+                            OTHours = calculateOt,
+                            IsManual = true,
                             CreatedAt = DateTime.UtcNow,
                             CreatedBy = userName
                         };
                         _context.Attendances.Add(attendance);
+
+                        // Add manual log entries if In/Out times are provided
+                        if (dto.InTime.HasValue)
+                        {
+                            _context.AttendanceLogs.Add(new AttendanceLog
+                            {
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                CompanyId = employee.CompanyId,
+                                LogTime = dto.InTime.Value,
+                                DeviceId = "Manual",
+                                VerificationMode = "Manual",
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+
+                        if (dto.OutTime.HasValue)
+                        {
+                            _context.AttendanceLogs.Add(new AttendanceLog
+                            {
+                                EmployeeCard = employee.Id,
+                                EmployeeId = employee.EmployeeId,
+                                CompanyId = employee.CompanyId,
+                                LogTime = dto.OutTime.Value,
+                                DeviceId = "Manual",
+                                VerificationMode = "Manual",
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+
                         createdCount++;
                     }
                 }
@@ -2105,7 +2600,17 @@ namespace ERPBackend.API.Controllers
 
                 if (dto.EmployeeIds != null && dto.EmployeeIds.Any())
                 {
-                    query = query.Where(a => dto.EmployeeIds.Contains(a.EmployeeId));
+                    var dbEmployeeIds = await _context.Employees
+                        .Where(e => dto.EmployeeIds.Contains(e.EmployeeId) &&
+                                    (!dto.CompanyId.HasValue || e.CompanyId == dto.CompanyId.Value))
+                        .Select(e => e.Id)
+                        .ToListAsync();
+
+                    query = query.Where(a => dbEmployeeIds.Contains(a.EmployeeCard));
+                }
+                else if (dto.CompanyId.HasValue)
+                {
+                    query = query.Where(a => a.CompanyId == dto.CompanyId.Value);
                 }
 
                 if (dto.DepartmentId.HasValue)
@@ -2127,6 +2632,40 @@ namespace ERPBackend.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Error during attendance deletion: " + ex.Message });
+            }
+        }
+
+// DELETE: api/attendance/delete-all
+        [HttpDelete("delete-all")]
+        [Authorize(Roles = UserRoles.SuperAdmin)]
+        public async Task<IActionResult> DeleteAllAttendanceData()
+        {
+            try
+            {
+// Execute truncate or delete commands
+// Using ExecuteSqlRaw for efficiency and to reset identity seeds if possible (though Truncate requires permissions)
+// Fallback to RemoveRange if Truncate is risky for FKs, but user asked to delete ALL data from these tables.
+// Since AttendanceLogs and Attendances have FKs to Employee/Company but are leaf nodes mostly,
+// we should be careful.
+// EF Core way is safer:
+
+                var logs = await _context.AttendanceLogs.ToListAsync();
+                _context.AttendanceLogs.RemoveRange(logs);
+
+                var attendances = await _context.Attendances.ToListAsync();
+                _context.Attendances.RemoveRange(attendances);
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = $"Successfully deleted {logs.Count} logs and {attendances.Count} attendance records."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500,
+                    new { message = "An error occurred while deleting all attendance data.", error = ex.Message });
             }
         }
 
@@ -2155,6 +2694,11 @@ namespace ERPBackend.API.Controllers
 
             if (filters.EndDate.HasValue)
                 query = query.Where(a => a.Date.Date <= filters.EndDate.Value.Date);
+
+            if (filters.CompanyId.HasValue && filters.CompanyId > 0)
+                query = query.Where(a =>
+                    a.CompanyId == filters.CompanyId.Value ||
+                    (a.Employee != null && a.Employee.CompanyId == filters.CompanyId.Value));
 
             if (!string.IsNullOrEmpty(filters.CompanyName))
                 query = query.Where(a => a.Employee != null && a.Employee.CompanyName == filters.CompanyName);
@@ -2189,10 +2733,13 @@ namespace ERPBackend.API.Controllers
             if (!string.IsNullOrEmpty(filters.Status) && filters.Status != "all")
                 query = query.Where(a => a.Status == filters.Status);
 
+            if (!string.IsNullOrEmpty(filters.EmployeeId))
+                query = query.Where(a => a.Employee != null && a.Employee.EmployeeId == filters.EmployeeId);
+
             if (!string.IsNullOrEmpty(filters.SearchTerm))
             {
                 query = query.Where(a => a.Employee != null && (a.Employee.FullNameEn.Contains(filters.SearchTerm) ||
-                                                                a.Employee.EmployeeId.Contains(filters.SearchTerm)));
+                                                                a.Employee.EmployeeId == filters.SearchTerm));
             }
 
             return query;
@@ -2200,6 +2747,9 @@ namespace ERPBackend.API.Controllers
 
         private IQueryable<Employee> ApplyEmployeeFilters(IQueryable<Employee> query, CommonFilterDto filters)
         {
+            if (filters.CompanyId.HasValue && filters.CompanyId > 0)
+                query = query.Where(e => e.CompanyId == filters.CompanyId.Value);
+
             if (!string.IsNullOrEmpty(filters.CompanyName))
                 query = query.Where(e => e.CompanyName == filters.CompanyName);
 
@@ -2224,6 +2774,12 @@ namespace ERPBackend.API.Controllers
             if (filters.FloorId.HasValue)
                 query = query.Where(e => e.FloorId == filters.FloorId.Value);
 
+            if (filters.IsActive.HasValue)
+                query = query.Where(e => e.IsActive == filters.IsActive.Value);
+
+            if (!string.IsNullOrEmpty(filters.EmployeeId))
+                query = query.Where(e => e.EmployeeId == filters.EmployeeId);
+
             if (!string.IsNullOrEmpty(filters.Gender))
                 query = query.Where(e => e.Gender == filters.Gender);
 
@@ -2233,7 +2789,7 @@ namespace ERPBackend.API.Controllers
             if (!string.IsNullOrEmpty(filters.SearchTerm))
             {
                 query = query.Where(e => e.FullNameEn.Contains(filters.SearchTerm) ||
-                                         e.EmployeeId.Contains(filters.SearchTerm));
+                                         e.EmployeeId == filters.SearchTerm);
             }
 
             return query;

@@ -29,7 +29,12 @@ namespace ERPBackend.Core.Interfaces
             int? groupId = null,
             int? companyId = null);
 
+
         Task<List<AttendanceLogDto>> GetAttendanceLogsAsync(DateTime? startDate, DateTime? endDate,
             string? searchTerm = null, int? companyId = null);
+
+        Task<int> ClearAllAttendancesAsync();
+        Task<int> ClearAllAttendanceLogsAsync();
+        Task<int> DeleteAttendanceLogsAsync(List<int> ids);
     }
 }

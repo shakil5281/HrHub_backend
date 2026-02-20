@@ -3,14 +3,14 @@ namespace ERPBackend.Core.DTOs
     public class DailyOTSheetDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public int EmployeeCard { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
         public string EmployeeName { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
         public string Designation { get; set; } = string.Empty;
         public DateTime Date { get; set; }
-        public string? InTime { get; set; }
-        public string? OutTime { get; set; }
+        public DateTime? InTime { get; set; }
+        public DateTime? OutTime { get; set; }
         public decimal RegularHours { get; set; }
         public decimal OTHours { get; set; }
         public string? Remarks { get; set; }

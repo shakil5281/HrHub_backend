@@ -22,6 +22,7 @@ namespace ERPBackend.API.Controllers
         public async Task<ActionResult<IEnumerable<MonthlySalarySheetDto>>> GetMonthlySalarySheet(
             [FromQuery] int year,
             [FromQuery] int month,
+            [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
             [FromQuery] string? searchTerm)
         {
@@ -32,6 +33,11 @@ namespace ERPBackend.API.Controllers
                 .ThenInclude(e => e!.Designation)
                 .Where(s => s.Year == year && s.Month == month);
 
+            if (companyId.HasValue && companyId > 0)
+            {
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+            }
+
             if (departmentId.HasValue)
             {
                 query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
@@ -39,7 +45,8 @@ namespace ERPBackend.API.Controllers
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+                query = query.Where(s =>
+                    s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
             }
 
             var records = await query.ToListAsync();
@@ -47,8 +54,8 @@ namespace ERPBackend.API.Controllers
             var result = records.Select(s => new MonthlySalarySheetDto
             {
                 Id = s.Id,
-                EmployeeId = s.EmployeeId,
-                EmployeeIdCard = s.Employee?.EmployeeId ?? "",
+                EmployeeId = s.Employee?.EmployeeId ?? "",
+                CompanyId = s.Employee?.CompanyId ?? s.CompanyId ?? 0,
                 EmployeeName = s.Employee?.FullNameEn ?? "",
                 Department = s.Employee?.Department?.NameEn ?? "",
                 Designation = s.Employee?.Designation?.NameEn ?? "",
@@ -79,6 +86,7 @@ namespace ERPBackend.API.Controllers
         [HttpGet("daily-sheet")]
         public async Task<ActionResult<IEnumerable<DailySalarySheetDto>>> GetDailySalarySheet(
             [FromQuery] DateTime date,
+            [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
             [FromQuery] string? searchTerm)
         {
@@ -89,6 +97,11 @@ namespace ERPBackend.API.Controllers
                 .ThenInclude(e => e!.Designation)
                 .Where(s => s.Date.Date == date.Date);
 
+            if (companyId.HasValue && companyId > 0)
+            {
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+            }
+
             if (departmentId.HasValue)
             {
                 query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
@@ -96,7 +109,8 @@ namespace ERPBackend.API.Controllers
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+                query = query.Where(s =>
+                    s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
             }
 
             var records = await query.ToListAsync();
@@ -104,8 +118,8 @@ namespace ERPBackend.API.Controllers
             var result = records.Select(s => new DailySalarySheetDto
             {
                 Id = s.Id,
-                EmployeeId = s.EmployeeId,
-                EmployeeIdCard = s.Employee?.EmployeeId ?? "",
+                EmployeeId = s.Employee?.EmployeeId ?? "",
+                CompanyId = s.Employee?.CompanyId ?? s.CompanyId ?? 0,
                 EmployeeName = s.Employee?.FullNameEn ?? "",
                 Department = s.Employee?.Department?.NameEn ?? "",
                 Designation = s.Employee?.Designation?.NameEn ?? "",
@@ -127,13 +141,20 @@ namespace ERPBackend.API.Controllers
         public async Task<ActionResult<IEnumerable<BankSheetDto>>> GetBankSheet(
             [FromQuery] int year,
             [FromQuery] int month,
+            [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
             [FromQuery] string? searchTerm)
         {
             var query = _context.MonthlySalarySheets
                 .Include(s => s.Employee)
                 .ThenInclude(e => e!.Department)
-                .Where(s => s.Year == year && s.Month == month && s.Employee != null && !string.IsNullOrEmpty(s.Employee.BankAccountNo));
+                .Where(s => s.Year == year && s.Month == month && s.Employee != null &&
+                            !string.IsNullOrEmpty(s.Employee.BankAccountNo));
+
+            if (companyId.HasValue && companyId > 0)
+            {
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+            }
 
             if (departmentId.HasValue)
             {
@@ -142,7 +163,8 @@ namespace ERPBackend.API.Controllers
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+                query = query.Where(s =>
+                    s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
             }
 
             var records = await query.ToListAsync();
@@ -150,8 +172,8 @@ namespace ERPBackend.API.Controllers
             var result = records.Select(s => new BankSheetDto
             {
                 Id = s.Id,
-                EmployeeId = s.EmployeeId,
-                EmployeeIdCard = s.Employee?.EmployeeId ?? "",
+                EmployeeId = s.Employee?.EmployeeId ?? "",
+                CompanyId = s.Employee?.CompanyId ?? s.CompanyId ?? 0,
                 EmployeeName = s.Employee?.FullNameEn ?? "",
                 Department = s.Employee?.Department?.NameEn ?? "",
                 BankName = s.Employee?.BankName ?? "",
@@ -165,13 +187,22 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpGet("summary")]
-        public async Task<ActionResult<SalarySummaryDto>> GetSalarySummary([FromQuery] int year, [FromQuery] int month)
+        public async Task<ActionResult<SalarySummaryDto>> GetSalarySummary(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? companyId)
         {
-            var records = await _context.MonthlySalarySheets
+            var query = _context.MonthlySalarySheets
                 .Include(s => s.Employee)
                 .ThenInclude(e => e!.Department)
-                .Where(s => s.Year == year && s.Month == month)
-                .ToListAsync();
+                .Where(s => s.Year == year && s.Month == month);
+
+            if (companyId.HasValue && companyId > 0)
+            {
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+            }
+
+            var records = await query.ToListAsync();
 
             if (!records.Any()) return Ok(new SalarySummaryDto());
 
@@ -210,8 +241,8 @@ namespace ERPBackend.API.Controllers
             var result = new PayslipDto
             {
                 Id = s.Id,
-                EmployeeId = s.EmployeeId,
-                EmployeeIdCard = s.Employee?.EmployeeId ?? "",
+                EmployeeId = s.Employee?.EmployeeId ?? "",
+                CompanyId = s.Employee?.CompanyId ?? s.CompanyId ?? 0,
                 EmployeeName = s.Employee?.FullNameEn ?? "",
                 Department = s.Employee?.Department?.NameEn ?? "",
                 Designation = s.Employee?.Designation?.NameEn ?? "",
@@ -246,53 +277,65 @@ namespace ERPBackend.API.Controllers
         {
             // Simple mock processing logic
             // In reality, this would query attendance, leaves, OT deductions, etc.
-            
+
             var employeesQuery = _context.Employees.Where(e => e.Status == "Active");
-            
-            if (request.EmployeeId.HasValue)
-                employeesQuery = employeesQuery.Where(e => e.Id == request.EmployeeId.Value);
-            
+
+            if (request.CompanyId.HasValue && request.CompanyId > 0)
+                employeesQuery = employeesQuery.Where(e => e.CompanyId == request.CompanyId.Value);
+
+            if (!string.IsNullOrEmpty(request.EmployeeId))
+                employeesQuery = employeesQuery.Where(e => e.EmployeeId == request.EmployeeId);
+
             if (request.DepartmentId.HasValue)
                 employeesQuery = employeesQuery.Where(e => e.DepartmentId == request.DepartmentId.Value);
 
             var employees = await employeesQuery.ToListAsync();
-            
+
+            var startDate = new DateTime(request.Year, request.Month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+
             var existingSheets = await _context.MonthlySalarySheets
                 .Where(s => s.Year == request.Year && s.Month == request.Month)
+                .ToListAsync();
+
+            var monthAttendances = await _context.Attendances
+                .Where(a => a.Date >= startDate && a.Date <= endDate)
                 .ToListAsync();
 
             foreach (var emp in employees)
             {
                 var sheet = existingSheets.FirstOrDefault(s => s.EmployeeId == emp.Id) ?? new MonthlySalarySheet();
-                
+                var empAttendances = monthAttendances.Where(a => a.EmployeeCard == emp.Id).ToList();
+
                 sheet.EmployeeId = emp.Id;
+                sheet.CompanyId = emp.CompanyId;
                 sheet.Year = request.Year;
                 sheet.Month = request.Month;
                 sheet.GrossSalary = emp.GrossSalary ?? 0;
                 sheet.BasicSalary = emp.BasicSalary ?? 0;
-                
-                // Mock numbers for demonstration
+
                 sheet.TotalDays = DateTime.DaysInMonth(request.Year, request.Month);
-                sheet.PresentDays = 22; // Random mock
-                sheet.AbsentDays = (sheet.TotalDays > 26) ? 2 : 0;
-                sheet.LeaveDays = 1;
-                sheet.Holidays = 2;
-                sheet.WeekendDays = 4;
-                
-                sheet.OTHours = 10; // Mock
-                sheet.OTRate = (sheet.BasicSalary / 208) * 2; // Mock OT rate
+                sheet.PresentDays = empAttendances.Count(a => a.Status == "Present" || a.Status == "Late");
+                sheet.AbsentDays = empAttendances.Count(a => a.Status == "Absent");
+                sheet.LeaveDays = empAttendances.Count(a => a.Status == "On Leave");
+                sheet.Holidays = empAttendances.Count(a => a.Status == "Holiday");
+                sheet.WeekendDays = empAttendances.Count(a => a.Status == "Off Day");
+
+                // Use actual OTHours from attendances (already calculated with 45-min rounding)
+                sheet.OTHours = empAttendances.Sum(a => a.OTHours); 
+                sheet.OTRate = (sheet.BasicSalary / 208) * 2; 
                 sheet.OTAmount = sheet.OTHours * sheet.OTRate;
-                
-                sheet.AttendanceBonus = (sheet.AbsentDays == 0) ? 500 : 0;
+
+                sheet.AttendanceBonus = (sheet.AbsentDays == 0 && sheet.PresentDays > 0) ? 500 : 0;
                 sheet.OtherAllowances = 1000;
-                
+
                 sheet.TotalEarning = sheet.GrossSalary + sheet.OTAmount + sheet.AttendanceBonus + sheet.OtherAllowances;
-                
-                decimal perDayGross = sheet.GrossSalary / sheet.TotalDays;
+
+                decimal perDayGross = sheet.TotalDays > 0 ? sheet.GrossSalary / sheet.TotalDays : 0;
                 sheet.AbsentDeduction = sheet.AbsentDays * perDayGross;
                 sheet.AdvanceDeduction = 0;
                 sheet.OTDeduction = 0;
-                
+
                 sheet.TotalDeduction = sheet.AbsentDeduction + sheet.AdvanceDeduction + sheet.OTDeduction;
                 sheet.NetPayable = sheet.TotalEarning - sheet.TotalDeduction;
                 sheet.Status = "Processed";
@@ -305,12 +348,19 @@ namespace ERPBackend.API.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = $"Processed salary for {employees.Count} employees." });
         }
+
         [HttpGet("advance-salary")]
-        public async Task<ActionResult<IEnumerable<AdvanceSalaryDto>>> GetAdvanceSalaries([FromQuery] int? month, [FromQuery] int? year)
+        public async Task<ActionResult<IEnumerable<AdvanceSalaryDto>>> GetAdvanceSalaries(
+            [FromQuery] int? companyId,
+            [FromQuery] int? month,
+            [FromQuery] int? year)
         {
             var query = _context.AdvanceSalaries
                 .Include(a => a.Employee)
                 .AsQueryable();
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(a => a.Employee!.CompanyId == companyId.Value || a.CompanyId == companyId.Value);
 
             if (month.HasValue) query = query.Where(a => a.RepaymentMonth == month.Value);
             if (year.HasValue) query = query.Where(a => a.RepaymentYear == year.Value);
@@ -319,8 +369,8 @@ namespace ERPBackend.API.Controllers
             return Ok(records.Select(a => new AdvanceSalaryDto
             {
                 Id = a.Id,
-                EmployeeId = a.EmployeeId,
-                EmployeeIdCard = a.Employee?.EmployeeId ?? "",
+                EmployeeId = a.Employee?.EmployeeId ?? "",
+                CompanyId = a.Employee?.CompanyId ?? a.CompanyId ?? 0,
                 EmployeeName = a.Employee?.FullNameEn ?? "",
                 Amount = a.Amount,
                 RequestDate = a.RequestDate,
@@ -334,9 +384,15 @@ namespace ERPBackend.API.Controllers
         [HttpPost("advance-salary")]
         public async Task<ActionResult> CreateAdvanceSalary([FromBody] CreateAdvanceSalaryDto dto)
         {
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == dto.EmployeeId && e.CompanyId == dto.CompanyId);
+
+            if (employee == null) return NotFound("Employee not found");
+
             var advance = new AdvanceSalary
             {
-                EmployeeId = dto.EmployeeId,
+                EmployeeId = employee.Id,
+                CompanyId = employee.CompanyId,
                 Amount = dto.Amount,
                 RequestDate = dto.RequestDate,
                 RepaymentMonth = dto.RepaymentMonth,
@@ -351,18 +407,22 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpGet("increments")]
-        public async Task<ActionResult<IEnumerable<SalaryIncrementDto>>> GetIncrements()
+        public async Task<ActionResult<IEnumerable<SalaryIncrementDto>>> GetIncrements([FromQuery] int? companyId)
         {
-            var records = await _context.SalaryIncrements
+            var query = _context.SalaryIncrements
                 .Include(i => i.Employee)
-                .OrderByDescending(i => i.EffectiveDate)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(i => i.Employee!.CompanyId == companyId.Value || i.CompanyId == companyId.Value);
+
+            var records = await query.OrderByDescending(i => i.EffectiveDate).ToListAsync();
 
             return Ok(records.Select(i => new SalaryIncrementDto
             {
                 Id = i.Id,
-                EmployeeId = i.EmployeeId,
-                EmployeeIdCard = i.Employee?.EmployeeId ?? "",
+                EmployeeId = i.Employee?.EmployeeId ?? "",
+                CompanyId = i.Employee?.CompanyId ?? i.CompanyId ?? 0,
                 EmployeeName = i.Employee?.FullNameEn ?? "",
                 PreviousGrossSalary = i.PreviousGrossSalary,
                 IncrementAmount = i.IncrementAmount,
@@ -376,12 +436,15 @@ namespace ERPBackend.API.Controllers
         [HttpPost("increment")]
         public async Task<ActionResult> CreateIncrement([FromBody] CreateSalaryIncrementDto dto)
         {
-            var employee = await _context.Employees.FindAsync(dto.EmployeeId);
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == dto.EmployeeId && e.CompanyId == dto.CompanyId);
+
             if (employee == null) return NotFound("Employee not found");
 
             var increment = new SalaryIncrement
             {
-                EmployeeId = dto.EmployeeId,
+                EmployeeId = employee.Id,
+                CompanyId = employee.CompanyId,
                 PreviousGrossSalary = employee.GrossSalary ?? 0,
                 IncrementAmount = dto.IncrementAmount,
                 NewGrossSalary = (employee.GrossSalary ?? 0) + dto.IncrementAmount,
@@ -400,20 +463,27 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpGet("bonuses")]
-        public async Task<ActionResult<IEnumerable<BonusDto>>> GetBonuses([FromQuery] int year, [FromQuery] int? month)
+        public async Task<ActionResult<IEnumerable<BonusDto>>> GetBonuses(
+            [FromQuery] int? companyId,
+            [FromQuery] int? year,
+            [FromQuery] int? month)
         {
             var query = _context.Bonuses
                 .Include(b => b.Employee)
-                .Where(b => b.Year == year);
+                .AsQueryable();
 
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(b => b.Employee!.CompanyId == companyId.Value || b.CompanyId == companyId.Value);
+
+            if (year.HasValue) query = query.Where(b => b.Year == year.Value);
             if (month.HasValue) query = query.Where(b => b.Month == month.Value);
 
             var records = await query.ToListAsync();
             return Ok(records.Select(b => new BonusDto
             {
                 Id = b.Id,
-                EmployeeId = b.EmployeeId,
-                EmployeeIdCard = b.Employee?.EmployeeId ?? "",
+                EmployeeId = b.Employee?.EmployeeId ?? "",
+                CompanyId = b.Employee?.CompanyId ?? b.CompanyId ?? 0,
                 EmployeeName = b.Employee?.FullNameEn ?? "",
                 BonusType = b.BonusType,
                 Amount = b.Amount,
@@ -427,6 +497,7 @@ namespace ERPBackend.API.Controllers
         public async Task<IActionResult> ExportMonthlySalarySheet(
             [FromQuery] int year,
             [FromQuery] int month,
+            [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
             [FromQuery] string? searchTerm)
         {
@@ -437,6 +508,11 @@ namespace ERPBackend.API.Controllers
                 .ThenInclude(e => e!.Designation)
                 .Where(s => s.Year == year && s.Month == month);
 
+            if (companyId.HasValue && companyId > 0)
+            {
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+            }
+
             if (departmentId.HasValue)
             {
                 query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
@@ -444,7 +520,8 @@ namespace ERPBackend.API.Controllers
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+                query = query.Where(s =>
+                    s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
             }
 
             var records = await query.ToListAsync();
@@ -456,7 +533,7 @@ namespace ERPBackend.API.Controllers
             var headers = new[]
             {
                 "SL", "ID", "Name", "Designation", "Department",
-                "Gross Salary", "Basic", "Total Days", "Present", "Absent", "Leave", 
+                "Gross Salary", "Basic", "Total Days", "Present", "Absent", "Leave",
                 "OT Hours", "OT Amount", "Total Earning", "Total Deduction", "Net Payable"
             };
 
@@ -497,7 +574,7 @@ namespace ERPBackend.API.Controllers
             stream.Position = 0;
 
             string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
-            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"Salary_Sheet_{monthName}_{year}.xlsx");
         }
 
@@ -505,13 +582,20 @@ namespace ERPBackend.API.Controllers
         public async Task<IActionResult> ExportBankSheet(
             [FromQuery] int year,
             [FromQuery] int month,
+            [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
             [FromQuery] string? searchTerm)
         {
             var query = _context.MonthlySalarySheets
                 .Include(s => s.Employee)
                 .ThenInclude(e => e!.Department)
-                .Where(s => s.Year == year && s.Month == month && s.Employee != null && !string.IsNullOrEmpty(s.Employee.BankAccountNo));
+                .Where(s => s.Year == year && s.Month == month && s.Employee != null &&
+                            !string.IsNullOrEmpty(s.Employee.BankAccountNo));
+
+            if (companyId.HasValue && companyId > 0)
+            {
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+            }
 
             if (departmentId.HasValue)
             {
@@ -520,7 +604,8 @@ namespace ERPBackend.API.Controllers
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+                query = query.Where(s =>
+                    s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
             }
 
             var records = await query.ToListAsync();
@@ -562,16 +647,22 @@ namespace ERPBackend.API.Controllers
             stream.Position = 0;
 
             string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
-            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"Bank_Advice_{monthName}_{year}.xlsx");
         }
 
         [HttpPost("bonus")]
         public async Task<ActionResult> CreateBonus([FromBody] CreateBonusDto dto)
         {
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == dto.EmployeeId && e.CompanyId == dto.CompanyId);
+
+            if (employee == null) return NotFound("Employee not found");
+
             var bonus = new Bonus
             {
-                EmployeeId = dto.EmployeeId,
+                EmployeeId = employee.Id,
+                CompanyId = employee.CompanyId,
                 BonusType = dto.BonusType,
                 Amount = dto.Amount,
                 Year = dto.Year,

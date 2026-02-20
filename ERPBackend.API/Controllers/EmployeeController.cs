@@ -26,7 +26,178 @@ namespace ERPBackend.API.Controllers
         [HttpGet]
         [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," +
                            UserRoles.HrOfficer)]
-        public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetEmployees(
+        public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetEmployees([FromQuery] CommonFilterDto filters)
+        {
+            try
+            {
+                var query = _context.Employees
+                    .Include(e => e.Department)
+                    .Include(e => e.Section)
+                    .Include(e => e.Designation)
+                    .Include(e => e.Line)
+                    .Include(e => e.Shift)
+                    .Include(e => e.Group)
+                    .Include(e => e.Floor)
+                    .Include(e => e.Company)
+                    .AsQueryable();
+
+                // Applying filters
+                if (!string.IsNullOrEmpty(filters.CompanyName))
+                    query = query.Where(e =>
+                        e.Company != null
+                            ? e.Company.CompanyNameEn == filters.CompanyName
+                            : e.CompanyName == filters.CompanyName);
+
+                if (filters.CompanyId.HasValue && filters.CompanyId > 0)
+                    query = query.Where(e => e.CompanyId == filters.CompanyId);
+
+                if (filters.DepartmentId.HasValue)
+                    query = query.Where(e => e.DepartmentId == filters.DepartmentId);
+
+                if (filters.SectionId.HasValue)
+                    query = query.Where(e => e.SectionId == filters.SectionId);
+
+                if (filters.DesignationId.HasValue)
+                    query = query.Where(e => e.DesignationId == filters.DesignationId);
+
+                if (filters.LineId.HasValue)
+                    query = query.Where(e => e.LineId == filters.LineId);
+
+                if (filters.ShiftId.HasValue)
+                    query = query.Where(e => e.ShiftId == filters.ShiftId);
+
+                if (filters.GroupId.HasValue)
+                    query = query.Where(e => e.GroupId == filters.GroupId);
+
+                if (filters.FloorId.HasValue)
+                    query = query.Where(e => e.FloorId == filters.FloorId);
+
+                if (!string.IsNullOrEmpty(filters.Status))
+                    query = query.Where(e => e.Status == filters.Status);
+
+                if (filters.IsActive.HasValue)
+                    query = query.Where(e => e.IsActive == filters.IsActive.Value);
+
+                if (!string.IsNullOrEmpty(filters.EmployeeId))
+                    query = query.Where(e => e.EmployeeId.Contains(filters.EmployeeId));
+
+                if (filters.JoinDateFrom.HasValue)
+                    query = query.Where(e => e.JoinDate >= filters.JoinDateFrom.Value);
+
+                if (filters.JoinDateTo.HasValue)
+                    query = query.Where(e => e.JoinDate <= filters.JoinDateTo.Value);
+
+                if (!string.IsNullOrEmpty(filters.Gender))
+                    query = query.Where(e => e.Gender == filters.Gender);
+
+                if (!string.IsNullOrEmpty(filters.Religion))
+                    query = query.Where(e => e.Religion == filters.Religion);
+
+                if (!string.IsNullOrEmpty(filters.SearchTerm))
+                {
+                    query = query.Where(e =>
+                        e.EmployeeId.Contains(filters.SearchTerm) ||
+                        e.FullNameEn.Contains(filters.SearchTerm) ||
+                        (e.FullNameBn != null && e.FullNameBn.Contains(filters.SearchTerm)) ||
+                        (e.PhoneNumber != null && e.PhoneNumber.Contains(filters.SearchTerm))
+                    );
+                }
+
+                var employees = await query
+                    .OrderByDescending(e => e.CreatedAt)
+                    .Select(e => new EmployeeDto
+                    {
+                        Id = e.Id,
+                        EmployeeId = e.EmployeeId,
+                        FullNameEn = e.FullNameEn,
+                        FullNameBn = e.FullNameBn,
+                        Nid = e.Nid,
+                        Proximity = e.Proximity,
+                        DateOfBirth = e.DateOfBirth,
+                        Gender = e.Gender,
+                        Religion = e.Religion,
+                        DepartmentId = e.DepartmentId,
+                        DepartmentName = e.Department != null ? e.Department.NameEn : null,
+                        SectionId = e.SectionId,
+                        SectionName = e.Section != null ? e.Section.NameEn : null,
+                        DesignationId = e.DesignationId,
+                        DesignationName = e.Designation != null ? e.Designation.NameEn : null,
+                        LineId = e.LineId,
+                        LineName = e.Line != null ? e.Line.NameEn : null,
+                        ShiftId = e.ShiftId,
+                        ShiftName = e.Shift != null ? e.Shift.NameEn : null,
+                        GroupId = e.GroupId,
+                        GroupName = e.Group != null ? e.Group.NameEn : null,
+                        FloorId = e.FloorId,
+                        FloorName = e.Floor != null ? e.Floor.NameEn : null,
+                        Status = e.Status,
+                        JoinDate = e.JoinDate,
+                        ProfileImageUrl = e.ProfileImageUrl,
+                        SignatureImageUrl = e.SignatureImageUrl,
+                        Email = e.Email,
+                        PhoneNumber = e.PhoneNumber,
+                        PresentAddress = e.PresentAddress,
+                        PresentAddressBn = e.PresentAddressBn,
+                        PresentDivisionId = e.PresentDivisionId,
+                        PresentDistrictId = e.PresentDistrictId,
+                        PresentThanaId = e.PresentThanaId,
+                        PresentPostOfficeId = e.PresentPostOfficeId,
+                        PresentPostalCode = e.PresentPostalCode,
+                        PermanentAddress = e.PermanentAddress,
+                        PermanentAddressBn = e.PermanentAddressBn,
+                        PermanentDivisionId = e.PermanentDivisionId,
+                        PermanentDistrictId = e.PermanentDistrictId,
+                        PermanentThanaId = e.PermanentThanaId,
+                        PermanentPostOfficeId = e.PermanentPostOfficeId,
+                        PermanentPostalCode = e.PermanentPostalCode,
+                        FatherNameEn = e.FatherNameEn,
+                        FatherNameBn = e.FatherNameBn,
+                        MotherNameEn = e.MotherNameEn,
+                        MotherNameBn = e.MotherNameBn,
+                        MaritalStatus = e.MaritalStatus,
+                        SpouseNameEn = e.SpouseNameEn,
+                        SpouseNameBn = e.SpouseNameBn,
+                        SpouseOccupation = e.SpouseOccupation,
+                        SpouseContact = e.SpouseContact,
+                        BasicSalary = e.BasicSalary,
+                        HouseRent = e.HouseRent,
+                        MedicalAllowance = e.MedicalAllowance,
+                        Conveyance = e.Conveyance,
+                        FoodAllowance = e.FoodAllowance,
+                        OtherAllowance = e.OtherAllowance,
+                        GrossSalary = e.GrossSalary,
+                        BankName = e.BankName,
+                        BankBranchName = e.BankBranchName,
+                        BankAccountNo = e.BankAccountNo,
+                        BankRoutingNo = e.BankRoutingNo,
+                        BankAccountType = e.BankAccountType,
+                        EmergencyContactName = e.EmergencyContactName,
+                        EmergencyContactRelation = e.EmergencyContactRelation,
+                        EmergencyContactPhone = e.EmergencyContactPhone,
+                        EmergencyContactAddress = e.EmergencyContactAddress,
+                        CompanyId = e.CompanyId,
+                        CompanyName = e.Company != null ? e.Company.CompanyNameEn : e.CompanyName,
+                        BloodGroup = e.BloodGroup,
+                        IsActive = e.IsActive,
+                        IsOtEnabled = e.IsOtEnabled,
+                        CreatedAt = e.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(employees);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception (e.g., using a logger)
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        // GET: api/employee/simple
+        [HttpGet("simple")]
+        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," +
+                           UserRoles.HrOfficer)]
+        public async Task<ActionResult<IEnumerable<EmployeeSimpleDto>>> GetEmployeesSimple(
             [FromQuery] int? departmentId,
             [FromQuery] int? sectionId,
             [FromQuery] int? designationId,
@@ -36,13 +207,8 @@ namespace ERPBackend.API.Controllers
             [FromQuery] int? floorId,
             [FromQuery] string? status,
             [FromQuery] bool? isActive,
-            [FromQuery] string? employeeId,
             [FromQuery] string? searchTerm,
-            [FromQuery] string? companyName,
-            [FromQuery] DateTime? joinDateFrom,
-            [FromQuery] DateTime? joinDateTo,
-            [FromQuery] string? gender,
-            [FromQuery] string? religion)
+            [FromQuery] string? companyName)
         {
             var query = _context.Employees
                 .Include(e => e.Department)
@@ -81,110 +247,48 @@ namespace ERPBackend.API.Controllers
             if (isActive.HasValue)
                 query = query.Where(e => e.IsActive == isActive.Value);
 
-            if (!string.IsNullOrEmpty(employeeId))
-                query = query.Where(e => e.EmployeeId.Contains(employeeId));
-
-            if (!string.IsNullOrEmpty(companyName))
-                query = query.Where(e => e.CompanyName == companyName);
-
-            if (joinDateFrom.HasValue)
-                query = query.Where(e => e.JoinDate >= joinDateFrom.Value);
-
-            if (joinDateTo.HasValue)
-                query = query.Where(e => e.JoinDate <= joinDateTo.Value);
-
-            if (!string.IsNullOrEmpty(gender))
-                query = query.Where(e => e.Gender == gender);
-
-            if (!string.IsNullOrEmpty(religion))
-                query = query.Where(e => e.Religion == religion);
-
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 query = query.Where(e =>
                     e.EmployeeId.Contains(searchTerm) ||
                     e.FullNameEn.Contains(searchTerm) ||
-                    (e.FullNameBn != null && e.FullNameBn.Contains(searchTerm)) ||
-                    (e.PhoneNumber != null && e.PhoneNumber.Contains(searchTerm))
+                    (e.FullNameBn != null && e.FullNameBn.Contains(searchTerm))
                 );
             }
 
+            if (!string.IsNullOrEmpty(companyName))
+                query = query.Where(e => e.CompanyName == companyName);
+
             var employees = await query
-                .OrderByDescending(e => e.CreatedAt)
-                .Select(e => new EmployeeDto
+                .OrderBy(e => e.EmployeeId)
+                .Select(e => new EmployeeSimpleDto
                 {
                     Id = e.Id,
                     EmployeeId = e.EmployeeId,
                     FullNameEn = e.FullNameEn,
-                    FullNameBn = e.FullNameBn,
-                    Nid = e.Nid,
-                    Proximity = e.Proximity,
-                    DateOfBirth = e.DateOfBirth,
+                    CompanyId = e.CompanyId,
+                    CompanyName = e.Company != null ? e.Company.CompanyNameEn : e.CompanyName,
+                    DepartmentName = e.Department != null ? e.Department.NameEn : null,
+                    DesignationName = e.Designation != null ? e.Designation.NameEn : null,
+                    SectionName = e.Section != null ? e.Section.NameEn : null,
+                    LineName = e.Line != null ? e.Line.NameEn : null,
                     Gender = e.Gender,
                     Religion = e.Religion,
-                    DepartmentId = e.DepartmentId,
-                    DepartmentName = e.Department != null ? e.Department.NameEn : null,
-                    SectionId = e.SectionId,
-                    SectionName = e.Section != null ? e.Section.NameEn : null,
-                    DesignationId = e.DesignationId,
-                    DesignationName = e.Designation != null ? e.Designation.NameEn : null,
-                    LineId = e.LineId,
-                    LineName = e.Line != null ? e.Line.NameEn : null,
-                    ShiftId = e.ShiftId,
                     ShiftName = e.Shift != null ? e.Shift.NameEn : null,
-                    GroupId = e.GroupId,
-                    GroupName = e.Group != null ? e.Group.NameEn : null,
-                    FloorId = e.FloorId,
-                    FloorName = e.Floor != null ? e.Floor.NameEn : null,
                     Status = e.Status,
-                    JoinDate = e.JoinDate,
-                    ProfileImageUrl = e.ProfileImageUrl,
-                    SignatureImageUrl = e.SignatureImageUrl,
-                    Email = e.Email,
-                    PhoneNumber = e.PhoneNumber,
-                    PresentAddress = e.PresentAddress,
-                    PermanentAddress = e.PermanentAddress,
-                    FatherNameEn = e.FatherNameEn,
-                    FatherNameBn = e.FatherNameBn,
-                    MotherNameEn = e.MotherNameEn,
-                    MotherNameBn = e.MotherNameBn,
-                    MaritalStatus = e.MaritalStatus,
-                    SpouseNameEn = e.SpouseNameEn,
-                    SpouseNameBn = e.SpouseNameBn,
-                    SpouseOccupation = e.SpouseOccupation,
-                    SpouseContact = e.SpouseContact,
-                    BasicSalary = e.BasicSalary,
-                    HouseRent = e.HouseRent,
-                    MedicalAllowance = e.MedicalAllowance,
-                    Conveyance = e.Conveyance,
-                    FoodAllowance = e.FoodAllowance,
-                    OtherAllowance = e.OtherAllowance,
-                    GrossSalary = e.GrossSalary,
-                    BankName = e.BankName,
-                    BankBranchName = e.BankBranchName,
-                    BankAccountNo = e.BankAccountNo,
-                    BankRoutingNo = e.BankRoutingNo,
-                    BankAccountType = e.BankAccountType,
-                    EmergencyContactName = e.EmergencyContactName,
-                    EmergencyContactRelation = e.EmergencyContactRelation,
-                    EmergencyContactPhone = e.EmergencyContactPhone,
-                    EmergencyContactAddress = e.EmergencyContactAddress,
-                    CompanyName = e.CompanyName,
-                    BloodGroup = e.BloodGroup,
-                    IsActive = e.IsActive,
-                    IsOtEnabled = e.IsOtEnabled,
-                    CreatedAt = e.CreatedAt
+                    GroupName = e.Group != null ? e.Group.NameEn : null,
+                    FloorName = e.Floor != null ? e.Floor.NameEn : null
                 })
                 .ToListAsync();
 
             return Ok(employees);
         }
 
-        // GET: api/employee/{id}
-        [HttpGet("{id}")]
+        // GET: api/employee/{employeeId}
+        [HttpGet("{employeeId}")]
         [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," +
                            UserRoles.HrOfficer)]
-        public async Task<ActionResult<EmployeeDto>> GetEmployee(int id)
+        public async Task<ActionResult<EmployeeDto>> GetEmployee(string employeeId, [FromQuery] int companyId)
         {
             var employee = await _context.Employees
                 .Include(e => e.Department)
@@ -194,7 +298,8 @@ namespace ERPBackend.API.Controllers
                 .Include(e => e.Shift)
                 .Include(e => e.Group)
                 .Include(e => e.Floor)
-                .Where(e => e.Id == id)
+                .Include(e => e.Company)
+                .Where(e => e.EmployeeId == employeeId && e.CompanyId == companyId)
                 .Select(e => new EmployeeDto
                 {
                     Id = e.Id,
@@ -227,7 +332,19 @@ namespace ERPBackend.API.Controllers
                     Email = e.Email,
                     PhoneNumber = e.PhoneNumber,
                     PresentAddress = e.PresentAddress,
+                    PresentAddressBn = e.PresentAddressBn,
+                    PresentDivisionId = e.PresentDivisionId,
+                    PresentDistrictId = e.PresentDistrictId,
+                    PresentThanaId = e.PresentThanaId,
+                    PresentPostOfficeId = e.PresentPostOfficeId,
+                    PresentPostalCode = e.PresentPostalCode,
                     PermanentAddress = e.PermanentAddress,
+                    PermanentAddressBn = e.PermanentAddressBn,
+                    PermanentDivisionId = e.PermanentDivisionId,
+                    PermanentDistrictId = e.PermanentDistrictId,
+                    PermanentThanaId = e.PermanentThanaId,
+                    PermanentPostOfficeId = e.PermanentPostOfficeId,
+                    PermanentPostalCode = e.PermanentPostalCode,
                     FatherNameEn = e.FatherNameEn,
                     FatherNameBn = e.FatherNameBn,
                     MotherNameEn = e.MotherNameEn,
@@ -271,6 +388,18 @@ namespace ERPBackend.API.Controllers
         [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager)]
         public async Task<ActionResult<EmployeeDto>> CreateEmployee([FromBody] CreateEmployeeDto dto)
         {
+            // Resolve CompanyId if CompanyName is provided but CompanyId is not
+            int? companyId = dto.CompanyId;
+            if (!companyId.HasValue && !string.IsNullOrEmpty(dto.CompanyName))
+            {
+                var company = await _context.Companies
+                    .FirstOrDefaultAsync(c => c.CompanyNameEn == dto.CompanyName);
+                if (company != null)
+                {
+                    companyId = company.Id;
+                }
+            }
+
             // Use provided Employee ID or generate one if empty
             string employeeId = dto.EmployeeId;
 
@@ -287,13 +416,16 @@ namespace ERPBackend.API.Controllers
             {
                 // Check if Employee ID already exists in the same company
                 var exists = await _context.Employees.AnyAsync(e =>
-                    e.EmployeeId == employeeId && e.CompanyName == dto.CompanyName);
+                    e.EmployeeId == employeeId && e.CompanyId == companyId);
                 if (exists)
                 {
+                    var companyNameForError = companyId.HasValue
+                        ? (await _context.Companies.FindAsync(companyId.Value))?.CompanyNameEn
+                        : "Default";
                     return BadRequest(new
                     {
                         message =
-                            $"Employee ID '{employeeId}' already exists in company '{dto.CompanyName ?? "Default"}'."
+                            $"Employee ID '{employeeId}' already exists in company '{companyNameForError ?? "Default"}'."
                     });
                 }
             }
@@ -302,13 +434,16 @@ namespace ERPBackend.API.Controllers
             if (!string.IsNullOrWhiteSpace(dto.Proximity))
             {
                 var proximityExists = await _context.Employees.AnyAsync(e =>
-                    e.Proximity == dto.Proximity && e.CompanyName == dto.CompanyName);
+                    e.Proximity == dto.Proximity && e.CompanyId == companyId);
                 if (proximityExists)
                 {
+                    var companyNameForError = companyId.HasValue
+                        ? (await _context.Companies.FindAsync(companyId.Value))?.CompanyNameEn
+                        : "Default";
                     return BadRequest(new
                     {
                         message =
-                            $"Proximity (Card ID) '{dto.Proximity}' is already assigned to another employee in company '{dto.CompanyName ?? "Default"}'."
+                            $"Proximity (Card ID) '{dto.Proximity}' is already assigned to another employee in company '{companyNameForError ?? "Default"}'."
                     });
                 }
             }
@@ -335,7 +470,19 @@ namespace ERPBackend.API.Controllers
                 Email = dto.Email,
                 PhoneNumber = dto.PhoneNumber,
                 PresentAddress = dto.PresentAddress,
+                PresentAddressBn = dto.PresentAddressBn,
+                PresentDivisionId = dto.PresentDivisionId,
+                PresentDistrictId = dto.PresentDistrictId,
+                PresentThanaId = dto.PresentThanaId,
+                PresentPostOfficeId = dto.PresentPostOfficeId,
+                PresentPostalCode = dto.PresentPostalCode,
                 PermanentAddress = dto.PermanentAddress,
+                PermanentAddressBn = dto.PermanentAddressBn,
+                PermanentDivisionId = dto.PermanentDivisionId,
+                PermanentDistrictId = dto.PermanentDistrictId,
+                PermanentThanaId = dto.PermanentThanaId,
+                PermanentPostOfficeId = dto.PermanentPostOfficeId,
+                PermanentPostalCode = dto.PermanentPostalCode,
                 FatherNameEn = dto.FatherNameEn,
                 FatherNameBn = dto.FatherNameBn,
                 MotherNameEn = dto.MotherNameEn,
@@ -361,6 +508,7 @@ namespace ERPBackend.API.Controllers
                 EmergencyContactRelation = dto.EmergencyContactRelation,
                 EmergencyContactPhone = dto.EmergencyContactPhone,
                 EmergencyContactAddress = dto.EmergencyContactAddress,
+                CompanyId = companyId,
                 CompanyName = dto.CompanyName,
                 BloodGroup = dto.BloodGroup,
 
@@ -405,7 +553,19 @@ namespace ERPBackend.API.Controllers
                     Email = e.Email,
                     PhoneNumber = e.PhoneNumber,
                     PresentAddress = e.PresentAddress,
+                    PresentAddressBn = e.PresentAddressBn,
+                    PresentDivisionId = e.PresentDivisionId,
+                    PresentDistrictId = e.PresentDistrictId,
+                    PresentThanaId = e.PresentThanaId,
+                    PresentPostOfficeId = e.PresentPostOfficeId,
+                    PresentPostalCode = e.PresentPostalCode,
                     PermanentAddress = e.PermanentAddress,
+                    PermanentAddressBn = e.PermanentAddressBn,
+                    PermanentDivisionId = e.PermanentDivisionId,
+                    PermanentDistrictId = e.PermanentDistrictId,
+                    PermanentThanaId = e.PermanentThanaId,
+                    PermanentPostOfficeId = e.PermanentPostOfficeId,
+                    PermanentPostalCode = e.PermanentPostalCode,
                     FatherNameEn = e.FatherNameEn,
                     FatherNameBn = e.FatherNameBn,
                     MotherNameEn = e.MotherNameEn,
@@ -439,17 +599,39 @@ namespace ERPBackend.API.Controllers
                 })
                 .FirstOrDefaultAsync();
 
-            return CreatedAtAction(nameof(GetEmployee), new { id = employee.Id }, createdEmployee);
+            if (createdEmployee == null)
+                return StatusCode(500, new { message = "Failed to retrieve created employee details." });
+
+            return CreatedAtAction(nameof(GetEmployee),
+                new { employeeId = createdEmployee.EmployeeId, companyId = createdEmployee.CompanyId },
+                createdEmployee);
         }
 
-        // PUT: api/employee/{id}
-        [HttpPut("{id}")]
+        // PUT: api/employee/{employeeId}
+        [HttpPut("{employeeId}")]
         [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager)]
-        public async Task<IActionResult> UpdateEmployee(int id, [FromBody] UpdateEmployeeDto dto)
+        public async Task<IActionResult> UpdateEmployee(string employeeId, [FromBody] UpdateEmployeeDto dto,
+            [FromQuery] int companyId)
         {
-            var employee = await _context.Employees.FindAsync(id);
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId && e.CompanyId == companyId);
+
             if (employee == null)
                 return NotFound();
+
+            // Resolve CompanyId if CompanyName is provided but CompanyId is not
+            // Prioritize companyId from query if provided, otherwise use dto.CompanyId
+            int? effectiveCompanyId = companyId > 0 ? companyId : dto.CompanyId;
+
+            if (!effectiveCompanyId.HasValue && !string.IsNullOrEmpty(dto.CompanyName))
+            {
+                var company = await _context.Companies
+                    .FirstOrDefaultAsync(c => c.CompanyNameEn == dto.CompanyName);
+                if (company != null)
+                {
+                    effectiveCompanyId = company.Id;
+                }
+            }
 
             employee.FullNameEn = dto.FullNameEn;
             employee.FullNameBn = dto.FullNameBn;
@@ -470,7 +652,19 @@ namespace ERPBackend.API.Controllers
             employee.Email = dto.Email;
             employee.PhoneNumber = dto.PhoneNumber;
             employee.PresentAddress = dto.PresentAddress;
+            employee.PresentAddressBn = dto.PresentAddressBn;
+            employee.PresentDivisionId = dto.PresentDivisionId;
+            employee.PresentDistrictId = dto.PresentDistrictId;
+            employee.PresentThanaId = dto.PresentThanaId;
+            employee.PresentPostOfficeId = dto.PresentPostOfficeId;
+            employee.PresentPostalCode = dto.PresentPostalCode;
             employee.PermanentAddress = dto.PermanentAddress;
+            employee.PermanentAddressBn = dto.PermanentAddressBn;
+            employee.PermanentDivisionId = dto.PermanentDivisionId;
+            employee.PermanentDistrictId = dto.PermanentDistrictId;
+            employee.PermanentThanaId = dto.PermanentThanaId;
+            employee.PermanentPostOfficeId = dto.PermanentPostOfficeId;
+            employee.PermanentPostalCode = dto.PermanentPostalCode;
             employee.FatherNameEn = dto.FatherNameEn;
             employee.FatherNameBn = dto.FatherNameBn;
             employee.MotherNameEn = dto.MotherNameEn;
@@ -496,6 +690,7 @@ namespace ERPBackend.API.Controllers
             employee.EmergencyContactRelation = dto.EmergencyContactRelation;
             employee.EmergencyContactPhone = dto.EmergencyContactPhone;
             employee.EmergencyContactAddress = dto.EmergencyContactAddress;
+            employee.CompanyId = effectiveCompanyId;
             employee.CompanyName = dto.CompanyName;
             employee.BloodGroup = dto.BloodGroup;
 
@@ -508,16 +703,17 @@ namespace ERPBackend.API.Controllers
             return NoContent();
         }
 
-        // DELETE: api/employee/{id}
-        [HttpDelete("{id}")]
+        // DELETE: api/employee/{employeeId}
+        [HttpDelete("{employeeId}")]
         [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin)]
-        public async Task<IActionResult> DeleteEmployee(int id)
+        public async Task<IActionResult> DeleteEmployee(string employeeId, [FromQuery] int companyId)
         {
-            var employee = await _context.Employees.FindAsync(id);
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId && e.CompanyId == companyId);
+
             if (employee == null)
                 return NotFound();
 
-            // Hard delete - Cascade delete handled in ApplicationDbContext
             _context.Employees.Remove(employee);
             await _context.SaveChangesAsync();
 
@@ -655,6 +851,7 @@ namespace ERPBackend.API.Controllers
                 .Include(e => e.Shift)
                 .Include(e => e.Group)
                 .Include(e => e.Floor)
+                .Include(e => e.Company)
                 .AsQueryable();
 
             if (departmentId.HasValue) query = query.Where(e => e.DepartmentId == departmentId.Value);
@@ -719,7 +916,7 @@ namespace ERPBackend.API.Controllers
                 worksheet.Cells[row, 1].Value = row - 1;
                 worksheet.Cells[row, 2].Value = emp.EmployeeId;
                 worksheet.Cells[row, 3].Value = emp.FullNameEn;
-                worksheet.Cells[row, 4].Value = emp.CompanyName;
+                worksheet.Cells[row, 4].Value = emp.Company?.CompanyNameEn ?? emp.CompanyName;
                 worksheet.Cells[row, 5].Value = emp.BloodGroup;
                 worksheet.Cells[row, 6].Value = emp.Designation?.NameEn;
                 worksheet.Cells[row, 7].Value = emp.Department?.NameEn;
@@ -940,31 +1137,164 @@ namespace ERPBackend.API.Controllers
 
             // Demo data
             int row = 2;
-            worksheet.Cells[row, 1].Value = 1;
-            worksheet.Cells[row, 2].Value = "EMP000123";
-            worksheet.Cells[row, 3].Value = "100200300";
-            worksheet.Cells[row, 4].Value = "John Doe";
-            worksheet.Cells[row, 5].Value = "জন ডো";
-            worksheet.Cells[row, 6].Value = "My Company Ltd";
-            worksheet.Cells[row, 7].Value = "O+";
-            worksheet.Cells[row, 8].Value = "1234567890";
-            worksheet.Cells[row, 9].Value = "1990-01-15";
-            worksheet.Cells[row, 10].Value = "Male";
-            worksheet.Cells[row, 11].Value = "Islam";
-            worksheet.Cells[row, 12].Value = "Engineering";
-            worksheet.Cells[row, 13].Value = "Backend";
-            worksheet.Cells[row, 14].Value = "Senior Developer";
-            worksheet.Cells[row, 15].Value = "Line 01";
-            worksheet.Cells[row, 16].Value = "Active";
-            worksheet.Cells[row, 17].Value = DateTime.Now.ToString("yyyy-MM-dd");
-            worksheet.Cells[row, 18].Value = "john@example.com";
-            worksheet.Cells[row, 19].Value = "+880 1712345678";
-            worksheet.Cells[row, 20].Value = "123 Main St";
-            worksheet.Cells[row, 43].Value = 25000;
-            worksheet.Cells[row, 59].Value = "General";
-            worksheet.Cells[row, 60].Value = "A";
-            worksheet.Cells[row, 61].Value = "1st Floor";
-            worksheet.Cells[row, 62].Value = "Yes";
+            var demoEmployees = new[]
+            {
+                new
+                {
+                    Id = "EMP001", Proximity = "1001", NameEn = "John Doe", NameBn = "জন ডো", Company = "HRHub Ltd",
+                    Blood = "O+", Nid = "1234567890123", Dob = "1990-01-15", Gender = "Male", Religion = "Islam",
+                    Dept = "IT", Sec = "Software", Desig = "Senior Developer", Line = "L-101", Status = "Active",
+                    Join = "2020-01-01", Email = "john.doe@hrhub.com", Phone = "01700000001",
+                    PreAddr = "House 12, Road 5, Dhanmondi", PreAddrBn = "বাড়ি ১২, রোড ৫, ধানমন্ডি", PreDiv = "Dhaka",
+                    PreDist = "Dhaka", PreThana = "Dhanmondi", PrePo = "Dhanmondi", PrePc = "1209",
+                    PerAddr = "Village X, Thana Y", PerAddrBn = "গ্রাম ক, থানা খ", PerDiv = "Chattogram",
+                    PerDist = "Comilla", PerThana = "Chauddagram", PerPo = "Miah Bazar", PerPc = "3500",
+                    Father = "Robert Doe", FatherBn = "রবার্ট ডো", Mother = "Jane Doe", MotherBn = "জেন ডো",
+                    Marital = "Married",
+                    Spouse = "Alice Doe", SpouseBn = "এলিস ডো", SpouseOcc = "Teacher", SpousePh = "01700000002",
+                    Gross = 85000, Bank = "Dutch Bangla Bank", Branch = "Dhanmondi", Acc = "123.101.5555",
+                    Route = "123456789", Type = "Savings",
+                    EmName = "Alice Doe", EmRel = "Wife", EmPh = "01700000002", EmAddr = "Same as Present",
+                    Shift = "General", Group = "A", Floor = "5th Floor", Ot = "No"
+                },
+                new
+                {
+                    Id = "EMP002", Proximity = "1002", NameEn = "Rahim Uddin", NameBn = "রহিম উদ্দিন",
+                    Company = "HRHub Ltd",
+                    Blood = "B+", Nid = "9876543210987", Dob = "1992-05-20", Gender = "Male", Religion = "Islam",
+                    Dept = "HR", Sec = "Recruitment", Desig = "HR Executive", Line = "L-102", Status = "Active",
+                    Join = "2021-03-15", Email = "rahim.u@hrhub.com", Phone = "01800000001",
+                    PreAddr = "Flat 4A, Green Road", PreAddrBn = "ফ্ল্যাট ৪এ, গ্রীন রোড", PreDiv = "Dhaka",
+                    PreDist = "Dhaka", PreThana = "Tejgaon", PrePo = "Tejgaon", PrePc = "1215",
+                    PerAddr = "Village Z, Thana W", PerAddrBn = "গ্রাম গ, থানা ঘ", PerDiv = "Rajshahi",
+                    PerDist = "Bogra", PerThana = "Sadar", PerPo = "Sadar", PerPc = "5800",
+                    Father = "Karim Uddin", FatherBn = "করিম উদ্দিন", Mother = "Fatema Begum", MotherBn = "ফাতেমা বেগম",
+                    Marital = "Single",
+                    Spouse = "", SpouseBn = "", SpouseOcc = "", SpousePh = "",
+                    Gross = 45000, Bank = "Brac Bank", Branch = "Gulshan", Acc = "222.333.4444", Route = "987654321",
+                    Type = "Salary",
+                    EmName = "Karim Uddin", EmRel = "Father", EmPh = "01800000002", EmAddr = "Village Z, Bogra",
+                    Shift = "Morning", Group = "B", Floor = "2nd Floor", Ot = "Yes"
+                },
+                new
+                {
+                    Id = "EMP003", Proximity = "1003", NameEn = "Sarah Khan", NameBn = "সারা খান",
+                    Company = "HRHub Ltd",
+                    Blood = "A-", Nid = "5555666677778", Dob = "1995-12-10", Gender = "Female", Religion = "Islam",
+                    Dept = "Accounts", Sec = "Payroll", Desig = "Accountant", Line = "L-103", Status = "Active",
+                    Join = "2022-06-01", Email = "sarah.k@hrhub.com", Phone = "01900000001",
+                    PreAddr = "House 50, Uttara Sec 7", PreAddrBn = "বাড়ি ৫০, উত্তরা সেক্টর ৭", PreDiv = "Dhaka",
+                    PreDist = "Dhaka", PreThana = "Uttara West", PrePo = "Uttara", PrePc = "1230",
+                    PerAddr = "Sylhet Sadar", PerAddrBn = "সিলেট সদর", PerDiv = "Sylhet", PerDist = "Sylhet",
+                    PerThana = "Sadar", PerPo = "Sadar", PerPc = "3100",
+                    Father = "Kabir Khan", FatherBn = "কবির খান", Mother = "Salma Khan", MotherBn = "সালমা খান",
+                    Marital = "Married",
+                    Spouse = "Imran Ahmed", SpouseBn = "ইমরান আহমেদ", SpouseOcc = "Banker", SpousePh = "01900000002",
+                    Gross = 55000, Bank = "City Bank", Branch = "Uttara", Acc = "111.222.3333", Route = "112233445",
+                    Type = "Savings",
+                    EmName = "Imran Ahmed", EmRel = "Husband", EmPh = "01900000002", EmAddr = "Same as Present",
+                    Shift = "General", Group = "A", Floor = "3rd Floor", Ot = "No"
+                }
+            };
+
+            foreach (var emp in demoEmployees)
+            {
+                worksheet.Cells[row, 1].Value = row - 1;
+                worksheet.Cells[row, 2].Value = emp.Id;
+                worksheet.Cells[row, 3].Value = emp.Proximity;
+                worksheet.Cells[row, 4].Value = emp.NameEn;
+                worksheet.Cells[row, 5].Value = emp.NameBn;
+                worksheet.Cells[row, 6].Value = emp.Company;
+                worksheet.Cells[row, 7].Value = emp.Blood;
+                worksheet.Cells[row, 8].Value = emp.Nid;
+                worksheet.Cells[row, 9].Value = emp.Dob;
+                worksheet.Cells[row, 10].Value = emp.Gender;
+                worksheet.Cells[row, 11].Value = emp.Religion;
+                worksheet.Cells[row, 12].Value = emp.Dept;
+                worksheet.Cells[row, 13].Value = emp.Sec;
+                worksheet.Cells[row, 14].Value = emp.Desig;
+                worksheet.Cells[row, 15].Value = emp.Line;
+                worksheet.Cells[row, 16].Value = emp.Status;
+                worksheet.Cells[row, 17].Value = emp.Join;
+                worksheet.Cells[row, 18].Value = emp.Email;
+                worksheet.Cells[row, 19].Value = emp.Phone;
+
+                // Present Address
+                worksheet.Cells[row, 20].Value = emp.PreAddr;
+                worksheet.Cells[row, 21].Value = emp.PreAddrBn;
+                worksheet.Cells[row, 22].Value = emp.PreDiv;
+                worksheet.Cells[row, 23].Value = emp.PreDist;
+                worksheet.Cells[row, 24].Value = emp.PreThana;
+                worksheet.Cells[row, 25].Value = emp.PrePo;
+                worksheet.Cells[row, 26].Value = emp.PrePc;
+
+                // Permanent Address
+                worksheet.Cells[row, 27].Value = emp.PerAddr;
+                worksheet.Cells[row, 28].Value = emp.PerAddrBn;
+                worksheet.Cells[row, 29].Value = emp.PerDiv;
+                worksheet.Cells[row, 30].Value = emp.PerDist;
+                worksheet.Cells[row, 31].Value = emp.PerThana;
+                worksheet.Cells[row, 32].Value = emp.PerPo;
+                worksheet.Cells[row, 33].Value = emp.PerPc;
+
+                // Family
+                worksheet.Cells[row, 34].Value = emp.Father;
+                worksheet.Cells[row, 35].Value = emp.FatherBn;
+                worksheet.Cells[row, 36].Value = emp.Mother;
+                worksheet.Cells[row, 37].Value = emp.MotherBn;
+                worksheet.Cells[row, 38].Value = emp.Marital;
+                worksheet.Cells[row, 39].Value = emp.Spouse;
+                worksheet.Cells[row, 40].Value = emp.SpouseBn;
+                worksheet.Cells[row, 41].Value = emp.SpouseOcc;
+                worksheet.Cells[row, 42].Value = emp.SpousePh;
+
+                // Salary
+                worksheet.Cells[row, 43].Value = emp.Gross;
+
+                // Auto calc break down
+                decimal gross = (decimal)emp.Gross;
+                decimal medical = 750;
+                decimal food = 1250;
+                decimal conveyance = 450;
+                decimal other = 0;
+                decimal fixedTotal = medical + food + conveyance + other;
+                decimal basic = 0;
+                decimal houseRent = 0;
+
+                if (gross > fixedTotal)
+                {
+                    basic = Math.Round((gross - fixedTotal) / 1.5m, 2);
+                    houseRent = Math.Round(gross - fixedTotal - basic, 2);
+                }
+
+                worksheet.Cells[row, 44].Value = basic;
+                worksheet.Cells[row, 45].Value = houseRent;
+                worksheet.Cells[row, 46].Value = medical;
+                worksheet.Cells[row, 47].Value = conveyance;
+                worksheet.Cells[row, 48].Value = food;
+                worksheet.Cells[row, 49].Value = other;
+
+                // Bank
+                worksheet.Cells[row, 50].Value = emp.Bank;
+                worksheet.Cells[row, 51].Value = emp.Branch;
+                worksheet.Cells[row, 52].Value = emp.Acc;
+                worksheet.Cells[row, 53].Value = emp.Route;
+                worksheet.Cells[row, 54].Value = emp.Type;
+
+                // Emergency
+                worksheet.Cells[row, 55].Value = emp.EmName;
+                worksheet.Cells[row, 56].Value = emp.EmRel;
+                worksheet.Cells[row, 57].Value = emp.EmPh;
+                worksheet.Cells[row, 58].Value = emp.EmAddr;
+
+                // Extras
+                worksheet.Cells[row, 59].Value = emp.Shift;
+                worksheet.Cells[row, 60].Value = emp.Group;
+                worksheet.Cells[row, 61].Value = emp.Floor;
+                worksheet.Cells[row, 62].Value = emp.Ot;
+
+                row++;
+            }
 
             worksheet.Cells.AutoFitColumns();
             var stream = new MemoryStream();
@@ -993,7 +1323,7 @@ namespace ERPBackend.API.Controllers
                 var worksheet = package.Workbook.Worksheets.FirstOrDefault();
                 if (worksheet == null)
                 {
-                    result.Errors.Add(new ImportError
+                    result.Errors.Add(new ImportErrorDto
                         { RowNumber = 0, Field = "File", Message = "No worksheet found" });
                     return BadRequest(result);
                 }
@@ -1001,7 +1331,7 @@ namespace ERPBackend.API.Controllers
                 var rowCount = worksheet.Dimension?.Rows ?? 0;
                 if (rowCount < 2)
                 {
-                    result.Errors.Add(new ImportError
+                    result.Errors.Add(new ImportErrorDto
                         { RowNumber = 0, Field = "File", Message = "No data rows found" });
                     return BadRequest(result);
                 }
@@ -1033,26 +1363,27 @@ namespace ERPBackend.API.Controllers
                     .GroupBy(x => x.NameEn, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
+                var companies = (await _context.Companies.ToListAsync())
+                    .GroupBy(x => x.CompanyNameEn, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
                 var divisions = await _context.Divisions.ToListAsync();
                 var districts = await _context.Districts.Include(d => d.Division).ToListAsync();
                 var thanas = await _context.Thanas.Include(t => t.District).ToListAsync();
                 var postOffices = await _context.PostOffices.Include(p => p.District).ToListAsync();
 
-                // Existing employees to prevent duplicates
-                var existingEmployees = await _context.Employees
-                    .Select(e => new { e.EmployeeId, e.Proximity, e.CompanyName })
-                    .ToListAsync();
+                // Existing employees for duplicate/update check
+                // Fetch all employees to allow updates
+                var allEmployees = await _context.Employees.ToListAsync();
 
-                var employeeKeys = new HashSet<string>(
-                    existingEmployees.Select(e => $"{e.EmployeeId}|{e.CompanyName}"),
-                    StringComparer.OrdinalIgnoreCase
-                );
+                var employeeMap = allEmployees
+                    .GroupBy(e => $"{e.EmployeeId?.Trim()}|{(e.CompanyName ?? "").Trim()}")
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-                var proximityKeys = new HashSet<string>(
-                    existingEmployees.Where(e => !string.IsNullOrEmpty(e.Proximity))
-                        .Select(e => $"{e.Proximity}|{e.CompanyName}"),
-                    StringComparer.OrdinalIgnoreCase
-                );
+                var proximityMap = allEmployees
+                    .Where(e => !string.IsNullOrEmpty(e.Proximity))
+                    .GroupBy(e => $"{e.Proximity!.Trim()}|{(e.CompanyName ?? "").Trim()}")
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 for (int row = 2; row <= rowCount; row++)
                 {
@@ -1137,7 +1468,7 @@ namespace ERPBackend.API.Controllers
                         // Validation
                         if (string.IsNullOrEmpty(fullNameEn))
                         {
-                            result.Errors.Add(new ImportError
+                            result.Errors.Add(new ImportErrorDto
                                 { RowNumber = row, Field = "Full Name (EN)", Message = "Required field" });
                             result.ErrorCount++;
                             continue;
@@ -1150,7 +1481,7 @@ namespace ERPBackend.API.Controllers
                         }
                         else
                         {
-                            result.Warnings.Add(new ImportError
+                            result.Warnings.Add(new ImportWarningDto
                             {
                                 RowNumber = row, Field = "Department",
                                 Message = $"Department '{deptName}' not found. Defaulting to first available."
@@ -1161,7 +1492,7 @@ namespace ERPBackend.API.Controllers
 
                         if (department == null)
                         {
-                            result.Errors.Add(new ImportError
+                            result.Errors.Add(new ImportErrorDto
                             {
                                 RowNumber = row, Field = "Department",
                                 Message = "No departments found in system. Please create departments first."
@@ -1172,7 +1503,7 @@ namespace ERPBackend.API.Controllers
 
                         if (!designations.ContainsKey(desigName))
                         {
-                            result.Errors.Add(new ImportError
+                            result.Errors.Add(new ImportErrorDto
                             {
                                 RowNumber = row, Field = "Designation", Message = $"Designation '{desigName}' not found"
                             });
@@ -1245,8 +1576,11 @@ namespace ERPBackend.API.Controllers
                         }
 
                         // Salary Logic
-                        decimal gross;
-                        decimal.TryParse(grossText, out gross);
+                        decimal gross = 0;
+                        if (decimal.TryParse(grossText, out var parsedGross))
+                        {
+                            gross = parsedGross;
+                        }
 
                         decimal basic = 0, houseRent = 0, medical = 0, food = 0, conveyance = 0, other = 0;
 
@@ -1257,10 +1591,20 @@ namespace ERPBackend.API.Controllers
                             conveyance = 450;
                             other = 0;
                             decimal fixedTotal = medical + food + conveyance + other;
+
                             if (gross > fixedTotal)
                             {
                                 basic = (gross - fixedTotal) / 1.5m;
                                 houseRent = gross - fixedTotal - basic;
+                            }
+                            else
+                            {
+                                // Handle edge case where gross is small
+                                basic = gross * 0.6m;
+                                houseRent = gross * 0.4m;
+                                medical = 0;
+                                food = 0;
+                                conveyance = 0;
                             }
 
                             basic = Math.Round(basic, 2);
@@ -1277,120 +1621,150 @@ namespace ERPBackend.API.Controllers
                             ? fVal.Id
                             : null;
 
-                        // Skip if employee already exists in this company
-                        if (!string.IsNullOrEmpty(providedEmpId) && !string.IsNullOrEmpty(companyName))
-                        {
-                            var key = $"{providedEmpId}|{companyName}";
-                            if (employeeKeys.Contains(key))
-                            {
-                                result.Warnings.Add(new ImportError
-                                {
-                                    RowNumber = row, Field = "Employee ID",
-                                    Message =
-                                        $"Employee '{providedEmpId}' already exists in company '{companyName}'. Skipping row."
-                                });
-                                result.WarningCount++;
-                                continue;
-                            }
+                        // Check Create vs Update
+                        var empKey = $"{providedEmpId}|{companyName}";
+                        Employee employee;
+                        bool isUpdate = false;
 
-                            employeeKeys.Add(key);
+                        if (!string.IsNullOrEmpty(providedEmpId) &&
+                            employeeMap.TryGetValue(empKey, out var existingEmp))
+                        {
+                            employee = existingEmp;
+                            isUpdate = true;
+                        }
+                        else
+                        {
+                            employee = new Employee();
+                            isUpdate = false;
                         }
 
-                        // Skip if Proximity already exists in this company
-                        if (!string.IsNullOrEmpty(proximity) && !string.IsNullOrEmpty(companyName))
+                        // Check Proximity Conflict
+                        if (!string.IsNullOrEmpty(proximity))
                         {
-                            var key = $"{proximity}|{companyName}";
-                            if (proximityKeys.Contains(key))
+                            var proxKey = $"{proximity}|{companyName}";
+                            if (proximityMap.TryGetValue(proxKey, out var proxOwner) && proxOwner != employee)
                             {
-                                result.Warnings.Add(new ImportError
+                                result.Warnings.Add(new ImportWarningDto
                                 {
                                     RowNumber = row, Field = "Proximity",
                                     Message =
-                                        $"Proximity (Card ID) '{proximity}' already exists in company '{companyName}'. Skipping row."
+                                        $"Proximity (Card ID) '{proximity}' already assigned to employee '{proxOwner.EmployeeId}'. Ignoring Proximity."
                                 });
                                 result.WarningCount++;
-                                continue;
+                                proximity = null; // Do not assign this proximity
                             }
-
-                            proximityKeys.Add(key);
                         }
 
-                        var employee = new Employee
-                        {
-                            EmployeeId = string.IsNullOrEmpty(providedEmpId) ? "TEMP" : providedEmpId,
-                            Proximity = proximity,
-                            FullNameEn = fullNameEn,
-                            FullNameBn = fullNameBn,
-                            CompanyName = companyName,
-                            BloodGroup = bloodGroup,
-                            Nid = nid,
-                            DateOfBirth = dob,
-                            Gender = gender,
-                            Religion = religion,
-                            DepartmentId = department.Id,
-                            SectionId = sectionId,
-                            DesignationId = designation.Id,
-                            LineId = lineId,
-                            ShiftId = shiftId,
-                            GroupId = groupId,
-                            FloorId = floorId,
-                            Status = string.IsNullOrEmpty(status) ? "Active" : status,
-                            JoinDate = joinDate,
-                            IsOtEnabled = otStatusVal.Equals("Yes", StringComparison.OrdinalIgnoreCase) ||
-                                          otStatusVal.Equals("True", StringComparison.OrdinalIgnoreCase) ||
-                                          otStatusVal.Equals("1"),
-                            Email = email,
-                            PhoneNumber = phone,
-                            PresentAddress = preAddrEn,
-                            PresentAddressBn = preAddrBn,
-                            PresentDivisionId = preDivId,
-                            PresentDistrictId = preDistId,
-                            PresentThanaId = preThanaId,
-                            PresentPostOfficeId = prePoId,
-                            PresentPostalCode = prePcFinal,
-                            PermanentAddress = perAddrEn,
-                            PermanentAddressBn = perAddrBn,
-                            PermanentDivisionId = perDivId,
-                            PermanentDistrictId = perDistId,
-                            PermanentThanaId = perThanaId,
-                            PermanentPostOfficeId = perPoId,
-                            PermanentPostalCode = perPcFinal,
-                            FatherNameEn = fNameEn,
-                            FatherNameBn = fNameBn,
-                            MotherNameEn = mNameEn,
-                            MotherNameBn = mNameBn,
-                            MaritalStatus = marital,
-                            SpouseNameEn = sNameEn,
-                            SpouseNameBn = sNameBn,
-                            SpouseOccupation = sOcc,
-                            SpouseContact = sCont,
-                            GrossSalary = gross,
-                            BasicSalary = basic,
-                            HouseRent = houseRent,
-                            MedicalAllowance = medical,
-                            FoodAllowance = food,
-                            Conveyance = conveyance,
-                            OtherAllowance = other,
-                            BankName = bankName,
-                            BankBranchName = bankBranch,
-                            BankAccountNo = accNo,
-                            BankRoutingNo = routeNo,
-                            BankAccountType = accType,
-                            EmergencyContactName = emName,
-                            EmergencyContactRelation = emRel,
-                            EmergencyContactPhone = emPhone,
-                            EmergencyContactAddress = emAddr,
-                            IsActive = true,
-                            CreatedAt = DateTime.UtcNow
-                        };
+                        // Assign Properties
+                        employee.EmployeeId = string.IsNullOrEmpty(providedEmpId) ? "TEMP" : providedEmpId;
+                        employee.Proximity = proximity;
+                        employee.FullNameEn = fullNameEn;
+                        employee.FullNameBn = fullNameBn;
 
-                        _context.Employees.Add(employee);
-                        result.CreatedCount++;
+                        // Resolve Company ID from company name
+                        int? companyId = null;
+                        if (!string.IsNullOrEmpty(companyName) && companies.TryGetValue(companyName, out var company))
+                        {
+                            companyId = company.Id;
+                        }
+                        else if (!string.IsNullOrEmpty(companyName))
+                        {
+                            result.Warnings.Add(new ImportWarningDto
+                            {
+                                RowNumber = row, Field = "Company Name",
+                                Message =
+                                    $"Company '{companyName}' not found in database. Employee will be created without a company relation."
+                            });
+                            result.WarningCount++;
+                        }
+
+                        employee.CompanyId = companyId;
+                        employee.CompanyName = companyName;
+                        employee.BloodGroup = bloodGroup;
+                        employee.Nid = nid;
+                        employee.DateOfBirth = dob;
+                        employee.Gender = gender;
+                        employee.Religion = religion;
+                        employee.DepartmentId = department.Id;
+                        employee.SectionId = sectionId;
+                        employee.DesignationId = designation.Id;
+                        employee.LineId = lineId;
+                        employee.ShiftId = shiftId;
+                        employee.GroupId = groupId;
+                        employee.FloorId = floorId;
+                        employee.Status = string.IsNullOrEmpty(status) ? "Active" : status;
+                        employee.JoinDate = joinDate;
+                        employee.IsOtEnabled = otStatusVal.Equals("Yes", StringComparison.OrdinalIgnoreCase) ||
+                                               otStatusVal.Equals("True", StringComparison.OrdinalIgnoreCase) ||
+                                               otStatusVal.Equals("1");
+                        employee.Email = email;
+                        employee.PhoneNumber = phone;
+                        employee.PresentAddress = preAddrEn;
+                        employee.PresentAddressBn = preAddrBn;
+                        employee.PresentDivisionId = preDivId;
+                        employee.PresentDistrictId = preDistId;
+                        employee.PresentThanaId = preThanaId;
+                        employee.PresentPostOfficeId = prePoId;
+                        employee.PresentPostalCode = prePcFinal;
+                        employee.PermanentAddress = perAddrEn;
+                        employee.PermanentAddressBn = perAddrBn;
+                        employee.PermanentDivisionId = perDivId;
+                        employee.PermanentDistrictId = perDistId;
+                        employee.PermanentThanaId = perThanaId;
+                        employee.PermanentPostOfficeId = perPoId;
+                        employee.PermanentPostalCode = perPcFinal;
+                        employee.FatherNameEn = fNameEn;
+                        employee.FatherNameBn = fNameBn;
+                        employee.MotherNameEn = mNameEn;
+                        employee.MotherNameBn = mNameBn;
+                        employee.MaritalStatus = marital;
+                        employee.SpouseNameEn = sNameEn;
+                        employee.SpouseNameBn = sNameBn;
+                        employee.SpouseOccupation = sOcc;
+                        employee.SpouseContact = sCont;
+                        employee.GrossSalary = gross;
+                        employee.BasicSalary = basic;
+                        employee.HouseRent = houseRent;
+                        employee.MedicalAllowance = medical;
+                        employee.FoodAllowance = food;
+                        employee.Conveyance = conveyance;
+                        employee.OtherAllowance = other;
+                        employee.BankName = bankName;
+                        employee.BankBranchName = bankBranch;
+                        employee.BankAccountNo = accNo;
+                        employee.BankRoutingNo = routeNo;
+                        employee.BankAccountType = accType;
+                        employee.EmergencyContactName = emName;
+                        employee.EmergencyContactRelation = emRel;
+                        employee.EmergencyContactPhone = emPhone;
+                        employee.EmergencyContactAddress = emAddr;
+
+                        // Default Active/Created (if new)
+                        if (!isUpdate)
+                        {
+                            employee.IsActive = true;
+                            employee.CreatedAt = DateTime.UtcNow;
+                            _context.Employees.Add(employee);
+
+                            // Update local maps
+                            if (!string.IsNullOrEmpty(providedEmpId)) employeeMap[empKey] = employee;
+                            if (!string.IsNullOrEmpty(proximity)) proximityMap[$"{proximity}|{companyName}"] = employee;
+
+                            result.CreatedCount++;
+                        }
+                        else
+                        {
+                            employee.UpdatedAt = DateTime.UtcNow;
+                            // Proximity map update if changed? Complex to track, but acceptable to skip for this file scope.
+                            result.UpdatedCount++;
+                        }
+
                         result.SuccessCount++;
                     }
                     catch (Exception ex)
                     {
-                        result.Errors.Add(new ImportError { RowNumber = row, Field = "General", Message = ex.Message });
+                        result.Errors.Add(new ImportErrorDto
+                            { RowNumber = row, Field = "General", Message = ex.Message });
                         result.ErrorCount++;
                     }
                 }
@@ -1430,7 +1804,7 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
-                result.Errors.Add(new ImportError { RowNumber = 0, Field = "File", Message = ex.Message });
+                result.Errors.Add(new ImportErrorDto { RowNumber = 0, Field = "File", Message = ex.Message });
                 return BadRequest(result);
             }
         }
@@ -1450,7 +1824,7 @@ namespace ERPBackend.API.Controllers
 
             var webRootPath = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
             var uploadsFolder = Path.Combine(webRootPath, "uploads", "employees", type);
-            
+
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
@@ -1465,24 +1839,5 @@ namespace ERPBackend.API.Controllers
             var url = $"/uploads/employees/{type}/{fileName}";
             return Ok(new { url });
         }
-    }
-
-    public class EmployeeImportResultDto
-    {
-        public int TotalRows { get; set; }
-        public int SuccessCount { get; set; }
-        public int ErrorCount { get; set; }
-        public int WarningCount { get; set; }
-        public int CreatedCount { get; set; }
-        public int UpdatedCount { get; set; }
-        public List<ImportError> Errors { get; set; } = new();
-        public List<ImportError> Warnings { get; set; } = new();
-    }
-
-    public class ImportError
-    {
-        public int RowNumber { get; set; }
-        public string Field { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
     }
 }

@@ -57,6 +57,8 @@ if (OperatingSystem.IsWindows())
     builder.Services.AddScoped<IZkTecoService, ZkTecoService>();
 }
 
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+
 
 // 4. Authentication
 builder.Services.AddAuthentication(options =>

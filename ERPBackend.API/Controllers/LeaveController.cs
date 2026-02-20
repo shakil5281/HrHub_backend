@@ -57,8 +57,8 @@ namespace ERPBackend.API.Controllers
             return Ok(new LeaveApplicationDto
             {
                 Id = l.Id,
-                EmployeeId = l.EmployeeId,
-                EmployeeIdCard = l.Employee?.EmployeeId ?? "",
+                EmployeeCard = l.EmployeeId,
+                EmployeeId = l.Employee?.EmployeeId ?? "",
                 EmployeeName = l.Employee?.FullNameEn ?? "",
                 Department = l.Employee?.Department?.NameEn ?? "",
                 Designation = l.Employee?.Designation?.NameEn ?? "",
@@ -94,8 +94,8 @@ namespace ERPBackend.API.Controllers
             return Ok(records.Select(l => new LeaveApplicationDto
             {
                 Id = l.Id,
-                EmployeeId = l.EmployeeId,
-                EmployeeIdCard = l.Employee?.EmployeeId ?? "",
+                EmployeeCard = l.EmployeeId,
+                EmployeeId = l.Employee?.EmployeeId ?? "",
                 EmployeeName = l.Employee?.FullNameEn ?? "",
                 Department = l.Employee?.Department?.NameEn ?? "",
                 LeaveTypeId = l.LeaveTypeId,
@@ -119,7 +119,7 @@ namespace ERPBackend.API.Controllers
 
             var application = new LeaveApplication
             {
-                EmployeeId = dto.EmployeeId,
+                EmployeeId = dto.EmployeeCard,
                 LeaveTypeId = dto.LeaveTypeId,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
@@ -626,8 +626,8 @@ namespace ERPBackend.API.Controllers
                 })
                 .Select(g => new
                 {
-                    EmployeeId = g.Key.EmployeeId,
-                    EmployeeIdCard = g.Key.EmployeeIdCard,
+                    EmployeeCard = g.Key.EmployeeId,
+                    EmployeeId = g.Key.EmployeeIdCard,
                     EmployeeName = g.Key.FullNameEn,
                     Department = g.Key.Dept,
                     SickLeave = g.Where(x => x.LeaveType!.Code == "SL").Sum(x => x.TotalDays),

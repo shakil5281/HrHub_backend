@@ -6,15 +6,15 @@ namespace ERPBackend.Core.Models
 {
     public class AdvanceSalary
     {
-        [Key]
-        public int Id { get; set; }
+        [Key] public int Id { get; set; }
 
         public int EmployeeId { get; set; }
-        [ForeignKey(nameof(EmployeeId))]
-        public virtual Employee? Employee { get; set; }
+        [ForeignKey(nameof(EmployeeId))] public virtual Employee? Employee { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal Amount { get; set; }
+        public int? CompanyId { get; set; }
+        [ForeignKey(nameof(CompanyId))] public virtual Company? Company { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")] public decimal Amount { get; set; }
 
         public DateTime RequestDate { get; set; }
         public DateTime? ApprovalDate { get; set; }
@@ -22,11 +22,9 @@ namespace ERPBackend.Core.Models
         public int RepaymentMonth { get; set; }
         public int RepaymentYear { get; set; }
 
-        [StringLength(50)]
-        public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
+        [StringLength(50)] public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
 
-        [StringLength(500)]
-        public string? Remarks { get; set; }
+        [StringLength(500)] public string? Remarks { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

@@ -5,6 +5,7 @@ using ERPBackend.Core.DTOs;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace ERPBackend.API.Controllers
 {
@@ -15,10 +16,12 @@ namespace ERPBackend.API.Controllers
     public class AttendanceSyncController : ControllerBase
     {
         private readonly IZkTecoService _zkTecoService;
+        private readonly ILogger<AttendanceSyncController> _logger;
 
-        public AttendanceSyncController(IZkTecoService zkTecoService)
+        public AttendanceSyncController(IZkTecoService zkTecoService, ILogger<AttendanceSyncController> logger)
         {
             _zkTecoService = zkTecoService;
+            _logger = logger;
         }
 
         [HttpPost("sync")]
@@ -96,6 +99,35 @@ namespace ERPBackend.API.Controllers
             }
         }
 
+        [HttpPost("cleanup-data")]
+        public async Task<IActionResult> CleanupData([FromBody] CleanupRequest request)
+        {
+            try
+            {
+                if (request.ConfirmationCode != "DELETE_ALL_ATTENDANCE_DATA")
+                {
+                    return BadRequest(new
+                    {
+                        message = "Invalid confirmation code. Please provide correct confirmation code to proceed."
+                    });
+                }
+
+                var attendanceCount = await _zkTecoService.ClearAllAttendancesAsync();
+                var logsCount = await _zkTecoService.ClearAllAttendanceLogsAsync();
+
+                return Ok(new
+                {
+                    message = "All attendance data cleared successfully.",
+                    attendancesDeleted = attendanceCount,
+                    logsDeleted = logsCount
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpGet("logs")]
         public async Task<IActionResult> GetLogs([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate,
             [FromQuery] string? searchTerm, [FromQuery] int? companyId)
@@ -107,9 +139,34 @@ namespace ERPBackend.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetLogs: {Message}", ex.Message);
+                return BadRequest(new { message = ex.Message, details = ex.ToString() });
+            }
+        }
+
+        [HttpDelete("logs")]
+        public async Task<IActionResult> DeleteLogs([FromBody] DeleteLogsRequest request)
+        {
+            try
+            {
+                if (request.Ids == null || !request.Ids.Any())
+                {
+                    return BadRequest(new { message = "No IDs provided for deletion." });
+                }
+
+                int count = await _zkTecoService.DeleteAttendanceLogsAsync(request.Ids);
+                return Ok(new { message = $"{count} logs deleted permanently.", count });
+            }
+            catch (Exception ex)
+            {
                 return BadRequest(new { message = ex.Message });
             }
         }
+    }
+
+    public class DeleteLogsRequest
+    {
+        public List<int>? Ids { get; set; }
     }
 
     public class SyncRequest
@@ -134,5 +191,10 @@ namespace ERPBackend.API.Controllers
         public int? ShiftId { get; set; }
         public int? GroupId { get; set; }
         public int? CompanyId { get; set; }
+    }
+
+    public class CleanupRequest
+    {
+        public string ConfirmationCode { get; set; } = string.Empty;
     }
 }

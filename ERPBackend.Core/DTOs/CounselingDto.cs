@@ -3,8 +3,8 @@ namespace ERPBackend.Core.DTOs
     public class CounselingRecordDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public int EmployeeCard { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
         public string EmployeeName { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
         public string Designation { get; set; } = string.Empty;
@@ -22,7 +22,7 @@ namespace ERPBackend.Core.DTOs
 
     public class CreateCounselingRecordDto
     {
-        public int EmployeeId { get; set; }
+        public int EmployeeCard { get; set; }
         public DateTime CounselingDate { get; set; }
         public string IssueType { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;

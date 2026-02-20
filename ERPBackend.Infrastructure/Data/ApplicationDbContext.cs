@@ -128,7 +128,7 @@ namespace ERPBackend.Infrastructure.Data
             builder.Entity<Attendance>()
                 .HasOne(a => a.Employee)
                 .WithMany()
-                .HasForeignKey(a => a.EmployeeId)
+                .HasForeignKey(a => a.EmployeeCard)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // ManpowerRequirement Relationships
@@ -332,7 +332,7 @@ namespace ERPBackend.Infrastructure.Data
             builder.Entity<AttendanceLog>()
                 .HasOne(l => l.Employee)
                 .WithMany()
-                .HasForeignKey(l => l.EmployeeId)
+                .HasForeignKey(l => l.EmployeeCard)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<AttendanceLog>()

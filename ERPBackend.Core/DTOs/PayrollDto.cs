@@ -3,8 +3,8 @@ namespace ERPBackend.Core.DTOs
     public class MonthlySalarySheetDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public string EmployeeName { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
         public string Designation { get; set; } = string.Empty;
@@ -32,8 +32,8 @@ namespace ERPBackend.Core.DTOs
     public class DailySalarySheetDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public string EmployeeName { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
         public string Designation { get; set; } = string.Empty;
@@ -70,11 +70,37 @@ namespace ERPBackend.Core.DTOs
         public int Year { get; set; }
         public int Month { get; set; }
         public int? DepartmentId { get; set; }
-        public int? EmployeeId { get; set; }
+        public string? EmployeeId { get; set; }
+        public int? CompanyId { get; set; }
     }
 
-    public class PayslipDto : MonthlySalarySheetDto
+    public class PayslipDto
     {
+        public int Id { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
+        public string EmployeeName { get; set; } = string.Empty;
+        public string Department { get; set; } = string.Empty;
+        public string Designation { get; set; } = string.Empty;
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public string MonthName { get; set; } = string.Empty;
+        public decimal GrossSalary { get; set; }
+        public decimal BasicSalary { get; set; }
+        public int TotalDays { get; set; }
+        public int PresentDays { get; set; }
+        public int AbsentDays { get; set; }
+        public int LeaveDays { get; set; }
+        public int Holidays { get; set; }
+        public int WeekendDays { get; set; }
+        public decimal OTHours { get; set; }
+        public decimal OTAmount { get; set; }
+        public decimal AttendanceBonus { get; set; }
+        public decimal OtherAllowances { get; set; }
+        public decimal TotalEarning { get; set; }
+        public decimal TotalDeduction { get; set; }
+        public decimal NetPayable { get; set; }
+        public string Status { get; set; } = string.Empty;
         public string JoinedDate { get; set; } = string.Empty;
         public string BankAccountNo { get; set; } = string.Empty;
         public string PaymentMethod { get; set; } = "Bank";
@@ -82,11 +108,12 @@ namespace ERPBackend.Core.DTOs
         public decimal TaxDeduction { get; set; }
         public decimal PFContribution { get; set; }
     }
+
     public class AdvanceSalaryDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public string EmployeeName { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public DateTime RequestDate { get; set; }
@@ -99,8 +126,8 @@ namespace ERPBackend.Core.DTOs
     public class SalaryIncrementDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public string EmployeeName { get; set; } = string.Empty;
         public decimal PreviousGrossSalary { get; set; }
         public decimal IncrementAmount { get; set; }
@@ -113,8 +140,8 @@ namespace ERPBackend.Core.DTOs
     public class BonusDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public string EmployeeName { get; set; } = string.Empty;
         public string BonusType { get; set; } = string.Empty;
         public decimal Amount { get; set; }
@@ -125,7 +152,8 @@ namespace ERPBackend.Core.DTOs
 
     public class CreateAdvanceSalaryDto
     {
-        public int EmployeeId { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public decimal Amount { get; set; }
         public DateTime RequestDate { get; set; }
         public int RepaymentMonth { get; set; }
@@ -135,7 +163,8 @@ namespace ERPBackend.Core.DTOs
 
     public class CreateSalaryIncrementDto
     {
-        public int EmployeeId { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public decimal IncrementAmount { get; set; }
         public DateTime EffectiveDate { get; set; }
         public string IncrementType { get; set; } = "Yearly";
@@ -144,7 +173,8 @@ namespace ERPBackend.Core.DTOs
 
     public class CreateBonusDto
     {
-        public int EmployeeId { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public string BonusType { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public int Year { get; set; }
@@ -154,8 +184,8 @@ namespace ERPBackend.Core.DTOs
     public class BankSheetDto
     {
         public int Id { get; set; }
-        public int EmployeeId { get; set; }
-        public string EmployeeIdCard { get; set; } = string.Empty;
+        public string EmployeeId { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
         public string EmployeeName { get; set; } = string.Empty;
         public string BankName { get; set; } = string.Empty;
         public string BankAccountNo { get; set; } = string.Empty;

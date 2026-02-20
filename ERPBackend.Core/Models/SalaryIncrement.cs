@@ -6,29 +6,25 @@ namespace ERPBackend.Core.Models
 {
     public class SalaryIncrement
     {
-        [Key]
-        public int Id { get; set; }
+        [Key] public int Id { get; set; }
 
         public int EmployeeId { get; set; }
-        [ForeignKey(nameof(EmployeeId))]
-        public virtual Employee? Employee { get; set; }
+        [ForeignKey(nameof(EmployeeId))] public virtual Employee? Employee { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal PreviousGrossSalary { get; set; }
+        public int? CompanyId { get; set; }
+        [ForeignKey(nameof(CompanyId))] public virtual Company? Company { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal IncrementAmount { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal PreviousGrossSalary { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal NewGrossSalary { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal IncrementAmount { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")] public decimal NewGrossSalary { get; set; }
 
         public DateTime EffectiveDate { get; set; }
 
-        [StringLength(100)]
-        public string IncrementType { get; set; } = "Yearly"; // Yearly, Promotion, Adjustment
+        [StringLength(100)] public string IncrementType { get; set; } = "Yearly"; // Yearly, Promotion, Adjustment
 
-        [StringLength(500)]
-        public string? Remarks { get; set; }
+        [StringLength(500)] public string? Remarks { get; set; }
 
         public bool IsApplied { get; set; } = false;
 

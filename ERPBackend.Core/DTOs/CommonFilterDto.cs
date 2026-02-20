@@ -7,6 +7,7 @@ namespace ERPBackend.Core.DTOs
         public DateTime? Date { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+        public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         public int? DepartmentId { get; set; }
         public int? SectionId { get; set; }
@@ -18,6 +19,10 @@ namespace ERPBackend.Core.DTOs
         public string? Gender { get; set; }
         public string? Religion { get; set; }
         public string? Status { get; set; }
+        public bool? IsActive { get; set; }
+        public string? EmployeeId { get; set; }
         public string? SearchTerm { get; set; }
+        public DateTime? JoinDateFrom { get; set; }
+        public DateTime? JoinDateTo { get; set; }
     }
 }
