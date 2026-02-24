@@ -11,6 +11,10 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Xceed.Document.NET;
 using Xceed.Words.NET;
+using System.IO;
+using ERPBackend.Core.Entities;
+
+
 
 namespace ERPBackend.API.Controllers
 {
@@ -19,10 +23,18 @@ namespace ERPBackend.API.Controllers
     public class LeaveController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private static bool _fontRegistered = false;
 
         public LeaveController(ApplicationDbContext context)
         {
             _context = context;
+        }
+
+        [HttpGet("test")]
+        public IActionResult Test()
+        {
+            Console.WriteLine("Test endpoint hit at " + DateTime.Now);
+            return Ok("Leave API is working");
         }
 
         [HttpGet("types")]
@@ -232,206 +244,277 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpGet("export/pdf/{id}")]
-        public async Task<IActionResult> ExportApplicationPdf(int id)
+        public async Task<IActionResult> ExportPdf(int id)
         {
             try
             {
-                var app = await _context.LeaveApplications
-                    .Include(l => l.Employee).ThenInclude(e => e!.Designation)
-                    .Include(l => l.Employee).ThenInclude(e => e!.Department)
-                    .Include(l => l.Employee).ThenInclude(e => e!.Section)
-                    .Include(l => l.LeaveType)
-                    .FirstOrDefaultAsync(l => l.Id == id);
+                var application = await _context.LeaveApplications
 
-                if (app == null) return NotFound("Leave Application not found");
+                .Include(l => l.Employee)
+                .ThenInclude(e => e!.Department)
+                .Include(l => l.Employee)
+                .ThenInclude(e => e!.Designation)
+                .Include(l => l.Employee)
+                .ThenInclude(e => e!.Company)
+                .Include(l => l.LeaveType)
+                .FirstOrDefaultAsync(l => l.Id == id);
 
-                Company? company = app.Employee?.Department?.Company;
-                if (company == null && !string.IsNullOrEmpty(app.Employee?.CompanyName))
+            if (application == null) return NotFound();
+
+            var employee = application.Employee;
+            var company = employee?.Company;
+            
+            // Fallback to primary company if employee has no company assigned
+            if (company == null)
+            {
+                company = await _context.Companies.FirstOrDefaultAsync(c => c.Branch == ERPBackend.Core.Enums.BranchType.Primary) 
+                          ?? await _context.Companies.FirstOrDefaultAsync();
+            }
+
+            var balances = await GetLeaveBalanceInternal(application.EmployeeId);
+
+            if (!_fontRegistered)
+            {
+                var fontPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "fonts", "SutonnyMJ.ttf");
+                if (System.IO.File.Exists(fontPath))
                 {
-                    company = await _context.Companies.FirstOrDefaultAsync(c =>
-                        c.CompanyNameEn == app.Employee.CompanyName);
+                    using var fontStream = System.IO.File.OpenRead(fontPath);
+                    QuestPDF.Drawing.FontManager.RegisterFont(fontStream);
+                    _fontRegistered = true;
                 }
-
-                company ??= await _context.Companies.FirstOrDefaultAsync();
-                var balances = await GetLeaveBalancesInternal(app.EmployeeId);
-
-                QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-
-                var document = QuestPDF.Fluent.Document.Create(container =>
+            }
+            
+            var document = QuestPDF.Fluent.Document.Create(container =>
+            {
+                container.Page(page =>
                 {
-                    // Styles
-                    static IContainer LabelStyle(IContainer container) =>
-                        container.Padding(2).DefaultTextStyle(x => x.SemiBold());
-
-                    static IContainer ValueStyle(IContainer container) => container.BorderBottom(0.5f)
-                        .BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).Padding(2);
-
-                    // AlignCenter on Container
-                    static IContainer HeaderStyle(IContainer container) => container.Border(1)
-                        .BorderColor(QuestPDF.Helpers.Colors.Black).Background(QuestPDF.Helpers.Colors.Grey.Lighten3)
-                        .Padding(2).AlignCenter();
-
-                    void DrawPage(QuestPDF.Fluent.PageDescriptor page, bool isBangla)
+                    page.Size(PageSizes.A4);
+                    page.Margin(1, Unit.Centimetre);
+                    page.PageColor(Colors.White);
+                    
+                    // Header using Company Info (Centered)
+                    page.Header().Column(column =>
                     {
-                        page.Size(PageSizes.A4);
-                        page.Margin(2, Unit.Centimetre);
-                        page.PageColor(QuestPDF.Helpers.Colors.White);
+                        column.Item().AlignCenter().Text(company?.CompanyNameBn ?? "BDWwbwU d¨vewiK Bdvóªiz wjwgfUW")
+                            .FontFamily("SutonnyMJ").FontSize(28).Bold().FontColor(Colors.Black);
+                        
+                        column.Item().AlignCenter().Text(company?.AddressBn ?? "evnv`yiæi,wgR©vcyi evRvi, MvRxcyi |")
+                            .FontFamily("SutonnyMJ").FontSize(16).FontColor(Colors.Grey.Darken2);
+                        
+                        column.Item().PaddingTop(10).AlignCenter().Text("QzwUi Av‡e`bcÎ")
+                            .FontFamily("SutonnyMJ").FontSize(22).Bold().Underline();
+                            
+                        column.Item().AlignRight().PaddingRight(10).Row(row => {
+                            row.ConstantItem(40).Text("Zvs: ").FontFamily("SutonnyMJ").FontSize(14);
+                            row.ConstantItem(100).BorderBottom(1).AlignCenter().Text($"{application.AppliedDate:dd/MM/yyyy}").FontFamily("SutonnyMJ").FontSize(14);
+                        });
+                    });
 
-                        page.Header().Column(col =>
+                    page.Content().PaddingVertical(10).Column(column =>
+                    {
+                        // Employee Info
+                        column.Item().Row(row =>
                         {
-                            col.Item().Row(row =>
-                            {
-                                row.RelativeItem().Column(c =>
-                                {
-                                    c.Item().AlignCenter().Text(company?.CompanyNameEn ?? "HR HUB COMPOSITE LTD.")
-                                        .Style(TextStyle.Default.Bold().FontSize(20)
-                                            .FontColor(QuestPDF.Helpers.Colors.Blue.Darken2));
-                                    c.Item().AlignCenter()
-                                        .Text(company?.AddressEn ?? "123, Garments Avenue, Dhaka, Bangladesh")
-                                        .FontSize(10);
-                                });
+                            row.RelativeItem().PaddingRight(10).Row(r => {
+                                r.ConstantItem(40).Text("bvg : ").FontFamily("SutonnyMJ").FontSize(14);
+                                r.RelativeItem().BorderBottom(1).PaddingBottom(1).Text(employee?.FullNameBn ?? employee?.FullNameEn).FontFamily("SutonnyMJ").FontSize(14);
                             });
-                            col.Item().PaddingVertical(10).AlignCenter()
-                                .Text(isBangla ? "ছুটির আবেদন ফর্ম" : "LEAVE APPLICATION FORM").Underline().Bold()
-                                .FontSize(16);
+                            row.RelativeItem().Row(r => {
+                                r.ConstantItem(45).Text("c`ex : ").FontFamily("SutonnyMJ").FontSize(14);
+                                r.RelativeItem().BorderBottom(1).PaddingBottom(1).Text(employee?.Designation?.NameBn ?? employee?.Designation?.NameEn).FontFamily("SutonnyMJ").FontSize(14);
+                            });
                         });
 
-                        page.Content().PaddingVertical(10).Column(col =>
+                        column.Item().PaddingTop(5).Row(row =>
                         {
-                            // Date
-                            col.Item().AlignRight().Text($"Date: {DateTime.Now:dd MMM yyyy}");
-
-                            // Employee Info Table
-                            col.Item().PaddingTop(10).Table(table =>
-                            {
-                                table.ColumnsDefinition(columns =>
-                                {
-                                    columns.ConstantColumn(100);
-                                    columns.RelativeColumn();
-                                    columns.ConstantColumn(100);
-                                    columns.RelativeColumn();
-                                });
-
-                                table.Cell().Element(LabelStyle).Text(isBangla ? "নাম:" : "Name:");
-                                table.Cell().Element(ValueStyle).Text(app.Employee?.FullNameEn ?? "");
-                                table.Cell().Element(LabelStyle).Text(isBangla ? "আইডি:" : "ID:");
-                                table.Cell().Element(ValueStyle).Text(app.Employee?.EmployeeId ?? "");
-
-                                table.Cell().Element(LabelStyle).Text(isBangla ? "পদবী:" : "Designation:");
-                                table.Cell().Element(ValueStyle).Text(app.Employee?.Designation?.NameEn ?? "");
-                                table.Cell().Element(LabelStyle).Text(isBangla ? "বিভাগ:" : "Department:");
-                                table.Cell().Element(ValueStyle).Text(app.Employee?.Department?.NameEn ?? "");
-
-                                table.Cell().Element(LabelStyle).Text(isBangla ? "সেকশন:" : "Section:");
-                                table.Cell().Element(ValueStyle).Text(app.Employee?.Section?.NameEn ?? "");
-                                table.Cell().Element(LabelStyle).Text(isBangla ? "যোগদান:" : "Join Date:");
-                                table.Cell().Element(ValueStyle)
-                                    .Text(app.Employee?.JoinDate.ToString("dd MMM yyyy") ?? "");
+                            row.RelativeItem().PaddingRight(10).Row(r => {
+                                r.ConstantItem(75).Text("†mKkb/jvBb : ").FontFamily("SutonnyMJ").FontSize(14);
+                                r.RelativeItem().BorderBottom(1).PaddingBottom(1).Text(employee?.Department?.NameBn ?? employee?.Department?.NameEn).FontFamily("SutonnyMJ").FontSize(14);
                             });
-
-                            // Leave Details
-                            col.Item().PaddingTop(20).Text(isBangla ? "ছুটির বিবরণ:" : "Leave Details:").Bold()
-                                .FontSize(12);
-                            col.Item().Table(table =>
-                            {
-                                table.ColumnsDefinition(columns =>
-                                {
-                                    columns.RelativeColumn();
-                                    columns.RelativeColumn();
-                                    columns.RelativeColumn();
-                                    columns.RelativeColumn();
-                                });
-
-                                table.Header(header =>
-                                {
-                                    header.Cell().Element(HeaderStyle).Text(isBangla ? "ছুটির ধরন" : "Leave Type");
-                                    header.Cell().Element(HeaderStyle).Text(isBangla ? "শুরু" : "From Date");
-                                    header.Cell().Element(HeaderStyle).Text(isBangla ? "শেষ" : "To Date");
-                                    header.Cell().Element(HeaderStyle).Text(isBangla ? "মোট দিন" : "Total Days");
-                                });
-
-                                table.Cell().Element(ValueStyle).Text(app.LeaveType?.Name ?? "");
-                                table.Cell().Element(ValueStyle).Text(app.StartDate.ToString("dd MMM yyyy"));
-                                table.Cell().Element(ValueStyle).Text(app.EndDate.ToString("dd MMM yyyy"));
-                                table.Cell().Element(ValueStyle).Text(app.TotalDays.ToString());
-                            });
-
-                            col.Item().PaddingTop(5).Text($"Reason: {app.Reason}").Italic();
-
-                            // Leave Balance Summary
-                            col.Item().PaddingTop(20).Text(isBangla ? "ছুটির স্থিতি:" : "Leave Balance Summary:").Bold()
-                                .FontSize(12);
-                            col.Item().Table(table =>
-                            {
-                                table.ColumnsDefinition(columns =>
-                                {
-                                    columns.RelativeColumn();
-                                    columns.RelativeColumn();
-                                    columns.RelativeColumn();
-                                    columns.RelativeColumn();
-                                });
-
-                                table.Header(header =>
-                                {
-                                    header.Cell().Element(HeaderStyle).Text(isBangla ? "ধরন" : "Leave Type");
-                                    header.Cell().Element(HeaderStyle).Text(isBangla ? "বরাদ্দ" : "Allocated");
-                                    header.Cell().Element(HeaderStyle).Text(isBangla ? "ভোগকৃত" : "Enjoyed");
-                                    header.Cell().Element(HeaderStyle).Text(isBangla ? "অবশিষ্ট" : "Balance");
-                                });
-
-                                foreach (var balance in balances)
-                                {
-                                    table.Cell().Element(ValueStyle).Text(balance.LeaveTypeName);
-                                    table.Cell().Element(ValueStyle).Text(balance.TotalAllocated.ToString());
-                                    table.Cell().Element(ValueStyle).Text(balance.TotalTaken.ToString());
-                                    table.Cell().Element(ValueStyle).Text(balance.Balance.ToString());
-                                }
-                            });
-
-                            // Signatures
-                            col.Item().PaddingTop(50).Row(row =>
-                            {
-                                row.RelativeItem().Column(c =>
-                                {
-                                    c.Item().BorderTop(1).AlignCenter()
-                                        .Text(isBangla ? "আবেদনকারীর স্বাক্ষর" : "Applicant Signature");
-                                });
-                                row.ConstantItem(20);
-                                row.RelativeItem().Column(c =>
-                                {
-                                    c.Item().BorderTop(1).AlignCenter()
-                                        .Text(isBangla ? "সুপারিশকারী" : "Recommended By");
-                                });
-                                row.ConstantItem(20);
-                                row.RelativeItem().Column(c =>
-                                {
-                                    c.Item().BorderTop(1).AlignCenter()
-                                        .Text(isBangla ? "অনুমোদনকারী" : "Approved By");
-                                });
+                            row.RelativeItem().Row(r => {
+                                r.ConstantItem(55).Text("KvW© bs: ").FontFamily("SutonnyMJ").FontSize(14);
+                                r.RelativeItem().BorderBottom(1).PaddingBottom(1).Text(employee?.EmployeeId).FontFamily("SutonnyMJ").FontSize(14);
                             });
                         });
-                    }
 
-                    // Page 1: English
-                    container.Page(page => DrawPage(page, false));
+                        column.Item().PaddingTop(5).Row(row => {
+                            row.ConstantItem(65).Text("QzwUi KviY: ").FontFamily("SutonnyMJ").FontSize(14);
+                            row.RelativeItem().BorderBottom(1).PaddingBottom(1).Text(application.Reason).FontFamily("SutonnyMJ").FontSize(14);
+                        });
 
-                    // Page 2: Bangla
-                    container.Page(page => DrawPage(page, true));
+                        column.Item().PaddingTop(5).Row(row => {
+                            row.ConstantItem(70).Text("QzwUi ZvwiL : ").FontFamily("SutonnyMJ").FontSize(14);
+                            row.ConstantItem(100).AlignCenter().BorderBottom(1).Text($"{application.StartDate:dd/MM/yyyy}").FontFamily("SutonnyMJ").FontSize(14);
+                            row.ConstantItem(40).AlignCenter().Text(" †_‡K : ").FontFamily("SutonnyMJ").FontSize(14);
+                            row.ConstantItem(100).AlignCenter().BorderBottom(1).Text($"{application.EndDate:dd/MM/yyyy}").FontFamily("SutonnyMJ").FontSize(14);
+                            row.RelativeItem().PaddingLeft(5).Text(" ch©šÍ").FontFamily("SutonnyMJ").FontSize(14);
+                        });
+
+                        column.Item().PaddingTop(5).Row(row => {
+                            row.ConstantItem(40).Text("†gvU : ").FontFamily("SutonnyMJ").FontSize(14);
+                            row.ConstantItem(50).AlignCenter().BorderBottom(1).Text($"{application.TotalDays}").FontFamily("SutonnyMJ").FontSize(14);
+                            row.RelativeItem().PaddingLeft(5).Text(" w`‡bi QzwU gÄyi Kivi mwebq Av‡e`b KiwQ|").FontFamily("SutonnyMJ").FontSize(14);
+                        });
+
+                        column.Item().PaddingTop(10).Text("QzwU‡Z _vKvKvjxb wVKvbv :").FontFamily("SutonnyMJ").FontSize(14);
+                        column.Item().PaddingTop(2).BorderBottom(1).Height(15);
+                        column.Item().PaddingTop(10).BorderBottom(1).Height(15);
+
+                        column.Item().PaddingTop(10).Row(row =>
+                        {
+                            row.ConstantItem(40).Text("†dvb : ").FontFamily("SutonnyMJ").FontSize(14);
+                            row.RelativeItem().BorderBottom(1).Text(" ").FontFamily("SutonnyMJ").FontSize(14);
+                            row.RelativeItem().AlignRight().Column(c => {
+                                c.Item().PaddingTop(15).Text("Av‡e`bKvixi ^v²i").FontFamily("SutonnyMJ").FontSize(12).Bold();
+                            });
+                        });
+
+                        column.Item().PaddingVertical(10).LineHorizontal(1);
+
+                        // Office Section
+                        column.Item().AlignCenter().Text("GB Ask Awdm KZ…©K c~iY Kiv n‡e")
+                            .FontFamily("SutonnyMJ").FontSize(14).Bold();
+
+                        column.Item().PaddingTop(5).Row(row =>
+                        {
+                            row.RelativeItem().Text(t => {
+                                t.Span("PvKwi‡Z †hvM`v‡bi ZvwiL: ").FontFamily("SutonnyMJ").FontSize(12);
+                                t.Span(" [                    ] ").FontSize(12);
+                            });
+                            row.RelativeItem().Text(t => {
+                                t.Span("QzwUi wnmveKvj: ").FontFamily("SutonnyMJ").FontSize(12);
+                                t.Span(" [                    ] ").FontSize(12);
+                            });
+                            row.RelativeItem().Text(t => {
+                                t.Span("nBfZ: ").FontFamily("SutonnyMJ").FontSize(12);
+                                t.Span(" [                    ] ").FontSize(12);
+                            });
+                        });
+
+                        // Balances Table
+                        var casual = balances.FirstOrDefault(b => b.LeaveTypeName.Contains("Casual")) ?? new LeaveBalanceDto();
+                        var sick = balances.FirstOrDefault(b => b.LeaveTypeName.Contains("Sick")) ?? new LeaveBalanceDto();
+                        var earned = balances.FirstOrDefault(b => b.LeaveTypeName.Contains("Earn")) ?? new LeaveBalanceDto();
+                        var maternity = balances.FirstOrDefault(b => b.LeaveTypeName.Contains("Maternity")) ?? new LeaveBalanceDto();
+
+                        column.Item().PaddingTop(10).Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(2);
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                            });
+
+                            table.Header(header => {
+                                header.Cell().Text("QzwUi weeiY   :").FontFamily("SutonnyMJ").FontSize(12);
+                                header.Cell().AlignCenter().Text("‰bwgwËK QzwU").FontFamily("SutonnyMJ").FontSize(10);
+                                header.Cell().AlignCenter().Text("cxov-QzwU").FontFamily("SutonnyMJ").FontSize(10);
+                                header.Cell().AlignCenter().Text("AwR©Z QzwU").FontFamily("SutonnyMJ").FontSize(10);
+                                header.Cell().AlignCenter().Text("gvZ…Z¡RwbZ QzwU").FontFamily("SutonnyMJ").FontSize(10);
+                            });
+
+                            // Row 1: cvc¨ QzwU
+                            table.Cell().Row(1).Column(1).PaddingVertical(2).Text("cvc¨ QzwU :").FontFamily("SutonnyMJ").FontSize(12);
+                            table.Cell().Row(1).Column(2).Padding(2).Border(1f).AlignCenter().Text($"{casual.TotalAllocated}").FontSize(12);
+                            table.Cell().Row(1).Column(3).Padding(2).Border(1f).AlignCenter().Text($"{sick.TotalAllocated}").FontSize(12);
+                            table.Cell().Row(1).Column(4).Padding(2).Border(1f).AlignCenter().Text($"{earned.TotalAllocated}").FontSize(12);
+                            table.Cell().Row(1).Column(5).Padding(2).Border(1f).AlignCenter().Text($"{maternity.TotalAllocated}").FontSize(12);
+
+                            // Row 2: †fvMK…Z QzwU
+                            table.Cell().Row(2).Column(1).PaddingVertical(2).Text("†fvMK…Z QzwU :").FontFamily("SutonnyMJ").FontSize(12);
+                            table.Cell().Row(2).Column(2).Padding(2).Border(1f).AlignCenter().Text($"{casual.TotalTaken}").FontSize(12);
+                            table.Cell().Row(2).Column(3).Padding(2).Border(1f).AlignCenter().Text($"{sick.TotalTaken}").FontSize(12);
+                            table.Cell().Row(2).Column(4).Padding(2).Border(1f).AlignCenter().Text($"{earned.TotalTaken}").FontSize(12);
+                            table.Cell().Row(2).Column(5).Padding(2).Border(1f).AlignCenter().Text($"{maternity.TotalTaken}").FontSize(12);
+
+                            // Row 3: Aewkó QzwU
+                            table.Cell().Row(3).Column(1).PaddingVertical(2).Text("Aewkó QzwU :").FontFamily("SutonnyMJ").FontSize(12);
+                            table.Cell().Row(3).Column(2).Padding(2).Border(1f).AlignCenter().Text($"{casual.Balance}").FontSize(12);
+                            table.Cell().Row(3).Column(3).Padding(2).Border(1f).AlignCenter().Text($"{sick.Balance}").FontSize(12);
+                            table.Cell().Row(3).Column(4).Padding(2).Border(1f).AlignCenter().Text($"{earned.Balance}").FontSize(12);
+                            table.Cell().Row(3).Column(5).Padding(2).Border(1f).AlignCenter().Text($"{maternity.Balance}").FontSize(12);
+                        });
+
+                        column.Item().PaddingTop(10).Row(row => {
+                            row.ConstantItem(50).Border(1f).PaddingHorizontal(5).AlignCenter().Text(" ").FontSize(12);
+                            row.RelativeItem().PaddingLeft(5).Text(" w`‡bi ‰bwgwËK/ cxov/ AwR©Z/ gvZ…Z¡RwbZ QzwU gÄyi Kiv nBj|").FontFamily("SutonnyMJ").FontSize(12);
+                        });
+
+                        column.Item().PaddingTop(15).Row(row =>
+                        {
+                            row.RelativeItem().AlignCenter().Text("GBP Avi kvLv").FontFamily("SutonnyMJ").FontSize(9);
+                            row.RelativeItem().AlignCenter().Text("BbPvR©").FontFamily("SutonnyMJ").FontSize(9);
+                            row.RelativeItem().AlignCenter().Text("GwcGg/wcGg").FontFamily("SutonnyMJ").FontSize(9);
+                            row.RelativeItem().AlignCenter().Text("wefvMxq cÖavb").FontFamily("SutonnyMJ").FontSize(9);
+                            row.RelativeItem().AlignCenter().Text("wefvMxq cÖavb(cÖ)").FontFamily("SutonnyMJ").FontSize(9);
+                            row.RelativeItem().AlignCenter().Text("wR Gg").FontFamily("SutonnyMJ").FontSize(9);
+                        });
+
+                        column.Item().PaddingVertical(10).LineHorizontal(1);
+
+                        // Report Section
+                        column.Item().AlignCenter().Text(company?.CompanyNameBn ?? "BDWwbwU d¨vewiK Bdvóªiz wjwgfUW")
+                            .FontFamily("SutonnyMJ").FontSize(18).Bold();
+                        column.Item().AlignCenter().Text("QzwU †_‡K Kv‡R †hvM`v‡bi cÖwZ‡e`b")
+                            .FontFamily("SutonnyMJ").FontSize(14).Underline();
+
+                        column.Item().PaddingTop(5).Row(row =>
+                        {
+                            row.RelativeItem().Row(r => {
+                                r.ConstantItem(30).Text("bvg : ").FontFamily("SutonnyMJ").FontSize(12);
+                                r.RelativeItem().BorderBottom(1).Text(employee?.FullNameBn ?? employee?.FullNameEn).FontFamily("SutonnyMJ").FontSize(12);
+                            });
+                            row.RelativeItem().Row(r => {
+                                r.ConstantItem(45).Text("KvW© bs: ").FontFamily("SutonnyMJ").FontSize(12);
+                                r.RelativeItem().BorderBottom(1).Text(employee?.EmployeeId).FontFamily("SutonnyMJ").FontSize(12);
+                            });
+                            row.RelativeItem().Row(r => {
+                                r.ConstantItem(65).Text("Bm¨zi ZvwiL : ").FontFamily("SutonnyMJ").FontSize(12);
+                                r.RelativeItem().BorderBottom(1).Text(" ").FontFamily("SutonnyMJ").FontSize(12);
+                            });
+                        });
+
+                        column.Item().PaddingTop(5).Row(row => {
+                            row.ConstantItem(180).Text("gÄziK…Z QzwU Abyhvqx †hvM`v‡bi ZvwiL : ").FontFamily("SutonnyMJ").FontSize(12);
+                            row.RelativeItem().BorderBottom(1).Text(" ").FontFamily("SutonnyMJ").FontSize(12);
+                        });
+                        column.Item().PaddingTop(5).Row(row => {
+                            row.ConstantItem(120).Text("†hvM`v‡bi cÖK…Z ZvwiL : ").FontFamily("SutonnyMJ").FontSize(12);
+                            row.RelativeItem().BorderBottom(1).Text(" ").FontFamily("SutonnyMJ").FontSize(12);
+                        });
+
+                        column.Item().PaddingTop(15).Row(row =>
+                        {
+                            row.RelativeItem().Column(c => {
+                                c.Item().AlignCenter().BorderBottom(1).Height(12);
+                                c.Item().AlignCenter().Text("Av‡e`bKvixi ^v²i").FontFamily("SutonnyMJ").FontSize(10);
+                            });
+                            row.RelativeItem(2).PaddingHorizontal(5).AlignCenter().Text("GB Askটি QzwU †_‡K Kv‡R †hvM`v‡bi mgq cÖkvmb kvLvq Rgv w`fZ n‡e|")
+                                .FontFamily("SutonnyMJ").FontSize(10);
+                            row.RelativeItem().Column(c => {
+                                c.Item().AlignCenter().BorderBottom(1).Height(12);
+                                c.Item().AlignCenter().Text("GBP Avi kvLv").FontFamily("SutonnyMJ").FontSize(10);
+                            });
+                        });
+                    });
                 });
+            });
 
-                using var stream = new MemoryStream();
-                document.GeneratePdf(stream);
-                return File(stream.ToArray(), "application/pdf",
-                    $"Leave_Application_{app.Employee?.EmployeeId}_{id}.pdf");
+            byte[] pdfBytes = document.GeneratePdf();
+            return File(pdfBytes, "application/pdf", $"Leave_Application_{application.Id}.pdf");
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message });
+                Console.WriteLine($"PDF Error for ID {id}: {ex}");
+                return StatusCode(500, new { message = "Error generating PDF", details = ex.Message });
             }
         }
 
 
-        private async Task<List<LeaveBalanceDto>> GetLeaveBalancesInternal(int employeeId)
+        private async Task<IEnumerable<LeaveBalanceDto>> GetLeaveBalanceInternal(int employeeId)
         {
             var types = await _context.LeaveTypes.Where(t => t.IsActive).ToListAsync();
             var applications = await _context.LeaveApplications
@@ -439,7 +522,7 @@ namespace ERPBackend.API.Controllers
                             l.StartDate.Year == DateTime.Now.Year)
                 .ToListAsync();
 
-            return types.Select(t => new LeaveBalanceDto
+            var balances = types.Select(t => new LeaveBalanceDto
             {
                 LeaveTypeId = t.Id,
                 LeaveTypeName = t.Name,
@@ -447,122 +530,13 @@ namespace ERPBackend.API.Controllers
                 TotalTaken = applications.Where(a => a.LeaveTypeId == t.Id).Sum(a => a.TotalDays),
                 Balance = t.YearlyLimit - applications.Where(a => a.LeaveTypeId == t.Id).Sum(a => a.TotalDays)
             }).ToList();
+
+
+            return balances;
         }
 
-        [HttpGet("export/word/{id}")]
-        public async Task<IActionResult> ExportApplicationWord(int id)
-        {
-            try
-            {
-                var app = await _context.LeaveApplications
-                    .Include(l => l.Employee).ThenInclude(e => e!.Designation)
-                    .Include(l => l.Employee).ThenInclude(e => e!.Department)
-                    .Include(l => l.Employee).ThenInclude(e => e!.Section)
-                    .Include(l => l.LeaveType)
-                    .FirstOrDefaultAsync(l => l.Id == id);
 
-                if (app == null) return NotFound("Leave Application not found");
 
-                Company? company = app.Employee?.Department?.Company;
-                if (company == null && !string.IsNullOrEmpty(app.Employee?.CompanyName))
-                {
-                    company = await _context.Companies.FirstOrDefaultAsync(c =>
-                        c.CompanyNameEn == app.Employee.CompanyName);
-                }
-
-                company ??= await _context.Companies.FirstOrDefaultAsync();
-                var balances = await GetLeaveBalancesInternal(app.EmployeeId);
-
-                var sb = new System.Text.StringBuilder();
-
-                // Helper to generate a page
-                void GenerateHtmlPage(bool isBangla)
-                {
-                    sb.Append("<div style='page-break-after: always; padding: 20px;'>");
-
-                    // Header
-                    sb.Append($"<div style='text-align:center; margin-bottom: 20px;'>");
-                    sb.Append(
-                        $"<h2 style='margin:0; color:#1a365d'>{(company?.CompanyNameEn ?? "HR HUB COMPOSITE LTD.")}</h2>");
-                    sb.Append(
-                        $"<p style='margin:0; font-size:12px'>{(company?.AddressEn ?? "123, Garments Avenue, Dhaka, Bangladesh")}</p>");
-                    sb.Append(
-                        $"<h3 style='text-decoration: underline; margin-top:10px'>{(isBangla ? "ছুটির আবেদন ফর্ম" : "LEAVE APPLICATION FORM")}</h3>");
-                    sb.Append("</div>");
-
-                    // Date
-                    sb.Append($"<p style='text-align:right'>Date: {DateTime.Now:dd MMM yyyy}</p>");
-
-                    // Employee Info
-                    sb.Append("<table style='width:100%; border-collapse: collapse; margin-bottom: 20px;'>");
-
-                    string Row(string l1, string v1, string l2, string v2) =>
-                        $"<tr><td style='width:15%; font-weight:bold; padding:5px'>{l1}</td><td style='width:35%; border-bottom:1px solid #ddd; padding:5px'>{v1}</td><td style='width:15%; font-weight:bold; padding:5px'>{l2}</td><td style='width:35%; border-bottom:1px solid #ddd; padding:5px'>{v2}</td></tr>";
-
-                    sb.Append(Row(isBangla ? "নাম:" : "Name:", app.Employee?.FullNameEn ?? "",
-                        isBangla ? "আইডি:" : "ID:", app.Employee?.EmployeeId ?? ""));
-                    sb.Append(Row(isBangla ? "পদবী:" : "Designation:", app.Employee?.Designation?.NameEn ?? "",
-                        isBangla ? "বিভাগ:" : "Department:", app.Employee?.Department?.NameEn ?? ""));
-                    sb.Append(Row(isBangla ? "সেকশন:" : "Section:", app.Employee?.Section?.NameEn ?? "",
-                        isBangla ? "যোগদান:" : "Join Date:", app.Employee?.JoinDate.ToString("dd MMM yyyy") ?? ""));
-                    sb.Append("</table>");
-
-                    // Leave Details
-                    sb.Append($"<h4>{(isBangla ? "ছুটির বিবরণ:" : "Leave Details:")}</h4>");
-                    sb.Append(
-                        "<table border='1' style='width:100%; border-collapse:collapse; margin-bottom:20px; text-align:center'>");
-                    sb.Append(
-                        $"<tr style='background-color:#f0f0f0'><th>{(isBangla ? "ধরন" : "Type")}</th><th>{(isBangla ? "শুরু" : "From")}</th><th>{(isBangla ? "শেষ" : "To")}</th><th>{(isBangla ? "দিন" : "Days")}</th></tr>");
-                    sb.Append(
-                        $"<tr><td>{app.LeaveType?.Name}</td><td>{app.StartDate:dd MMM yyyy}</td><td>{app.EndDate:dd MMM yyyy}</td><td>{app.TotalDays}</td></tr>");
-                    sb.Append("</table>");
-                    sb.Append($"<p><b>Reason:</b> {app.Reason}</p>");
-
-                    // Balance
-                    sb.Append($"<h4>{(isBangla ? "ছুটির স্থিতি:" : "Leave Balance Summary:")}</h4>");
-                    sb.Append(
-                        "<table border='1' style='width:100%; border-collapse:collapse; margin-bottom:40px; text-align:center'>");
-                    sb.Append(
-                        $"<tr style='background-color:#f0f0f0'><th>{(isBangla ? "ধরন" : "Leave Type")}</th><th>{(isBangla ? "বরাদ্দ" : "Allocated")}</th><th>{(isBangla ? "ভোগকৃত" : "Enjoyed")}</th><th>{(isBangla ? "অবশিষ্ট" : "Balance")}</th></tr>");
-                    foreach (var b in balances)
-                    {
-                        sb.Append(
-                            $"<tr><td>{b.LeaveTypeName}</td><td>{b.TotalAllocated}</td><td>{b.TotalTaken}</td><td>{b.Balance}</td></tr>");
-                    }
-
-                    sb.Append("</table>");
-
-                    // Signatures
-                    sb.Append("<table style='width:100%; margin-top:50px; text-align:center'>");
-                    sb.Append("<tr>");
-                    sb.Append(
-                        $"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "আবেদনকারী" : "Applicant")}</td>");
-                    sb.Append("<td style='width:5%'></td>");
-                    sb.Append(
-                        $"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "সুপারিশকারী" : "Recommended By")}</td>");
-                    sb.Append("<td style='width:5%'></td>");
-                    sb.Append(
-                        $"<td style='border-top:1px solid #000; width:30%'>{(isBangla ? "অনুমোদনকারী" : "Approved By")}</td>");
-                    sb.Append("</tr>");
-                    sb.Append("</table>");
-
-                    sb.Append("</div>");
-                }
-
-                sb.Append("<html><body>");
-                GenerateHtmlPage(false); // English
-                GenerateHtmlPage(true); // Bangla
-                sb.Append("</body></html>");
-
-                var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-                return File(bytes, "application/msword", $"Leave_Application_{app.Employee?.EmployeeId}_{id}.doc");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"ExportWord Exception: {ex}");
-                return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
-            }
-        }
 
         [HttpGet("balance/{employeeId}")]
         public async Task<ActionResult<IEnumerable<LeaveBalanceDto>>> GetLeaveBalance(int employeeId)
@@ -588,19 +562,45 @@ namespace ERPBackend.API.Controllers
         [HttpPost("seed")]
         public async Task<ActionResult> SeedLeaveTypes()
         {
-            if (await _context.LeaveTypes.AnyAsync()) return Ok(new { message = "Leave types already seeded." });
-
             var types = new List<LeaveType>
             {
-                new() { Name = "Sick Leave", Code = "SL", YearlyLimit = 14, IsCarryForward = false },
                 new() { Name = "Casual Leave", Code = "CL", YearlyLimit = 10, IsCarryForward = false },
-                new() { Name = "Earned Leave", Code = "EL", YearlyLimit = 20, IsCarryForward = true },
-                new() { Name = "Maternity Leave", Code = "ML", YearlyLimit = 112, IsCarryForward = false },
+                new() { Name = "Sick Leave", Code = "SL", YearlyLimit = 14, IsCarryForward = false },
+                new() { Name = "Earn Leave", Code = "EL", YearlyLimit = 20, IsCarryForward = true },
+                new() { Name = "Paternity leave", Code = "PL", YearlyLimit = 5, IsCarryForward = false },
+                new() { Name = "Maturnity Leave", Code = "ML", YearlyLimit = 112, IsCarryForward = false },
+                new() { Name = "Leave without Pay", Code = "LWP", YearlyLimit = 365, IsCarryForward = false },
             };
 
-            _context.LeaveTypes.AddRange(types);
+            foreach (var t in types)
+            {
+                var existing = await _context.LeaveTypes.FirstOrDefaultAsync(x => x.Code == t.Code);
+                if (existing != null)
+                {
+                    existing.Name = t.Name;
+                    existing.YearlyLimit = t.YearlyLimit;
+                    existing.IsCarryForward = t.IsCarryForward;
+                    existing.IsActive = true;
+                    _context.LeaveTypes.Update(existing);
+                }
+                else
+                {
+                    _context.LeaveTypes.Add(t);
+                }
+            }
+            
+            var allTypes = await _context.LeaveTypes.ToListAsync();
+            foreach (var existing in allTypes)
+            {
+                if (!types.Any(t => t.Code == existing.Code))
+                {
+                    existing.IsActive = false;
+                    _context.LeaveTypes.Update(existing);
+                }
+            }
+
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Leave types seeded successfully." });
+            return Ok(new { message = "Leave types updated successfully." });
         }
 
         [HttpGet("monthly-report")]
@@ -633,10 +633,12 @@ namespace ERPBackend.API.Controllers
                     SickLeave = g.Where(x => x.LeaveType!.Code == "SL").Sum(x => x.TotalDays),
                     CasualLeave = g.Where(x => x.LeaveType!.Code == "CL").Sum(x => x.TotalDays),
                     EarnedLeave = g.Where(x => x.LeaveType!.Code == "EL").Sum(x => x.TotalDays),
-                    OtherLeave =
-                        g.Where(x =>
-                                x.LeaveType!.Code != "SL" && x.LeaveType!.Code != "CL" && x.LeaveType!.Code != "EL")
-                            .Sum(x => x.TotalDays),
+                    PaternityLeave = g.Where(x => x.LeaveType!.Code == "PL").Sum(x => x.TotalDays),
+                    MaternityLeave = g.Where(x => x.LeaveType!.Code == "ML").Sum(x => x.TotalDays),
+                    LWP = g.Where(x => x.LeaveType!.Code == "LWP").Sum(x => x.TotalDays),
+                    OtherLeave = g.Where(x => 
+                        !new[] {"SL", "CL", "EL", "PL", "ML", "LWP"}.Contains(x.LeaveType!.Code)
+                    ).Sum(x => x.TotalDays),
                     TotalDays = g.Sum(x => x.TotalDays)
                 })
                 .ToList();
