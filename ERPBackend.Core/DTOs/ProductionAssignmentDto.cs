@@ -16,6 +16,14 @@ namespace ERPBackend.Core.DTOs
         public string Status { get; set; } = string.Empty;
     }
 
+    public class UpdateProductionAssignmentDto
+    {
+        public int ProductionId { get; set; }
+        public int LineId { get; set; }
+        public int TotalTarget { get; set; }
+        public string Status { get; set; } = "Active";
+    }
+
     public class CreateProductionAssignmentDto
     {
         public int ProductionId { get; set; }
@@ -64,5 +72,37 @@ namespace ERPBackend.Core.DTOs
         public int H10 { get; set; }
         public int H11 { get; set; }
         public int H12 { get; set; }
+    }
+
+    public class ProductionFilterDto
+    {
+        public DateTime? Date { get; set; }
+        public int? LineId { get; set; }
+        public string? Buyer { get; set; }
+        public string? StyleNo { get; set; }
+        public string? SearchTerm { get; set; }
+    }
+
+    public class DailyReportItemDto
+    {
+        public string LineName { get; set; } = "";
+        public string StyleNo { get; set; } = "";
+        public string Buyer { get; set; } = "";
+        public int DailyTarget { get; set; }
+        public int HourlyTarget { get; set; }
+        public int Completed { get; set; }
+        public double Achievement { get; set; }
+    }
+
+    public class MonthlyReportItemDto
+    {
+        public string Month { get; set; } = "";
+        public int Year { get; set; }
+        public string LineName { get; set; } = "";
+        public int TotalTarget { get; set; }
+        public int TotalCompleted { get; set; }
+        public double AvgAchievement { get; set; }
+        public int WorkingDays { get; set; }
+        public string TopStyle { get; set; } = "";
     }
 }

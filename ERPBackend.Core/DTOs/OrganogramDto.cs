@@ -103,6 +103,13 @@ namespace ERPBackend.Core.DTOs
         public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         public string Status { get; set; } = "Active";
+        public bool HasSpecialBreak { get; set; }
+        public string? SpecialBreakStart { get; set; }
+        public string? SpecialBreakEnd { get; set; }
+        public string? SpecialBreakDates { get; set; }
+        public decimal IfterBillAmount { get; set; }
+        public decimal TiffinBillAmount { get; set; }
+        public decimal NightBillAmount { get; set; }
     }
 
     public class CreateShiftDto
@@ -120,6 +127,13 @@ namespace ERPBackend.Core.DTOs
         public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         [Required] public string Status { get; set; } = "Active";
+        public bool HasSpecialBreak { get; set; }
+        public string? SpecialBreakStart { get; set; }
+        public string? SpecialBreakEnd { get; set; }
+        public string? SpecialBreakDates { get; set; }
+        public decimal IfterBillAmount { get; set; }
+        public decimal TiffinBillAmount { get; set; }
+        public decimal NightBillAmount { get; set; }
     }
 
     public class GroupDto

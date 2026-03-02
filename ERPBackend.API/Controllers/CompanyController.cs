@@ -272,16 +272,59 @@ namespace ERPBackend.API.Controllers
         [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin)]
         public async Task<IActionResult> DeleteCompany(int id)
         {
-            var company = await _context.Companies.FindAsync(id);
+            var company = await _context.Companies
+                .Include(c => c.Users)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
             if (company == null)
             {
                 return NotFound();
             }
 
-            _context.Companies.Remove(company);
-            await _context.SaveChangesAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            return NoContent();
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        // 1. Manually remove all employees associated with this company
+                        var employees = await _context.Employees.Where(e => e.CompanyId == id).ToListAsync();
+                        if (employees.Any())
+                        {
+                            _context.Employees.RemoveRange(employees);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        // 2. Remove file assets
+                        if (!string.IsNullOrEmpty(company.LogoPath)) DeleteFile(company.LogoPath);
+                        if (!string.IsNullOrEmpty(company.AuthorizeSignaturePath)) DeleteFile(company.AuthorizeSignaturePath);
+
+                        // 3. Remove the company record
+                        _context.Companies.Remove(company);
+                        await _context.SaveChangesAsync();
+
+                        await transaction.CommitAsync();
+                    }
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw; // Re-throw to be caught by the outer catch
+                    }
+                });
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "A database error occurred while trying to perform a full cleanup and deletion of the company.",
+                    details = ex.InnerException?.Message ?? ex.Message
+                });
+            }
         }
     }
 }

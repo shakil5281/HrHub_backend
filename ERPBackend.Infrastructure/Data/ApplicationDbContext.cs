@@ -40,6 +40,9 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<Transfer> Transfers { get; set; } = null!;
         public DbSet<Separation> Separations { get; set; } = null!;
         public DbSet<AttendanceLog> AttendanceLogs { get; set; } = null!;
+        public DbSet<IfterBill> IfterBills { get; set; } = null!;
+        public DbSet<TiffinBill> TiffinBills { get; set; } = null!;
+        public DbSet<NightBill> NightBills { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -209,7 +212,7 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(s => s.Department)
                 .WithMany(d => d.Sections)
                 .HasForeignKey(s => s.DepartmentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Designation Relationships
             builder.Entity<Designation>()
@@ -228,7 +231,7 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(d => d.Section)
                 .WithMany(s => s.Designations)
                 .HasForeignKey(d => d.SectionId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Line Relationships
             builder.Entity<Line>()
@@ -247,14 +250,14 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(l => l.Section)
                 .WithMany(s => s.Lines)
                 .HasForeignKey(l => l.SectionId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Shift Configurations
             builder.Entity<Shift>()
                 .HasOne(s => s.Company)
                 .WithMany()
                 .HasForeignKey(s => s.CompanyId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Shift>()
                 .HasIndex(s => new { s.NameEn, s.CompanyId })
@@ -266,7 +269,7 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(g => g.Company)
                 .WithMany()
                 .HasForeignKey(g => g.CompanyId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Group>()
                 .HasIndex(g => new { g.NameEn, g.CompanyId })
@@ -278,7 +281,7 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(f => f.Company)
                 .WithMany()
                 .HasForeignKey(f => f.CompanyId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Floor>()
                 .HasIndex(f => new { f.NameEn, f.CompanyId })
@@ -340,6 +343,31 @@ namespace ERPBackend.Infrastructure.Data
                 .WithMany()
                 .HasForeignKey(l => l.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Department>()
+                .HasOne(d => d.Company)
+                .WithMany()
+                .HasForeignKey(d => d.CompanyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Employee>()
+                .HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Bill relationships
+            builder.Entity<TiffinBill>()
+                .HasOne(b => b.Employee)
+                .WithMany()
+                .HasForeignKey(b => b.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<NightBill>()
+                .HasOne(b => b.Employee)
+                .WithMany()
+                .HasForeignKey(b => b.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -27,6 +27,7 @@ namespace ERPBackend.Core.DTOs
         public decimal TotalDeduction { get; set; }
         public decimal NetPayable { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string? CompanyName { get; set; }
     }
 
     public class DailySalarySheetDto
@@ -46,6 +47,7 @@ namespace ERPBackend.Core.DTOs
         public decimal TotalEarning { get; set; }
         public decimal Deduction { get; set; }
         public decimal NetPayable { get; set; }
+        public string? CompanyName { get; set; }
     }
 
     public class SalarySummaryDto
@@ -107,6 +109,7 @@ namespace ERPBackend.Core.DTOs
         public decimal Arrears { get; set; }
         public decimal TaxDeduction { get; set; }
         public decimal PFContribution { get; set; }
+        public string? CompanyName { get; set; }
     }
 
     public class AdvanceSalaryDto
@@ -121,6 +124,7 @@ namespace ERPBackend.Core.DTOs
         public int RepaymentYear { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? Remarks { get; set; }
+        public string? CompanyName { get; set; }
     }
 
     public class SalaryIncrementDto
@@ -135,6 +139,7 @@ namespace ERPBackend.Core.DTOs
         public DateTime EffectiveDate { get; set; }
         public string IncrementType { get; set; } = string.Empty;
         public bool IsApplied { get; set; }
+        public string? CompanyName { get; set; }
     }
 
     public class BonusDto
@@ -148,6 +153,10 @@ namespace ERPBackend.Core.DTOs
         public int Year { get; set; }
         public int Month { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string? CompanyName { get; set; }
+        public DateTime? JoiningDate { get; set; }
+        public decimal GrossSalary { get; set; }
+        public string? JobAge { get; set; }
     }
 
     public class CreateAdvanceSalaryDto
@@ -181,6 +190,24 @@ namespace ERPBackend.Core.DTOs
         public int Month { get; set; }
     }
 
+    public class FestivalBonusProcessRequestDto
+    {
+        public string BonusType { get; set; } = string.Empty; // e.g. Eid-ul-Fitr, Eid-ul-Adha
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public decimal Percentage { get; set; } = 100; // % of base salary
+        public string BaseOn { get; set; } = "Basic"; // "Basic" or "Gross"
+        public int? CompanyId { get; set; }
+    }
+
+    public class FestivalBonusSummaryDto
+    {
+        public int ProcessedCount { get; set; }
+        public int SkippedCount { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
+
     public class BankSheetDto
     {
         public int Id { get; set; }
@@ -193,5 +220,6 @@ namespace ERPBackend.Core.DTOs
         public decimal NetPayable { get; set; }
         public string Status { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
+        public string? CompanyName { get; set; }
     }
 }

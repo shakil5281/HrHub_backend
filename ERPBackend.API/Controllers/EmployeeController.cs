@@ -284,11 +284,10 @@ namespace ERPBackend.API.Controllers
             return Ok(employees);
         }
 
-        // GET: api/employee/{employeeId}
-        [HttpGet("{employeeId}")]
+        [HttpGet("by-id/{id}")]
         [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," +
                            UserRoles.HrOfficer)]
-        public async Task<ActionResult<EmployeeDto>> GetEmployee(string employeeId, [FromQuery] int companyId)
+        public async Task<ActionResult<EmployeeDto>> GetEmployeeById(int id)
         {
             var employee = await _context.Employees
                 .Include(e => e.Department)
@@ -299,7 +298,7 @@ namespace ERPBackend.API.Controllers
                 .Include(e => e.Group)
                 .Include(e => e.Floor)
                 .Include(e => e.Company)
-                .Where(e => e.EmployeeId == employeeId && e.CompanyId == companyId)
+                .Where(e => e.Id == id)
                 .Select(e => new EmployeeDto
                 {
                     Id = e.Id,
@@ -370,7 +369,109 @@ namespace ERPBackend.API.Controllers
                     EmergencyContactRelation = e.EmergencyContactRelation,
                     EmergencyContactPhone = e.EmergencyContactPhone,
                     EmergencyContactAddress = e.EmergencyContactAddress,
-                    CompanyName = e.CompanyName,
+                    CompanyId = e.CompanyId,
+                    CompanyName = e.Company != null ? e.Company.CompanyNameEn : e.CompanyName,
+                    BloodGroup = e.BloodGroup,
+                    IsActive = e.IsActive,
+                    IsOtEnabled = e.IsOtEnabled,
+                    CreatedAt = e.CreatedAt
+                })
+                .FirstOrDefaultAsync();
+
+            if (employee == null)
+                return NotFound();
+
+            return Ok(employee);
+        }
+
+        // GET: api/employee/{employeeId}
+        [HttpGet("{employeeId}")]
+        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," +
+                           UserRoles.HrOfficer)]
+        public async Task<ActionResult<EmployeeDto>> GetEmployee(string employeeId, [FromQuery] int companyId)
+        {
+            var employee = await _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Section)
+                .Include(e => e.Designation)
+                .Include(e => e.Line)
+                .Include(e => e.Shift)
+                .Include(e => e.Group)
+                .Include(e => e.Floor)
+                .Include(e => e.Company)
+                .Where(e => (e.EmployeeId == employeeId || e.Id.ToString() == employeeId) && (companyId == 0 || e.CompanyId == companyId))
+                .Select(e => new EmployeeDto
+                {
+                    Id = e.Id,
+                    EmployeeId = e.EmployeeId,
+                    FullNameEn = e.FullNameEn,
+                    FullNameBn = e.FullNameBn,
+                    Nid = e.Nid,
+                    Proximity = e.Proximity,
+                    DateOfBirth = e.DateOfBirth,
+                    Gender = e.Gender,
+                    Religion = e.Religion,
+                    DepartmentId = e.DepartmentId,
+                    DepartmentName = e.Department != null ? e.Department.NameEn : null,
+                    SectionId = e.SectionId,
+                    SectionName = e.Section != null ? e.Section.NameEn : null,
+                    DesignationId = e.DesignationId,
+                    DesignationName = e.Designation != null ? e.Designation.NameEn : null,
+                    LineId = e.LineId,
+                    LineName = e.Line != null ? e.Line.NameEn : null,
+                    ShiftId = e.ShiftId,
+                    ShiftName = e.Shift != null ? e.Shift.NameEn : null,
+                    GroupId = e.GroupId,
+                    GroupName = e.Group != null ? e.Group.NameEn : null,
+                    FloorId = e.FloorId,
+                    FloorName = e.Floor != null ? e.Floor.NameEn : null,
+                    Status = e.Status,
+                    JoinDate = e.JoinDate,
+                    ProfileImageUrl = e.ProfileImageUrl,
+                    SignatureImageUrl = e.SignatureImageUrl,
+                    Email = e.Email,
+                    PhoneNumber = e.PhoneNumber,
+                    PresentAddress = e.PresentAddress,
+                    PresentAddressBn = e.PresentAddressBn,
+                    PresentDivisionId = e.PresentDivisionId,
+                    PresentDistrictId = e.PresentDistrictId,
+                    PresentThanaId = e.PresentThanaId,
+                    PresentPostOfficeId = e.PresentPostOfficeId,
+                    PresentPostalCode = e.PresentPostalCode,
+                    PermanentAddress = e.PermanentAddress,
+                    PermanentAddressBn = e.PermanentAddressBn,
+                    PermanentDivisionId = e.PermanentDivisionId,
+                    PermanentDistrictId = e.PermanentDistrictId,
+                    PermanentThanaId = e.PermanentThanaId,
+                    PermanentPostOfficeId = e.PermanentPostOfficeId,
+                    PermanentPostalCode = e.PermanentPostalCode,
+                    FatherNameEn = e.FatherNameEn,
+                    FatherNameBn = e.FatherNameBn,
+                    MotherNameEn = e.MotherNameEn,
+                    MotherNameBn = e.MotherNameBn,
+                    MaritalStatus = e.MaritalStatus,
+                    SpouseNameEn = e.SpouseNameEn,
+                    SpouseNameBn = e.SpouseNameBn,
+                    SpouseOccupation = e.SpouseOccupation,
+                    SpouseContact = e.SpouseContact,
+                    BasicSalary = e.BasicSalary,
+                    HouseRent = e.HouseRent,
+                    MedicalAllowance = e.MedicalAllowance,
+                    Conveyance = e.Conveyance,
+                    FoodAllowance = e.FoodAllowance,
+                    OtherAllowance = e.OtherAllowance,
+                    GrossSalary = e.GrossSalary,
+                    BankName = e.BankName,
+                    BankBranchName = e.BankBranchName,
+                    BankAccountNo = e.BankAccountNo,
+                    BankRoutingNo = e.BankRoutingNo,
+                    BankAccountType = e.BankAccountType,
+                    EmergencyContactName = e.EmergencyContactName,
+                    EmergencyContactRelation = e.EmergencyContactRelation,
+                    EmergencyContactPhone = e.EmergencyContactPhone,
+                    EmergencyContactAddress = e.EmergencyContactAddress,
+                    CompanyId = e.CompanyId,
+                    CompanyName = e.Company != null ? e.Company.CompanyNameEn : e.CompanyName,
                     BloodGroup = e.BloodGroup,
                     IsActive = e.IsActive,
                     IsOtEnabled = e.IsOtEnabled,
@@ -614,7 +715,7 @@ namespace ERPBackend.API.Controllers
             [FromQuery] int companyId)
         {
             var employee = await _context.Employees
-                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId && e.CompanyId == companyId);
+                .FirstOrDefaultAsync(e => (e.EmployeeId == employeeId || e.Id.ToString() == employeeId) && (companyId == 0 || e.CompanyId == companyId));
 
             if (employee == null)
                 return NotFound();
@@ -633,66 +734,82 @@ namespace ERPBackend.API.Controllers
                 }
             }
 
-            employee.FullNameEn = dto.FullNameEn;
-            employee.FullNameBn = dto.FullNameBn;
-            employee.Nid = dto.Nid;
-            employee.Proximity = dto.Proximity;
-            employee.DateOfBirth = dto.DateOfBirth;
-            employee.Gender = dto.Gender;
-            employee.Religion = dto.Religion;
-            employee.DepartmentId = dto.DepartmentId;
-            employee.SectionId = dto.SectionId;
-            employee.DesignationId = dto.DesignationId;
-            employee.LineId = dto.LineId;
-            employee.ShiftId = dto.ShiftId;
-            employee.GroupId = dto.GroupId;
-            employee.FloorId = dto.FloorId;
-            employee.Status = dto.Status;
-            employee.JoinDate = dto.JoinDate;
-            employee.Email = dto.Email;
-            employee.PhoneNumber = dto.PhoneNumber;
-            employee.PresentAddress = dto.PresentAddress;
-            employee.PresentAddressBn = dto.PresentAddressBn;
-            employee.PresentDivisionId = dto.PresentDivisionId;
-            employee.PresentDistrictId = dto.PresentDistrictId;
-            employee.PresentThanaId = dto.PresentThanaId;
-            employee.PresentPostOfficeId = dto.PresentPostOfficeId;
-            employee.PresentPostalCode = dto.PresentPostalCode;
-            employee.PermanentAddress = dto.PermanentAddress;
-            employee.PermanentAddressBn = dto.PermanentAddressBn;
-            employee.PermanentDivisionId = dto.PermanentDivisionId;
-            employee.PermanentDistrictId = dto.PermanentDistrictId;
-            employee.PermanentThanaId = dto.PermanentThanaId;
-            employee.PermanentPostOfficeId = dto.PermanentPostOfficeId;
-            employee.PermanentPostalCode = dto.PermanentPostalCode;
-            employee.FatherNameEn = dto.FatherNameEn;
-            employee.FatherNameBn = dto.FatherNameBn;
-            employee.MotherNameEn = dto.MotherNameEn;
-            employee.MotherNameBn = dto.MotherNameBn;
-            employee.MaritalStatus = dto.MaritalStatus;
-            employee.SpouseNameEn = dto.SpouseNameEn;
-            employee.SpouseNameBn = dto.SpouseNameBn;
-            employee.SpouseOccupation = dto.SpouseOccupation;
-            employee.SpouseContact = dto.SpouseContact;
-            employee.BasicSalary = dto.BasicSalary;
-            employee.HouseRent = dto.HouseRent;
-            employee.MedicalAllowance = dto.MedicalAllowance;
-            employee.Conveyance = dto.Conveyance;
-            employee.FoodAllowance = dto.FoodAllowance;
-            employee.OtherAllowance = dto.OtherAllowance;
-            employee.GrossSalary = dto.GrossSalary;
-            employee.BankName = dto.BankName;
-            employee.BankBranchName = dto.BankBranchName;
-            employee.BankAccountNo = dto.BankAccountNo;
-            employee.BankRoutingNo = dto.BankRoutingNo;
-            employee.BankAccountType = dto.BankAccountType;
-            employee.EmergencyContactName = dto.EmergencyContactName;
-            employee.EmergencyContactRelation = dto.EmergencyContactRelation;
-            employee.EmergencyContactPhone = dto.EmergencyContactPhone;
-            employee.EmergencyContactAddress = dto.EmergencyContactAddress;
-            employee.CompanyId = effectiveCompanyId;
-            employee.CompanyName = dto.CompanyName;
-            employee.BloodGroup = dto.BloodGroup;
+            if (!string.IsNullOrEmpty(dto.FullNameEn)) employee.FullNameEn = dto.FullNameEn;
+            if (!string.IsNullOrEmpty(dto.FullNameBn)) employee.FullNameBn = dto.FullNameBn;
+            if (!string.IsNullOrEmpty(dto.Nid)) employee.Nid = dto.Nid;
+            if (!string.IsNullOrEmpty(dto.Proximity)) employee.Proximity = dto.Proximity;
+            if (dto.DateOfBirth.HasValue) employee.DateOfBirth = dto.DateOfBirth;
+            if (!string.IsNullOrEmpty(dto.Gender)) employee.Gender = dto.Gender;
+            if (!string.IsNullOrEmpty(dto.Religion)) employee.Religion = dto.Religion;
+            if (dto.DepartmentId > 0) employee.DepartmentId = dto.DepartmentId;
+            if (dto.SectionId.HasValue) employee.SectionId = dto.SectionId;
+            if (dto.DesignationId > 0) employee.DesignationId = dto.DesignationId;
+            if (dto.LineId.HasValue) employee.LineId = dto.LineId;
+            if (dto.ShiftId.HasValue) employee.ShiftId = dto.ShiftId;
+            if (dto.GroupId.HasValue) employee.GroupId = dto.GroupId;
+            if (dto.FloorId.HasValue) employee.FloorId = dto.FloorId;
+            if (!string.IsNullOrEmpty(dto.Status)) employee.Status = dto.Status;
+            
+            // Only update JoinDate if it's not the default value (0001-01-01)
+            if (dto.JoinDate != default && dto.JoinDate != new DateTime(1970, 1, 1)) 
+                employee.JoinDate = dto.JoinDate;
+
+            if (!string.IsNullOrEmpty(dto.Email)) employee.Email = dto.Email;
+            if (!string.IsNullOrEmpty(dto.PhoneNumber)) employee.PhoneNumber = dto.PhoneNumber;
+            
+            // Addresses - persist if not empty in DTO
+            if (!string.IsNullOrEmpty(dto.PresentAddress)) employee.PresentAddress = dto.PresentAddress;
+            if (!string.IsNullOrEmpty(dto.PresentAddressBn)) employee.PresentAddressBn = dto.PresentAddressBn;
+            if (dto.PresentDivisionId.HasValue && dto.PresentDivisionId > 0) employee.PresentDivisionId = dto.PresentDivisionId;
+            if (dto.PresentDistrictId.HasValue && dto.PresentDistrictId > 0) employee.PresentDistrictId = dto.PresentDistrictId;
+            if (dto.PresentThanaId.HasValue && dto.PresentThanaId > 0) employee.PresentThanaId = dto.PresentThanaId;
+            if (dto.PresentPostOfficeId.HasValue && dto.PresentPostOfficeId > 0) employee.PresentPostOfficeId = dto.PresentPostOfficeId;
+            if (!string.IsNullOrEmpty(dto.PresentPostalCode)) employee.PresentPostalCode = dto.PresentPostalCode;
+
+            if (!string.IsNullOrEmpty(dto.PermanentAddress)) employee.PermanentAddress = dto.PermanentAddress;
+            if (!string.IsNullOrEmpty(dto.PermanentAddressBn)) employee.PermanentAddressBn = dto.PermanentAddressBn;
+            if (dto.PermanentDivisionId.HasValue && dto.PermanentDivisionId > 0) employee.PermanentDivisionId = dto.PermanentDivisionId;
+            if (dto.PermanentDistrictId.HasValue && dto.PermanentDistrictId > 0) employee.PermanentDistrictId = dto.PermanentDistrictId;
+            if (dto.PermanentThanaId.HasValue && dto.PermanentThanaId > 0) employee.PermanentThanaId = dto.PermanentThanaId;
+            if (dto.PermanentPostOfficeId.HasValue && dto.PermanentPostOfficeId > 0) employee.PermanentPostOfficeId = dto.PermanentPostOfficeId;
+            if (!string.IsNullOrEmpty(dto.PermanentPostalCode)) employee.PermanentPostalCode = dto.PermanentPostalCode;
+
+            // Family Info
+            if (!string.IsNullOrEmpty(dto.FatherNameEn)) employee.FatherNameEn = dto.FatherNameEn;
+            if (!string.IsNullOrEmpty(dto.FatherNameBn)) employee.FatherNameBn = dto.FatherNameBn;
+            if (!string.IsNullOrEmpty(dto.MotherNameEn)) employee.MotherNameEn = dto.MotherNameEn;
+            if (!string.IsNullOrEmpty(dto.MotherNameBn)) employee.MotherNameBn = dto.MotherNameBn;
+            if (!string.IsNullOrEmpty(dto.MaritalStatus)) employee.MaritalStatus = dto.MaritalStatus;
+            if (!string.IsNullOrEmpty(dto.SpouseNameEn)) employee.SpouseNameEn = dto.SpouseNameEn;
+            if (!string.IsNullOrEmpty(dto.SpouseNameBn)) employee.SpouseNameBn = dto.SpouseNameBn;
+            if (!string.IsNullOrEmpty(dto.SpouseOccupation)) employee.SpouseOccupation = dto.SpouseOccupation;
+            if (!string.IsNullOrEmpty(dto.SpouseContact)) employee.SpouseContact = dto.SpouseContact;
+
+            // Salary
+            if (dto.BasicSalary.HasValue && dto.BasicSalary > 0) employee.BasicSalary = dto.BasicSalary;
+            if (dto.HouseRent.HasValue && dto.HouseRent > 0) employee.HouseRent = dto.HouseRent;
+            if (dto.MedicalAllowance.HasValue && dto.MedicalAllowance > 0) employee.MedicalAllowance = dto.MedicalAllowance;
+            if (dto.Conveyance.HasValue && dto.Conveyance > 0) employee.Conveyance = dto.Conveyance;
+            if (dto.FoodAllowance.HasValue && dto.FoodAllowance > 0) employee.FoodAllowance = dto.FoodAllowance;
+            if (dto.OtherAllowance.HasValue) employee.OtherAllowance = dto.OtherAllowance;
+            if (dto.GrossSalary.HasValue && dto.GrossSalary > 0) employee.GrossSalary = dto.GrossSalary;
+
+            // Bank
+            if (!string.IsNullOrEmpty(dto.BankName)) employee.BankName = dto.BankName;
+            if (!string.IsNullOrEmpty(dto.BankBranchName)) employee.BankBranchName = dto.BankBranchName;
+            if (!string.IsNullOrEmpty(dto.BankAccountNo)) employee.BankAccountNo = dto.BankAccountNo;
+            if (!string.IsNullOrEmpty(dto.BankRoutingNo)) employee.BankRoutingNo = dto.BankRoutingNo;
+            if (!string.IsNullOrEmpty(dto.BankAccountType)) employee.BankAccountType = dto.BankAccountType;
+
+            // Emergency
+            if (!string.IsNullOrEmpty(dto.EmergencyContactName)) employee.EmergencyContactName = dto.EmergencyContactName;
+            if (!string.IsNullOrEmpty(dto.EmergencyContactRelation)) employee.EmergencyContactRelation = dto.EmergencyContactRelation;
+            if (!string.IsNullOrEmpty(dto.EmergencyContactPhone)) employee.EmergencyContactPhone = dto.EmergencyContactPhone;
+            if (!string.IsNullOrEmpty(dto.EmergencyContactAddress)) employee.EmergencyContactAddress = dto.EmergencyContactAddress;
+            
+            if (effectiveCompanyId.HasValue && effectiveCompanyId > 0) employee.CompanyId = effectiveCompanyId;
+            if (!string.IsNullOrEmpty(dto.CompanyName)) employee.CompanyName = dto.CompanyName;
+            if (!string.IsNullOrEmpty(dto.BloodGroup)) employee.BloodGroup = dto.BloodGroup;
 
             employee.IsActive = dto.IsActive;
             employee.IsOtEnabled = dto.IsOtEnabled;
@@ -709,7 +826,7 @@ namespace ERPBackend.API.Controllers
         public async Task<IActionResult> DeleteEmployee(string employeeId, [FromQuery] int companyId)
         {
             var employee = await _context.Employees
-                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId && e.CompanyId == companyId);
+                .FirstOrDefaultAsync(e => (e.EmployeeId == employeeId || e.Id.ToString() == employeeId) && (companyId == 0 || e.CompanyId == companyId));
 
             if (employee == null)
                 return NotFound();

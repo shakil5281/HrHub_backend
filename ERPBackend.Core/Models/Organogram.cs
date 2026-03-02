@@ -101,6 +101,13 @@ namespace ERPBackend.Core.Models
         public int? CompanyId { get; set; }
         [ForeignKey(nameof(CompanyId))] public virtual Company? Company { get; set; }
         [Required] [StringLength(20)] public string Status { get; set; } = "Active";
+        public bool HasSpecialBreak { get; set; }
+        [StringLength(10)] public string? SpecialBreakStart { get; set; }
+        [StringLength(10)] public string? SpecialBreakEnd { get; set; }
+        public string? SpecialBreakDates { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal IfterBillAmount { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal TiffinBillAmount { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal NightBillAmount { get; set; }
     }
 
     public class Group

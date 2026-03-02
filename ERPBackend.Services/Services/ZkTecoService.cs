@@ -387,6 +387,39 @@ namespace ERPBackend.Services.Services
                                 var otDuration = outTimeLog.LogTime - officeOutDateTime;
                                 double totalMinutes = otDuration.TotalMinutes;
 
+                                // Deduct Special Break if applicable
+                                if (shift.HasSpecialBreak && !string.IsNullOrEmpty(shift.SpecialBreakDates))
+                                {
+                                    var todayStr = date.ToString("yyyy-MM-dd");
+                                    if (shift.SpecialBreakDates.Split(',').Any(d => d.Trim() == todayStr))
+                                    {
+                                        if (TimeSpan.TryParse(shift.SpecialBreakStart, out var sbStart) &&
+                                            TimeSpan.TryParse(shift.SpecialBreakEnd, out var sbEnd))
+                                        {
+                                            var sbStartDateTime = date.Date.Add(sbStart);
+                                            var sbEndDateTime = date.Date.Add(sbEnd);
+
+                                            // Handle overnight shift: If break starts before shift ends (relative to day start), it's next day
+                                            if (officeOutDateTime.Date > date.Date)
+                                            {
+                                                sbStartDateTime = sbStartDateTime.AddDays(1);
+                                                sbEndDateTime = sbEndDateTime.AddDays(1);
+                                            }
+
+                                            // Calculate intersection of [officeOutDateTime, ActualOut] and [sbStart, sbEnd]
+                                            var intersectStart = officeOutDateTime > sbStartDateTime ? officeOutDateTime : sbStartDateTime;
+                                            var intersectEnd = outTimeLog.LogTime < sbEndDateTime ? outTimeLog.LogTime : sbEndDateTime;
+
+                                            if (intersectEnd > intersectStart)
+                                            {
+                                                totalMinutes -= (intersectEnd - intersectStart).TotalMinutes;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (totalMinutes < 0) totalMinutes = 0;
+
                                 // Rounding Rule: 45 minutes up counts as 1 hour
                                 int fullHours = (int)(totalMinutes / 60);
                                 int remainingMinutes = (int)(totalMinutes % 60);

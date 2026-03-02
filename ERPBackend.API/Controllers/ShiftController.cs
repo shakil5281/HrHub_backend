@@ -22,7 +22,7 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/shift
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ShiftDto>>> GetShifts(string? companyName, int? companyId)
+        public async Task<ActionResult<IEnumerable<ShiftDto>>> GetShifts([FromQuery] string? companyName, [FromQuery] int? companyId)
         {
             var query = _context.Shifts.AsQueryable();
             if (companyId.HasValue)
@@ -50,7 +50,12 @@ namespace ERPBackend.API.Controllers
                     Weekends = s.Weekends,
                     CompanyId = s.CompanyId,
                     CompanyName = s.CompanyName,
-                    Status = s.Status
+                    Status = s.Status,
+                    HasSpecialBreak = s.HasSpecialBreak,
+                    SpecialBreakStart = s.SpecialBreakStart,
+                    SpecialBreakEnd = s.SpecialBreakEnd,
+                    SpecialBreakDates = s.SpecialBreakDates,
+                    IfterBillAmount = s.IfterBillAmount
                 })
                 .ToListAsync();
         }
@@ -77,7 +82,12 @@ namespace ERPBackend.API.Controllers
                 Weekends = s.Weekends,
                 CompanyId = s.CompanyId,
                 CompanyName = s.CompanyName,
-                Status = s.Status
+                Status = s.Status,
+                HasSpecialBreak = s.HasSpecialBreak,
+                SpecialBreakStart = s.SpecialBreakStart,
+                SpecialBreakEnd = s.SpecialBreakEnd,
+                SpecialBreakDates = s.SpecialBreakDates,
+                IfterBillAmount = s.IfterBillAmount
             };
         }
 
@@ -101,7 +111,12 @@ namespace ERPBackend.API.Controllers
                 Weekends = dto.Weekends,
                 CompanyId = dto.CompanyId,
                 CompanyName = dto.CompanyName,
-                Status = dto.Status
+                Status = dto.Status,
+                HasSpecialBreak = dto.HasSpecialBreak,
+                SpecialBreakStart = dto.SpecialBreakStart,
+                SpecialBreakEnd = dto.SpecialBreakEnd,
+                SpecialBreakDates = dto.SpecialBreakDates,
+                IfterBillAmount = dto.IfterBillAmount
             };
 
             _context.Shifts.Add(shift);
@@ -122,7 +137,12 @@ namespace ERPBackend.API.Controllers
                 Weekends = shift.Weekends,
                 CompanyId = shift.CompanyId,
                 CompanyName = shift.CompanyName,
-                Status = shift.Status
+                Status = shift.Status,
+                HasSpecialBreak = shift.HasSpecialBreak,
+                SpecialBreakStart = shift.SpecialBreakStart,
+                SpecialBreakEnd = shift.SpecialBreakEnd,
+                SpecialBreakDates = shift.SpecialBreakDates,
+                IfterBillAmount = shift.IfterBillAmount
             });
         }
 
@@ -148,6 +168,11 @@ namespace ERPBackend.API.Controllers
             shift.CompanyId = dto.CompanyId;
             shift.CompanyName = dto.CompanyName;
             shift.Status = dto.Status;
+            shift.HasSpecialBreak = dto.HasSpecialBreak;
+            shift.SpecialBreakStart = dto.SpecialBreakStart;
+            shift.SpecialBreakEnd = dto.SpecialBreakEnd;
+            shift.SpecialBreakDates = dto.SpecialBreakDates;
+            shift.IfterBillAmount = dto.IfterBillAmount;
 
             await _context.SaveChangesAsync();
             return NoContent();

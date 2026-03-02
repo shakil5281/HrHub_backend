@@ -12,6 +12,7 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<CashTransaction> CashTransactions { get; set; }
         public DbSet<FundTransfer> FundTransfers { get; set; }
         public DbSet<OpeningBalance> OpeningBalances { get; set; }
+        public DbSet<Expense> Expenses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

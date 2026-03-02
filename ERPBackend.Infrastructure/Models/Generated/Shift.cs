@@ -32,6 +32,10 @@ public partial class Shift
     public string? ActualInTime { get; set; }
 
     public string? ActualOutTime { get; set; }
+    public bool HasSpecialBreak { get; set; }
+    public string? SpecialBreakStart { get; set; }
+    public string? SpecialBreakEnd { get; set; }
+    public string? SpecialBreakDates { get; set; }
 
     public virtual Company? Company { get; set; }
 

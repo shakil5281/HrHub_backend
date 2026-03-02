@@ -1147,6 +1147,238 @@ namespace ERPBackend.API.Controllers
         {
             try
             {
+                var response = await GetJobCardInternal(employeeCard, fromDate, toDate);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching the job card.", error = ex.Message });
+            }
+        }
+
+        // GET: api/attendance/job-card/export/excel
+        [HttpGet("job-card/export/excel")]
+        public async Task<IActionResult> ExportJobCardToExcel(int employeeCard, DateTime fromDate, DateTime toDate)
+        {
+            try
+            {
+                var data = await GetJobCardInternal(employeeCard, fromDate, toDate);
+                var companyIdStr = User.FindFirst("CompanyId")?.Value ?? "0";
+                var compId = int.Parse(companyIdStr);
+                var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId) 
+                              ?? await _context.Companies.FirstOrDefaultAsync();
+
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("Job Card");
+                    
+                    // Header
+                    worksheet.Cells["A1:J1"].Merge = true;
+                    worksheet.Cells["A1"].Value = company?.CompanyNameEn ?? "HR HUB";
+                    worksheet.Cells["A1"].Style.Font.Size = 16;
+                    worksheet.Cells["A1"].Style.Font.Bold = true;
+                    worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    worksheet.Cells["A2:J2"].Merge = true;
+                    worksheet.Cells["A2"].Value = "Monthly Job Card";
+                    worksheet.Cells["A2"].Style.Font.Size = 12;
+                    worksheet.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    worksheet.Cells["A3:J3"].Merge = true;
+                    worksheet.Cells["A3"].Value = $"Period: {fromDate:dd MMM yyyy} to {toDate:dd MMM yyyy}";
+                    worksheet.Cells["A3"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    // Employee Info
+                    worksheet.Cells["A5"].Value = "Employee Name:";
+                    worksheet.Cells["B5"].Value = data.Employee.EmployeeName;
+                    worksheet.Cells["A6"].Value = "Employee ID:";
+                    worksheet.Cells["B6"].Value = data.Employee.EmployeeId;
+                    worksheet.Cells["D5"].Value = "Department:";
+                    worksheet.Cells["E5"].Value = data.Employee.Department;
+                    worksheet.Cells["D6"].Value = "Designation:";
+                    worksheet.Cells["E6"].Value = data.Employee.Designation;
+
+                    // Table Headers
+                    int row = 8;
+                    string[] headers = { "Date", "Day", "Shift", "In", "Out", "Late (m)", "OT (h)", "Total (h)", "Status", "Remarks" };
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        worksheet.Cells[row, i + 1].Value = headers[i];
+                        worksheet.Cells[row, i + 1].Style.Font.Bold = true;
+                        worksheet.Cells[row, i + 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                        worksheet.Cells[row, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        worksheet.Cells[row, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    }
+
+                    // Data
+                    row++;
+                    foreach (var record in data.AttendanceRecords)
+                    {
+                        worksheet.Cells[row, 1].Value = record.Date;
+                        worksheet.Cells[row, 2].Value = record.Day;
+                        worksheet.Cells[row, 3].Value = record.Shift;
+                        worksheet.Cells[row, 4].Value = record.InTime;
+                        worksheet.Cells[row, 5].Value = record.OutTime;
+                        worksheet.Cells[row, 6].Value = record.LateMinutes;
+                        worksheet.Cells[row, 7].Value = record.OTHours;
+                        worksheet.Cells[row, 8].Value = record.TotalHours;
+                        worksheet.Cells[row, 9].Value = record.Status;
+                        worksheet.Cells[row, 10].Value = record.Remarks;
+
+                        for (int i = 1; i <= 10; i++)
+                        {
+                            worksheet.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                        }
+                        row++;
+                    }
+
+                    // Summary
+                    row += 2;
+                    worksheet.Cells[row, 1].Value = "Summary";
+                    worksheet.Cells[row, 1].Style.Font.Bold = true;
+                    row++;
+                    worksheet.Cells[row, 1].Value = "Present Days:"; worksheet.Cells[row, 2].Value = data.Summary.PresentDays;
+                    worksheet.Cells[row + 1, 1].Value = "Absent Days:"; worksheet.Cells[row + 1, 2].Value = data.Summary.AbsentDays;
+                    worksheet.Cells[row + 2, 1].Value = "Total OT:"; worksheet.Cells[row + 2, 2].Value = data.Summary.TotalOTHours;
+
+                    worksheet.Cells.AutoFitColumns();
+                    var content = package.GetAsByteArray();
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"JobCard_{data.Employee.EmployeeId}_{fromDate:yyyyMMdd}.xlsx");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Export failed", error = ex.Message });
+            }
+        }
+
+        // GET: api/attendance/job-card/export/pdf
+        [HttpGet("job-card/export/pdf")]
+        public async Task<IActionResult> ExportJobCardToPdf(int employeeCard, DateTime fromDate, DateTime toDate)
+        {
+            try
+            {
+                var data = await GetJobCardInternal(employeeCard, fromDate, toDate);
+                var companyIdStr2 = User.FindFirst("CompanyId")?.Value ?? "0";
+                var compId2 = int.Parse(companyIdStr2);
+                var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId2)
+                              ?? await _context.Companies.FirstOrDefaultAsync();
+
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(1, Unit.Centimetre);
+                        page.PageColor(Colors.White);
+                        page.DefaultTextStyle(x => x.FontSize(9));
+
+                        page.Header().Column(col =>
+                        {
+                            col.Item().AlignCenter().Text(company?.CompanyNameEn ?? "HR HUB").FontSize(16).Bold();
+                            col.Item().AlignCenter().Text(company?.AddressEn ?? "").FontSize(9);
+                            col.Item().PaddingTop(5).AlignCenter().Text("Monthly Job Card").FontSize(12).SemiBold().Underline();
+                            col.Item().AlignCenter().Text($"Period: {fromDate:dd MMM yyyy} to {toDate:dd MMM yyyy}").FontSize(9);
+                        });
+
+                        page.Content().PaddingVertical(10).Column(col =>
+                        {
+                            // Employee Info Grid
+                            col.Item().PaddingBottom(10).Row(row =>
+                            {
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().Text(t => { t.Span("Name: ").Bold(); t.Span(data.Employee.EmployeeName); });
+                                    c.Item().Text(t => { t.Span("ID: ").Bold(); t.Span(data.Employee.EmployeeId); });
+                                });
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().Text(t => { t.Span("Dept: ").Bold(); t.Span(data.Employee.Department); });
+                                    c.Item().Text(t => { t.Span("Desig: ").Bold(); t.Span(data.Employee.Designation); });
+                                });
+                            });
+
+                            // Table
+                            col.Item().Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.ConstantColumn(35); // Date
+                                    columns.ConstantColumn(30); // Day
+                                    columns.RelativeColumn(); // Shift
+                                    columns.ConstantColumn(35); // In
+                                    columns.ConstantColumn(35); // Out
+                                    columns.ConstantColumn(30); // Late
+                                    columns.ConstantColumn(30); // OT
+                                    columns.ConstantColumn(50); // Status
+                                    columns.RelativeColumn(); // Remarks
+                                });
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Element(CellStyle).Text("Date");
+                                    header.Cell().Element(CellStyle).Text("Day");
+                                    header.Cell().Element(CellStyle).Text("Shift");
+                                    header.Cell().Element(CellStyle).Text("In");
+                                    header.Cell().Element(CellStyle).Text("Out");
+                                    header.Cell().Element(CellStyle).Text("Late");
+                                    header.Cell().Element(CellStyle).Text("OT");
+                                    header.Cell().Element(CellStyle).Text("Status");
+                                    header.Cell().Element(CellStyle).Text("Remarks");
+                                });
+
+                                foreach (var record in data.AttendanceRecords)
+                                {
+                                    table.Cell().Element(CellContentStyle).Text(record.Date);
+                                    table.Cell().Element(CellContentStyle).Text(record.Day);
+                                    table.Cell().Element(CellContentStyle).Text(record.Shift);
+                                    table.Cell().Element(CellContentStyle).Text(record.InTime);
+                                    table.Cell().Element(CellContentStyle).Text(record.OutTime);
+                                    table.Cell().Element(CellContentStyle).Text(record.LateMinutes.ToString());
+                                    table.Cell().Element(CellContentStyle).Text(record.OTHours.ToString());
+                                    table.Cell().Element(CellContentStyle).Text(record.Status);
+                                    table.Cell().Element(CellContentStyle).Text(record.Remarks);
+                                }
+                            });
+
+                            // Summary
+                            col.Item().PaddingTop(10).Row(row =>
+                            {
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().Text(t => { t.Span("Present: ").Bold(); t.Span(data.Summary.PresentDays.ToString()); });
+                                    c.Item().Text(t => { t.Span("Absent: ").Bold(); t.Span(data.Summary.AbsentDays.ToString()); });
+                                });
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().Text(t => { t.Span("Total OT: ").Bold(); t.Span(data.Summary.TotalOTHours.ToString() + " h"); });
+                                    c.Item().Text(t => { t.Span("Total Late: ").Bold(); t.Span(data.Summary.TotalLateMinutes.ToString() + " m"); });
+                                });
+                            });
+                        });
+
+                        page.Footer().AlignCenter().Text(x =>
+                        {
+                            x.Span("Page ");
+                            x.CurrentPageNumber();
+                        });
+                    });
+                });
+
+                var stream = new MemoryStream();
+                document.GeneratePdf(stream);
+                stream.Position = 0;
+                return File(stream, "application/pdf", $"JobCard_{data.Employee.EmployeeId}_{fromDate:yyyyMMdd}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Export failed", error = ex.Message });
+            }
+        }
+
+        private async Task<JobCardResponseDto> GetJobCardInternal(int employeeCard, DateTime fromDate, DateTime toDate)
+        {
                 var companyId = int.Parse(User.FindFirst("CompanyId")?.Value ?? "0");
                 var from = fromDate.Date;
                 var to = toDate.Date;
@@ -1160,7 +1392,7 @@ namespace ERPBackend.API.Controllers
                     .FirstOrDefaultAsync(e => e.Id == employeeCard);
 
                 if (employee == null)
-                    return NotFound("Employee not found");
+                    throw new Exception("Employee not found");
 
                 var attendances = await _context.Attendances
                     .Include(a => a.Shift)
@@ -1377,17 +1609,81 @@ foreach (var att in attendances)
                             var duration = attendance.OutTime.Value - attendance.InTime.Value;
                             totalHours = (decimal)duration.TotalHours;
 
-                            // Recalculate OT using the 45-minute rounding rule
-                            // Total Hours = 9 (standard) + OT
-                            decimal rawOt = totalHours - 9;
-                            if (rawOt > 0)
+                            // Recalculate OT using shift times and Special Break
+                            var currentShiftObj = attendance.Shift ?? dayRoster?.Shift ?? employee.Shift;
+
+                            if (currentShiftObj != null && !string.IsNullOrEmpty(currentShiftObj.OutTime) &&
+                                TimeSpan.TryParse(currentShiftObj.OutTime, out var shiftOutTimeValue))
                             {
-                                int otMinutes = (int)((rawOt - (int)rawOt) * 60);
-                                otHours = (int)rawOt + (otMinutes >= 45 ? 1 : 0);
+                                var officeOutDateTime = date.Date.Add(shiftOutTimeValue);
+
+                                // Handle overnight shift: If Office Out < Actual In, Office Out is next day
+                                if (currentShiftObj.ActualInTime != null &&
+                                    TimeSpan.TryParse(currentShiftObj.ActualInTime, out var aIn) &&
+                                    shiftOutTimeValue < aIn)
+                                {
+                                    officeOutDateTime = date.Date.AddDays(1).Add(shiftOutTimeValue);
+                                }
+
+                                if (attendance.OutTime.Value > officeOutDateTime)
+                                {
+                                    var otDuration = attendance.OutTime.Value - officeOutDateTime;
+                                    double totalMinutes = otDuration.TotalMinutes;
+
+                                    // Deduct Special Break if applicable
+                                    if (currentShiftObj.HasSpecialBreak && !string.IsNullOrEmpty(currentShiftObj.SpecialBreakDates))
+                                    {
+                                        var todayStr = date.Date.ToString("yyyy-MM-dd");
+                                        if (currentShiftObj.SpecialBreakDates.Split(',').Any(d => d.Trim() == todayStr))
+                                        {
+                                            if (TimeSpan.TryParse(currentShiftObj.SpecialBreakStart, out var sbStart) &&
+                                                TimeSpan.TryParse(currentShiftObj.SpecialBreakEnd, out var sbEnd))
+                                            {
+                                                var sbStartDateTime = date.Date.Add(sbStart);
+                                                var sbEndDateTime = date.Date.Add(sbEnd);
+
+                                                if (officeOutDateTime.Date > date.Date)
+                                                {
+                                                    sbStartDateTime = sbStartDateTime.AddDays(1);
+                                                    sbEndDateTime = sbEndDateTime.AddDays(1);
+                                                }
+
+                                                var intersectStart = officeOutDateTime > sbStartDateTime ? officeOutDateTime : sbStartDateTime;
+                                                var intersectEnd = attendance.OutTime.Value < sbEndDateTime ? attendance.OutTime.Value : sbEndDateTime;
+
+                                                if (intersectEnd > intersectStart)
+                                                {
+                                                    totalMinutes -= (intersectEnd - intersectStart).TotalMinutes;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (totalMinutes < 0) totalMinutes = 0;
+
+                                    // Using the 45-minute rounding rule
+                                    int fullHours = (int)(totalMinutes / 60);
+                                    int remainingMinutes = (int)(totalMinutes % 60);
+                                    otHours = (remainingMinutes >= 45) ? fullHours + 1 : fullHours;
+                                }
+                                else
+                                {
+                                    otHours = 0;
+                                }
                             }
                             else
                             {
-                                otHours = 0;
+                                // Fallback: Total Hours = 9 (standard) + OT
+                                decimal rawOt = totalHours - 9;
+                                if (rawOt > 0)
+                                {
+                                    int otMinutes = (int)((rawOt - (int)rawOt) * 60);
+                                    otHours = (int)rawOt + (otMinutes >= 45 ? 1 : 0);
+                                }
+                                else
+                                {
+                                    otHours = 0;
+                                }
                             }
                         }
                         else if (employee.IsOtEnabled && (attendance.Status == "Present" || attendance.Status == "Late"))
@@ -1499,13 +1795,7 @@ foreach (var att in attendances)
                     ToDate = toDate
                 };
 
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500,
-                    new { message = "An error occurred while fetching the job card.", error = ex.Message });
-            }
+                return response;
         }
 
 // POST: api/attendance/manual-entry
@@ -2015,6 +2305,241 @@ foreach (var att in attendances)
         {
             try
             {
+                var response = await GetAbsenteeismRecordsInternal(fromDate, toDate, companyId, departmentId, designationId, searchTerm);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500,
+                    new { message = "An error occurred while fetching absenteeism records.", error = ex.Message });
+            }
+        }
+
+        // GET: api/attendance/absenteeism-records/export/excel
+        [HttpGet("absenteeism-records/export/excel")]
+        public async Task<IActionResult> ExportAbsenteeismToExcel(
+            [FromQuery] DateTime fromDate,
+            [FromQuery] DateTime toDate,
+            [FromQuery] int? companyId,
+            [FromQuery] int? departmentId,
+            [FromQuery] int? designationId,
+            [FromQuery] string? searchTerm)
+        {
+            try
+            {
+                var data = await GetAbsenteeismRecordsInternal(fromDate, toDate, companyId, departmentId, designationId, searchTerm);
+                var compId = companyId ?? int.Parse(User.FindFirst("CompanyId")?.Value ?? "1");
+                var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId) 
+                              ?? await _context.Companies.FirstOrDefaultAsync();
+
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("Absenteeism");
+                    
+                    // Header
+                    worksheet.Cells["A1:H1"].Merge = true;
+                    worksheet.Cells["A1"].Value = company?.CompanyNameEn ?? "HR HUB";
+                    worksheet.Cells["A1"].Style.Font.Size = 16;
+                    worksheet.Cells["A1"].Style.Font.Bold = true;
+                    worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    worksheet.Cells["A2:H2"].Merge = true;
+                    worksheet.Cells["A2"].Value = "Absenteeism Records Audit Report";
+                    worksheet.Cells["A2"].Style.Font.Size = 12;
+                    worksheet.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    worksheet.Cells["A3:H3"].Merge = true;
+                    worksheet.Cells["A3"].Value = $"Period: {fromDate:dd MMM yyyy} to {toDate:dd MMM yyyy}";
+                    worksheet.Cells["A3"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    // Table Headers
+                    int row = 5;
+                    string[] headers = { "SL", "Date", "Employee ID", "Name", "Department", "Designation", "Status", "Consecutive Days" };
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        worksheet.Cells[row, i + 1].Value = headers[i];
+                        worksheet.Cells[row, i + 1].Style.Font.Bold = true;
+                        worksheet.Cells[row, i + 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                        worksheet.Cells[row, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        worksheet.Cells[row, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    }
+
+                    // Data
+                    row++;
+                    int sl = 1;
+                    foreach (var record in data.Records)
+                    {
+                        worksheet.Cells[row, 1].Value = sl++;
+                        worksheet.Cells[row, 2].Value = record.Date.ToString("dd MMM yyyy");
+                        worksheet.Cells[row, 3].Value = record.EmployeeId;
+                        worksheet.Cells[row, 4].Value = record.EmployeeName;
+                        worksheet.Cells[row, 5].Value = record.Department;
+                        worksheet.Cells[row, 6].Value = record.Designation;
+                        worksheet.Cells[row, 7].Value = record.Status;
+                        worksheet.Cells[row, 8].Value = record.ConsecutiveDays;
+
+                        // Color status
+                        if (record.Status == "Absent") 
+                            worksheet.Cells[row, 7].Style.Font.Color.SetColor(System.Drawing.Color.Red);
+                        else 
+                            worksheet.Cells[row, 7].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+
+                        // Highlight critical
+                        if (record.ConsecutiveDays >= 3)
+                        {
+                            worksheet.Cells[row, 8].Style.Font.Bold = true;
+                            worksheet.Cells[row, 8].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                            worksheet.Cells[row, 8].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.MistyRose);
+                        }
+
+                        for (int i = 1; i <= 8; i++)
+                        {
+                            worksheet.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                        }
+                        row++;
+                    }
+
+                    worksheet.Cells.AutoFitColumns();
+                    var content = package.GetAsByteArray();
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"AbsenteeismRecords_{fromDate:yyyyMMdd}.xlsx");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Export failed", error = ex.Message });
+            }
+        }
+
+        // GET: api/attendance/absenteeism-records/export/pdf
+        [HttpGet("absenteeism-records/export/pdf")]
+        public async Task<IActionResult> ExportAbsenteeismToPdf(
+            [FromQuery] DateTime fromDate,
+            [FromQuery] DateTime toDate,
+            [FromQuery] int? companyId,
+            [FromQuery] int? departmentId,
+            [FromQuery] int? designationId,
+            [FromQuery] string? searchTerm)
+        {
+            try
+            {
+                var data = await GetAbsenteeismRecordsInternal(fromDate, toDate, companyId, departmentId, designationId, searchTerm);
+                var compId = companyId ?? int.Parse(User.FindFirst("CompanyId")?.Value ?? "1");
+                var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId)
+                              ?? await _context.Companies.FirstOrDefaultAsync();
+
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4.Landscape());
+                        page.Margin(1, Unit.Centimetre);
+                        page.PageColor(Colors.White);
+                        page.DefaultTextStyle(x => x.FontSize(9));
+
+                        page.Header().Column(col =>
+                        {
+                            col.Item().AlignCenter().Text(company?.CompanyNameEn ?? "HR HUB").FontSize(16).Bold();
+                            col.Item().AlignCenter().Text(company?.AddressEn ?? "").FontSize(9);
+                            col.Item().PaddingTop(5).AlignCenter().Text("Absenteeism Records Audit Report").FontSize(14).SemiBold().FontColor(Colors.Red.Medium);
+                            col.Item().AlignCenter().Text($"Period: {fromDate:dd MMM yyyy} to {toDate:dd MMM yyyy}").FontSize(10);
+                        });
+
+                        page.Content().PaddingVertical(10).Column(col =>
+                        {
+                            // Summary Cards
+                            col.Item().PaddingBottom(10).Row(row =>
+                            {
+                                row.RelativeItem().Padding(5).Border(1).BorderColor(Colors.Grey.Lighten2).Column(c =>
+                                {
+                                    c.Item().Text("Total Absent").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
+                                    c.Item().Text(data.Summary.TotalAbsent.ToString()).FontSize(14).Bold().FontColor(Colors.Red.Medium);
+                                });
+                                row.RelativeItem().Padding(5).Border(1).BorderColor(Colors.Grey.Lighten2).Column(c =>
+                                {
+                                    c.Item().Text("Without Leave").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
+                                    c.Item().Text(data.Summary.AbsentWithoutLeave.ToString()).FontSize(14).Bold().FontColor(Colors.Red.Medium);
+                                });
+                                row.RelativeItem().Padding(5).Border(1).BorderColor(Colors.Grey.Lighten2).Column(c =>
+                                {
+                                    c.Item().Text("On Leave").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
+                                    c.Item().Text(data.Summary.OnLeave.ToString()).FontSize(14).Bold().FontColor(Colors.Blue.Medium);
+                                });
+                                row.RelativeItem().Padding(5).Border(1).BorderColor(Colors.Grey.Lighten2).Column(c =>
+                                {
+                                    c.Item().Text("Critical Cases").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
+                                    c.Item().Text(data.Summary.CriticalCases.ToString()).FontSize(14).Bold().FontColor(Colors.Orange.Medium);
+                                });
+                            });
+
+                            // Table
+                            col.Item().Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.ConstantColumn(25); // SL
+                                    columns.ConstantColumn(70); // Date
+                                    columns.ConstantColumn(60); // Emp ID
+                                    columns.RelativeColumn(); // Name
+                                    columns.RelativeColumn(); // Dept
+                                    columns.RelativeColumn(); // Desig
+                                    columns.ConstantColumn(60); // Status
+                                    columns.ConstantColumn(60); // Consecutive
+                                });
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Element(CellStyle).Text("SL");
+                                    header.Cell().Element(CellStyle).Text("Date");
+                                    header.Cell().Element(CellStyle).Text("ID");
+                                    header.Cell().Element(CellStyle).Text("Name");
+                                    header.Cell().Element(CellStyle).Text("Dept");
+                                    header.Cell().Element(CellStyle).Text("Desig");
+                                    header.Cell().Element(CellStyle).Text("Status");
+                                    header.Cell().Element(CellStyle).Text("Consec.");
+                                });
+
+                                int slCount = 1;
+                                foreach (var record in data.Records)
+                                {
+                                    table.Cell().Element(CellContentStyle).Text(slCount++.ToString());
+                                    table.Cell().Element(CellContentStyle).Text(record.Date.ToString("dd MMM yyyy"));
+                                    table.Cell().Element(CellContentStyle).Text(record.EmployeeId);
+                                    table.Cell().Element(CellContentStyle).Text(record.EmployeeName);
+                                    table.Cell().Element(CellContentStyle).Text(record.Department);
+                                    table.Cell().Element(CellContentStyle).Text(record.Designation);
+                                    table.Cell().Element(CellContentStyle).Text(record.Status);
+                                    table.Cell().Element(CellContentStyle).Text(record.ConsecutiveDays.ToString());
+                                }
+                            });
+                        });
+
+                        page.Footer().AlignCenter().Text(x =>
+                        {
+                            x.Span("Page ");
+                            x.CurrentPageNumber();
+                        });
+                    });
+                });
+
+                var stream = new MemoryStream();
+                document.GeneratePdf(stream);
+                stream.Position = 0;
+                return File(stream, "application/pdf", $"AbsenteeismRecords_{fromDate:yyyyMMdd}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Export failed", error = ex.Message });
+            }
+        }
+
+        private async Task<AbsenteeismResponseDto> GetAbsenteeismRecordsInternal(
+            DateTime fromDate,
+            DateTime toDate,
+            int? companyId,
+            int? departmentId,
+            int? designationId,
+            string? searchTerm)
+        {
                 var query = _context.Attendances
                     .Include(a => a.Employee)
                     .ThenInclude(e => e!.Department)
@@ -2090,17 +2615,11 @@ foreach (var att in attendances)
                     CriticalCases = records.Count(r => r.ConsecutiveDays >= 3)
                 };
 
-                return Ok(new AbsenteeismResponseDto
+                return new AbsenteeismResponseDto
                 {
                     Summary = summary,
                     Records = records.OrderByDescending(r => r.Date).ToList()
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500,
-                    new { message = "An error occurred while fetching absenteeism records.", error = ex.Message });
-            }
+                };
         }
 
 // GET: api/attendance/daily-ot-sheet
@@ -2195,6 +2714,172 @@ foreach (var att in attendances)
             {
                 return StatusCode(500,
                     new { message = "An error occurred while fetching OT summary.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("daily-ot-sheet/export/excel")]
+        public async Task<IActionResult> ExportDailyOtSheetExcel([FromQuery] CommonFilterDto filters)
+        {
+            try
+            {
+                var response = await GetDailyOtSheet(filters);
+                var data = (response.Result as OkObjectResult)?.Value as OTSheetResponseDto;
+                var records = data?.Records ?? new List<DailyOTSheetDto>();
+                var date = filters.Date ?? DateTime.Today;
+
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("Daily OT Sheet");
+                    
+                    // Setup
+                    worksheet.PrinterSettings.Orientation = eOrientation.Landscape;
+                    worksheet.PrinterSettings.FitToPage = true;
+                    
+                    // Final Summary Stats at the top
+                    worksheet.Cells[1, 1, 1, 8].Merge = true;
+                    worksheet.Cells[1, 1].Value = "DAILY OVERTIME SHEET";
+                    worksheet.Cells[1, 1].Style.Font.Size = 18;
+                    worksheet.Cells[1, 1].Style.Font.Bold = true;
+                    worksheet.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    worksheet.Cells[2, 1, 2, 8].Merge = true;
+                    worksheet.Cells[2, 1].Value = "Date: " + date.ToString("dd-MMM-yyyy");
+                    worksheet.Cells[2, 1].Style.Font.Size = 12;
+                    worksheet.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    // Table Headers
+                    string[] headers = { "SL", "EMP ID", "Name", "Department", "Designation", "In Time", "Out Time", "OT Hours" };
+                    int headerRow = 4;
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        var cell = worksheet.Cells[headerRow, i + 1];
+                        cell.Value = headers[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        cell.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(23, 37, 84)); // Indigo-950
+                        cell.Style.Font.Color.SetColor(System.Drawing.Color.White);
+                        cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    }
+                    
+                    // Data
+                    int row = 5;
+                    int sl = 1;
+                    foreach (var item in records)
+                    {
+                        worksheet.Cells[row, 1].Value = sl++;
+                        worksheet.Cells[row, 2].Value = item.EmployeeId;
+                        worksheet.Cells[row, 3].Value = item.EmployeeName;
+                        worksheet.Cells[row, 4].Value = item.Department;
+                        worksheet.Cells[row, 5].Value = item.Designation;
+                        worksheet.Cells[row, 6].Value = item.InTime?.ToString("hh:mm tt") ?? "-";
+                        worksheet.Cells[row, 7].Value = item.OutTime?.ToString("hh:mm tt") ?? "-";
+                        worksheet.Cells[row, 8].Value = item.OTHours;
+                        
+                        for (int i = 1; i <= 8; i++)
+                        {
+                            var cell = worksheet.Cells[row, i];
+                            cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                            if (i == 8) cell.Style.Font.Bold = true;
+                        }
+                        
+                        row++;
+                    }
+                    
+                    // Footer Total
+                    worksheet.Cells[row, 1, row, 7].Merge = true;
+                    worksheet.Cells[row, 1].Value = "GRAND TOTAL";
+                    worksheet.Cells[row, 1].Style.Font.Bold = true;
+                    worksheet.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                    
+                    worksheet.Cells[row, 8].Value = data?.TotalOTHours ?? 0;
+                    worksheet.Cells[row, 8].Style.Font.Bold = true;
+                    worksheet.Cells[row, 8, row, 8].Style.Border.BorderAround(ExcelBorderStyle.Thick);
+                    
+                    worksheet.Cells.AutoFitColumns();
+                    
+                    var content = package.GetAsByteArray();
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Daily_OT_Sheet_{date:yyyyMMdd}.xlsx");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error exporting OT sheet: " + ex.Message });
+            }
+        }
+
+        [HttpGet("daily-ot-summary/export/excel")]
+        public async Task<IActionResult> ExportDailyOtSummaryExcel([FromQuery] CommonFilterDto filters)
+        {
+            try
+            {
+                var response = await GetDailyOtSummary(filters);
+                var data = (response.Result as OkObjectResult)?.Value as OTSummaryResponseDto;
+                var summaries = data?.DepartmentSummaries ?? new List<DailyOTSummaryDto>();
+                var date = filters.Date ?? DateTime.Today;
+
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("OT Summary");
+                    
+                    // Header
+                    worksheet.Cells[1, 1, 1, 4].Merge = true;
+                    worksheet.Cells[1, 1].Value = "DAILY OT SUMMARY BY DEPARTMENT";
+                    worksheet.Cells[1, 1].Style.Font.Size = 16;
+                    worksheet.Cells[1, 1].Style.Font.Bold = true;
+                    worksheet.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                    worksheet.Cells[2, 1, 2, 4].Merge = true;
+                    worksheet.Cells[2, 1].Value = "Date: " + date.ToString("dd-MMM-yyyy");
+                    worksheet.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    
+                    // Table Headers
+                    string[] headers = { "SL", "Department", "Staff Count", "Total OT Hours" };
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        var cell = worksheet.Cells[4, i + 1];
+                        cell.Value = headers[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        cell.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(30, 64, 175)); // Blue-800
+                        cell.Style.Font.Color.SetColor(System.Drawing.Color.White);
+                        cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    }
+                    
+                    // Data
+                    int row = 5;
+                    int sl = 1;
+                    foreach (var item in summaries)
+                    {
+                        worksheet.Cells[row, 1].Value = sl++;
+                        worksheet.Cells[row, 2].Value = item.Department;
+                        worksheet.Cells[row, 3].Value = item.EmployeeCount;
+                        worksheet.Cells[row, 4].Value = item.TotalOTHours;
+                        
+                        for (int i = 1; i <= 4; i++)
+                            worksheet.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                        
+                        row++;
+                    }
+                    
+                    // Grand Total
+                    worksheet.Cells[row, 1, row, 2].Merge = true;
+                    worksheet.Cells[row, 1].Value = "GRAND TOTAL:";
+                    worksheet.Cells[row, 1].Style.Font.Bold = true;
+                    worksheet.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                    
+                    worksheet.Cells[row, 3].Value = data?.TotalEmployees ?? 0;
+                    worksheet.Cells[row, 4].Value = data?.GrandTotalOTHours ?? 0;
+                    worksheet.Cells[row, 3, row, 4].Style.Font.Bold = true;
+                    
+                    worksheet.Cells.AutoFitColumns();
+                    
+                    var content = package.GetAsByteArray();
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Daily_OT_Summary_{date:yyyyMMdd}.xlsx");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error exporting OT summary: " + ex.Message });
             }
         }
 
@@ -2380,13 +3065,61 @@ foreach (var att in attendances)
                             if (emp.IsOtEnabled && attendance.OutTime.HasValue &&
                                 !string.IsNullOrEmpty(shift.OutTime))
                             {
-                                var outTime = attendance.OutTime.Value.TimeOfDay;
+                                var outTime = attendance.OutTime.Value;
                                 var shiftOutTime = ParseTime(shift.OutTime);
 
-                                if (outTime > shiftOutTime)
+                                if (shiftOutTime.HasValue)
                                 {
-                                    var diff = (outTime - shiftOutTime.Value).TotalHours;
-                                    otHours = (decimal)Math.Max(0, Math.Floor(diff));
+                                    var officeOutDateTime = date.Date.Add(shiftOutTime.Value);
+                                    
+                                    // Handle overnight shift: If Office Out < Actual In, Office Out is next day
+                                    if (shift.ActualInTime != null &&
+                                        TimeSpan.TryParse(shift.ActualInTime, out var aIn) &&
+                                        shiftOutTime.Value < aIn)
+                                    {
+                                        officeOutDateTime = date.Date.AddDays(1).Add(shiftOutTime.Value);
+                                    }
+
+                                    if (outTime > officeOutDateTime)
+                                    {
+                                        var otDuration = outTime - officeOutDateTime;
+                                        double totalMinutes = otDuration.TotalMinutes;
+
+                                        // Deduct Special Break if applicable
+                                        if (shift.HasSpecialBreak && !string.IsNullOrEmpty(shift.SpecialBreakDates))
+                                        {
+                                            var todayStr = date.Date.ToString("yyyy-MM-dd");
+                                            if (shift.SpecialBreakDates.Split(',').Any(d => d.Trim() == todayStr))
+                                            {
+                                                if (TimeSpan.TryParse(shift.SpecialBreakStart, out var sbStart) &&
+                                                    TimeSpan.TryParse(shift.SpecialBreakEnd, out var sbEnd))
+                                                {
+                                                    var sbStartDateTime = date.Date.Add(sbStart);
+                                                    var sbEndDateTime = date.Date.Add(sbEnd);
+                                                    if (officeOutDateTime.Date > date.Date)
+                                                    {
+                                                        sbStartDateTime = sbStartDateTime.AddDays(1);
+                                                        sbEndDateTime = sbEndDateTime.AddDays(1);
+                                                    }
+
+                                                    var intersectStart = officeOutDateTime > sbStartDateTime ? officeOutDateTime : sbStartDateTime;
+                                                    var intersectEnd = outTime < sbEndDateTime ? outTime : sbEndDateTime;
+
+                                                    if (intersectEnd > intersectStart)
+                                                    {
+                                                        totalMinutes -= (intersectEnd - intersectStart).TotalMinutes;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if (totalMinutes < 0) totalMinutes = 0;
+                                        
+                                        // Using the 45-minute rounding rule consistently
+                                        int fullHours = (int)(totalMinutes / 60);
+                                        int remainingMinutes = (int)(totalMinutes % 60);
+                                        otHours = (remainingMinutes >= 45) ? fullHours + 1 : fullHours;
+                                    }
                                 }
                             }
                         }
@@ -2474,6 +3207,39 @@ foreach (var att in attendances)
                         {
                             var otDuration = dto.OutTime.Value - officeOutDateTime;
                             double totalMinutes = otDuration.TotalMinutes;
+
+                            // Deduct Special Break if applicable
+                            if (employee.Shift != null && employee.Shift.HasSpecialBreak && !string.IsNullOrEmpty(employee.Shift.SpecialBreakDates))
+                            {
+                                var todayStr = dto.Date.Date.ToString("yyyy-MM-dd");
+                                if (employee.Shift.SpecialBreakDates.Split(',').Any(d => d.Trim() == todayStr))
+                                {
+                                    if (TimeSpan.TryParse(employee.Shift.SpecialBreakStart, out var sbStart) &&
+                                        TimeSpan.TryParse(employee.Shift.SpecialBreakEnd, out var sbEnd))
+                                    {
+                                        var sbStartDateTime = dto.Date.Date.Add(sbStart);
+                                        var sbEndDateTime = dto.Date.Date.Add(sbEnd);
+
+                                        // Handle overnight shift: If break starts before shift ends (relative to day start), it's next day
+                                        if (officeOutDateTime.Date > dto.Date.Date)
+                                        {
+                                            sbStartDateTime = sbStartDateTime.AddDays(1);
+                                            sbEndDateTime = sbEndDateTime.AddDays(1);
+                                        }
+
+                                        // Calculate intersection of [officeOutDateTime, ActualOut] and [sbStart, sbEnd]
+                                        var intersectStart = officeOutDateTime > sbStartDateTime ? officeOutDateTime : sbStartDateTime;
+                                        var intersectEnd = dto.OutTime.Value < sbEndDateTime ? dto.OutTime.Value : sbEndDateTime;
+
+                                        if (intersectEnd > intersectStart)
+                                        {
+                                            totalMinutes -= (intersectEnd - intersectStart).TotalMinutes;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (totalMinutes < 0) totalMinutes = 0;
 
                             int fullHours = (int)(totalMinutes / 60);
                             int remainingMinutes = (int)(totalMinutes % 60);

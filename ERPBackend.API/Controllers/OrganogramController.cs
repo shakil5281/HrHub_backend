@@ -22,7 +22,7 @@ namespace ERPBackend.API.Controllers
 
         // --- Departments ---
         [HttpGet("departments")]
-        public async Task<ActionResult<IEnumerable<DepartmentDto>>> GetDepartments(int? companyId)
+        public async Task<ActionResult<IEnumerable<DepartmentDto>>> GetDepartments([FromQuery] int? companyId)
         {
             var query = _context.Departments.AsQueryable();
             if (companyId.HasValue)
@@ -360,7 +360,7 @@ namespace ERPBackend.API.Controllers
 
         // --- Groups ---
         [HttpGet("groups")]
-        public async Task<ActionResult<IEnumerable<GroupDto>>> GetGroups(int? companyId, string? companyName)
+        public async Task<ActionResult<IEnumerable<GroupDto>>> GetGroups([FromQuery] int? companyId, [FromQuery] string? companyName)
         {
             var query = _context.Groups.AsQueryable();
             if (companyId.HasValue)
@@ -429,7 +429,7 @@ namespace ERPBackend.API.Controllers
 
         // --- Floors ---
         [HttpGet("floors")]
-        public async Task<ActionResult<IEnumerable<FloorDto>>> GetFloors(int? companyId, string? companyName)
+        public async Task<ActionResult<IEnumerable<FloorDto>>> GetFloors([FromQuery] int? companyId, [FromQuery] string? companyName)
         {
             var query = _context.Floors.AsQueryable();
             if (companyId.HasValue)
