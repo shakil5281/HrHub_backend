@@ -222,4 +222,20 @@ namespace ERPBackend.Core.DTOs
         public string Department { get; set; } = string.Empty;
         public string? CompanyName { get; set; }
     }
+
+    public class DailyProcessRequestDto
+    {
+        public DateTime Date { get; set; }
+        public int? CompanyId { get; set; }
+        public int? DepartmentId { get; set; }
+        public string? EmployeeId { get; set; }
+    }
+
+    public class DailyProcessResultDto
+    {
+        public int ProcessedCount { get; set; }
+        public int SkippedCount { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
 }
+

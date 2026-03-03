@@ -737,13 +737,45 @@ namespace ERPBackend.API.Controllers
             using var package = new ExcelPackage();
             
             // Define classification logic
-            bool IsmCash(string? bankName) => 
-                !string.IsNullOrEmpty(bankName) && 
-                (bankName.Contains("Nagad", StringComparison.OrdinalIgnoreCase) || 
-                 bankName.Contains("Rocket", StringComparison.OrdinalIgnoreCase) || 
-                 bankName.Contains("Bkash", StringComparison.OrdinalIgnoreCase) || 
-                 bankName.Contains("mCash", StringComparison.OrdinalIgnoreCase) ||
-                 bankName.Contains("Upay", StringComparison.OrdinalIgnoreCase));
+            bool IsmCash(Employee? e) 
+            {
+                if (e == null) return false;
+                var bankName = e.BankName ?? "";
+                var accountType = e.BankAccountType ?? "";
+                var accountNo = e.BankAccountNo ?? "";
+
+                // Account type mCash AND starts with 01
+                if (accountType.Equals("mCash", StringComparison.OrdinalIgnoreCase) && accountNo.StartsWith("01"))
+                    return true;
+
+                // Existing bank name logic for mCash
+                if (bankName.Contains("Nagad", StringComparison.OrdinalIgnoreCase) || 
+                    bankName.Contains("Rocket", StringComparison.OrdinalIgnoreCase) || 
+                    bankName.Contains("Bkash", StringComparison.OrdinalIgnoreCase) || 
+                    bankName.Contains("mCash", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("Upay", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                return false;
+            }
+
+            bool IsCard(Employee? e)
+            {
+                if (e == null) return false;
+                var accountType = e.BankAccountType ?? "";
+                var accountNo = e.BankAccountNo ?? "";
+
+                // Card types: Card, Bank, Savings, Current, Salary
+                var cardTypes = new[] { "Card", "Bank", "Savings", "Current", "Salary" };
+                if (cardTypes.Any(t => accountType.Equals(t, StringComparison.OrdinalIgnoreCase)))
+                    return true;
+
+                // Account starts with 2050
+                if (accountNo.StartsWith("2050"))
+                    return true;
+
+                return false;
+            }
 
             bool IsStaff(Employee? e) => 
                 e?.Group?.NameEn?.Contains("Staff", StringComparison.OrdinalIgnoreCase) == true;
@@ -754,10 +786,10 @@ namespace ERPBackend.API.Controllers
             var closeList = nonHoldRecords.Where(s => s.Employee!.Status != "Active" || !s.Employee.IsActive).ToList();
             var activeRecords = nonHoldRecords.Where(s => s.Employee!.Status == "Active" && s.Employee.IsActive).ToList();
 
-            var staffMcash = activeRecords.Where(s => IsStaff(s.Employee) && IsmCash(s.Employee?.BankName)).ToList();
-            var staffCard = activeRecords.Where(s => IsStaff(s.Employee) && !IsmCash(s.Employee?.BankName)).ToList();
-            var workerMcash = activeRecords.Where(s => !IsStaff(s.Employee) && IsmCash(s.Employee?.BankName)).ToList();
-            var workerCard = activeRecords.Where(s => !IsStaff(s.Employee) && !IsmCash(s.Employee?.BankName)).ToList();
+            var staffMcash = activeRecords.Where(s => IsStaff(s.Employee) && IsmCash(s.Employee)).ToList();
+            var staffCard = activeRecords.Where(s => IsStaff(s.Employee) && IsCard(s.Employee)).ToList();
+            var workerMcash = activeRecords.Where(s => !IsStaff(s.Employee) && IsmCash(s.Employee)).ToList();
+            var workerCard = activeRecords.Where(s => !IsStaff(s.Employee) && IsCard(s.Employee)).ToList();
 
             // 1. Summary Sheet
             var summarySheet = package.Workbook.Worksheets.Add("Summary");
@@ -995,15 +1027,280 @@ namespace ERPBackend.API.Controllers
             });
         }
 
-        [HttpDelete("bonus/{id}")]
-        public async Task<IActionResult> DeleteBonus(int id)
+        [HttpGet("export-festival-bonus-bank-sheet")]
+        public async Task<IActionResult> ExportFestivalBonusBankSheet(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? companyId,
+            [FromQuery] int? departmentId,
+            [FromQuery] string? searchTerm)
         {
-            var bonus = await _context.Bonuses.FindAsync(id);
-            if (bonus == null) return NotFound();
+            var query = _context.Bonuses
+                .Include(b => b.Employee).ThenInclude(e => e!.Department)
+                .Include(b => b.Employee).ThenInclude(e => e!.Designation)
+                .Include(b => b.Employee).ThenInclude(e => e!.Group)
+                .Where(b => b.Year == year && b.Month == month && b.Employee != null);
 
-            _context.Bonuses.Remove(bonus);
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(b => b.Employee!.CompanyId == companyId.Value || b.CompanyId == companyId.Value);
+
+            if (departmentId.HasValue)
+                query = query.Where(b => b.Employee!.DepartmentId == departmentId.Value);
+
+            if (!string.IsNullOrEmpty(searchTerm))
+                query = query.Where(b => b.Employee!.FullNameEn.Contains(searchTerm) || b.Employee!.EmployeeId.Contains(searchTerm));
+
+            var allRecords = await query.ToListAsync();
+
+            using var package = new ExcelPackage();
+
+            // Define classification logic
+            bool IsmCash(Employee? e)
+            {
+                if (e == null) return false;
+                var bankName = e.BankName ?? "";
+                var accountType = e.BankAccountType ?? "";
+                var accountNo = e.BankAccountNo ?? "";
+
+                if (accountType.Equals("mCash", StringComparison.OrdinalIgnoreCase) && accountNo.StartsWith("01"))
+                    return true;
+
+                if (bankName.Contains("Nagad", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("Rocket", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("Bkash", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("mCash", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("Upay", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                return false;
+            }
+
+            bool IsCard(Employee? e)
+            {
+                if (e == null) return false;
+                var accountType = e.BankAccountType ?? "";
+                var accountNo = e.BankAccountNo ?? "";
+
+                var cardTypes = new[] { "Card", "Bank", "Savings", "Current", "Salary" };
+                if (cardTypes.Any(t => accountType.Equals(t, StringComparison.OrdinalIgnoreCase)))
+                    return true;
+
+                if (accountNo.StartsWith("2050"))
+                    return true;
+
+                return false;
+            }
+
+            bool IsStaff(Employee? e) => e?.Group?.NameEn?.Contains("Staff", StringComparison.OrdinalIgnoreCase) == true;
+
+            var activeRecords = allRecords.Where(s => s.Employee!.Status == "Active" && s.Employee.IsActive).ToList();
+
+            var staffMcash = activeRecords.Where(s => IsStaff(s.Employee) && IsmCash(s.Employee)).Select(s => new MonthlySalarySheet { Employee = s.Employee, NetPayable = s.Amount }).ToList();
+            var staffCard = activeRecords.Where(s => IsStaff(s.Employee) && IsCard(s.Employee)).Select(s => new MonthlySalarySheet { Employee = s.Employee, NetPayable = s.Amount }).ToList();
+            var workerMcash = activeRecords.Where(s => !IsStaff(s.Employee) && IsmCash(s.Employee)).Select(s => new MonthlySalarySheet { Employee = s.Employee, NetPayable = s.Amount }).ToList();
+            var workerCard = activeRecords.Where(s => !IsStaff(s.Employee) && IsCard(s.Employee)).Select(s => new MonthlySalarySheet { Employee = s.Employee, NetPayable = s.Amount }).ToList();
+
+            // 1. Summary Sheet
+            var summarySheet = package.Workbook.Worksheets.Add("Summary");
+            CreateSummarySheet(summarySheet, year, month, staffMcash, staffCard, workerMcash, workerCard, new List<MonthlySalarySheet>(), new List<MonthlySalarySheet>());
+
+            // 2-5. Individual Sheets
+            AddDataSheet(package, "Staff - mCash", staffMcash);
+            AddDataSheet(package, "Staff - Card", staffCard);
+            AddDataSheet(package, "Worker - mCash", workerMcash);
+            AddDataSheet(package, "Worker - Card", workerCard);
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"Festival_Bonus_Bank_Payment_{monthName}_{year}.xlsx");
+        }
+
+        // ─── DAILY SALARY SHEET ───────────────────────────────────────────────────
+
+        [HttpPost("process-daily")]
+        public async Task<ActionResult<DailyProcessResultDto>> ProcessDailySalary([FromBody] DailyProcessRequestDto request)
+        {
+            var date = request.Date.Date;
+
+            var employeesQuery = _context.Employees
+                .Where(e => e.Status == "Active" && e.IsActive);
+
+            if (request.CompanyId.HasValue && request.CompanyId > 0)
+                employeesQuery = employeesQuery.Where(e => e.CompanyId == request.CompanyId.Value);
+
+            if (request.DepartmentId.HasValue)
+                employeesQuery = employeesQuery.Where(e => e.DepartmentId == request.DepartmentId.Value);
+
+            if (!string.IsNullOrEmpty(request.EmployeeId))
+                employeesQuery = employeesQuery.Where(e => e.EmployeeId == request.EmployeeId);
+
+            var employees = await employeesQuery.ToListAsync();
+
+            // Load attendances for this date
+            var attendances = await _context.Attendances
+                .Where(a => a.Date.Date == date)
+                .ToListAsync();
+
+            // Remove existing daily sheets for same date/employees to allow re-processing
+            var existingIds = employees.Select(e => e.Id).ToList();
+            var existingSheets = await _context.DailySalarySheets
+                .Where(s => s.Date.Date == date && existingIds.Contains(s.EmployeeId))
+                .ToListAsync();
+
+            if (existingSheets.Any())
+            {
+                _context.DailySalarySheets.RemoveRange(existingSheets);
+                await _context.SaveChangesAsync();
+            }
+
+            int processed = 0;
+            int skipped = 0;
+            int daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+
+            foreach (var emp in employees)
+            {
+                decimal gross = emp.GrossSalary ?? 0;
+                if (gross <= 0) { skipped++; continue; }
+
+                var att = attendances.FirstOrDefault(a => a.EmployeeCard == emp.Id);
+
+                decimal perDay = daysInMonth > 0 ? gross / daysInMonth : 0;
+                string status = att?.Status ?? "Absent";
+
+                decimal otHours = att?.OTHours ?? 0;
+                decimal otRate = (emp.BasicSalary ?? 0) / 208 * 2;
+                decimal otAmount = otHours * otRate;
+
+                decimal deduction = (status == "Absent") ? perDay : 0;
+                decimal earning = (status == "Present" || status == "Late") ? perDay + otAmount : 0;
+                decimal netPayable = earning - deduction;
+
+                var sheet = new DailySalarySheet
+                {
+                    EmployeeId = emp.Id,
+                    CompanyId = emp.CompanyId,
+                    Date = date,
+                    GrossSalary = gross,
+                    PerDaySalary = perDay,
+                    AttendanceStatus = status,
+                    OTHours = otHours,
+                    OTAmount = otAmount,
+                    TotalEarning = earning,
+                    Deduction = deduction,
+                    NetPayable = netPayable,
+                    ProcessedAt = DateTime.UtcNow
+                };
+
+                _context.DailySalarySheets.Add(sheet);
+                processed++;
+            }
+
             await _context.SaveChangesAsync();
-            return NoContent();
+
+            return Ok(new DailyProcessResultDto
+            {
+                ProcessedCount = processed,
+                SkippedCount = skipped,
+                Message = $"Processed {processed} employees for {date:dd MMM yyyy}."
+            });
+        }
+
+        [HttpGet("export-daily-sheet")]
+        public async Task<IActionResult> ExportDailySalarySheet(
+            [FromQuery] DateTime date,
+            [FromQuery] int? companyId,
+            [FromQuery] int? departmentId,
+            [FromQuery] string? searchTerm)
+        {
+            var query = _context.DailySalarySheets
+                .Include(s => s.Employee).ThenInclude(e => e!.Department)
+                .Include(s => s.Employee).ThenInclude(e => e!.Designation)
+                .Include(s => s.Employee).ThenInclude(e => e!.Company)
+                .Where(s => s.Date.Date == date.Date);
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+
+            if (departmentId.HasValue)
+                query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
+
+            if (!string.IsNullOrEmpty(searchTerm))
+                query = query.Where(s => s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee!.EmployeeId.Contains(searchTerm));
+
+            var records = await query.OrderBy(s => s.Employee!.EmployeeId).ToListAsync();
+
+            using var package = new ExcelPackage();
+            var ws = package.Workbook.Worksheets.Add($"Daily Sheet {date:dd-MM-yyyy}");
+
+            // Title
+            ws.Cells["A1:J1"].Merge = true;
+            ws.Cells["A1"].Value = $"DAILY SALARY SHEET — {date:dd MMMM yyyy}";
+            ws.Cells["A1"].Style.Font.Size = 14;
+            ws.Cells["A1"].Style.Font.Bold = true;
+            ws.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+            string[] headers = { "SL", "Employee ID", "Name", "Department", "Designation", "Status", "Per Day (৳)", "OT Hrs", "OT Amount (৳)", "Net Payable (৳)" };
+
+            for (int i = 0; i < headers.Length; i++)
+            {
+                var cell = ws.Cells[3, i + 1];
+                cell.Value = headers[i];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(51, 122, 183));
+                cell.Style.Font.Color.SetColor(Color.White);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+            }
+
+            int row = 4;
+            foreach (var s in records)
+            {
+                ws.Cells[row, 1].Value = row - 3;
+                ws.Cells[row, 2].Value = s.Employee?.EmployeeId;
+                ws.Cells[row, 3].Value = s.Employee?.FullNameEn;
+                ws.Cells[row, 4].Value = s.Employee?.Department?.NameEn;
+                ws.Cells[row, 5].Value = s.Employee?.Designation?.NameEn;
+                ws.Cells[row, 6].Value = s.AttendanceStatus;
+                ws.Cells[row, 7].Value = s.PerDaySalary;
+                ws.Cells[row, 7].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 8].Value = s.OTHours;
+                ws.Cells[row, 9].Value = s.OTAmount;
+                ws.Cells[row, 9].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 10].Value = s.NetPayable;
+                ws.Cells[row, 10].Style.Numberformat.Format = "#,##0.00";
+
+                for (int i = 1; i <= 10; i++)
+                    ws.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                row++;
+            }
+
+            // Total row
+            if (records.Any())
+            {
+                ws.Cells[row, 1, row, 9].Merge = true;
+                ws.Cells[row, 1].Value = "TOTAL";
+                ws.Cells[row, 1].Style.Font.Bold = true;
+                ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                ws.Cells[row, 10].Value = records.Sum(x => x.NetPayable);
+                ws.Cells[row, 10].Style.Font.Bold = true;
+                ws.Cells[row, 10].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                ws.Cells[row, 10].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+            }
+
+            ws.Cells.AutoFitColumns();
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"Daily_Salary_{date:dd-MM-yyyy}.xlsx");
         }
     }
 }

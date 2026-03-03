@@ -79,7 +79,7 @@ namespace ERPBackend.API.Controllers
                     query = query.Where(e => e.IsActive == filters.IsActive.Value);
 
                 if (!string.IsNullOrEmpty(filters.EmployeeId))
-                    query = query.Where(e => e.EmployeeId.Contains(filters.EmployeeId));
+                    query = query.Where(e => e.EmployeeId == filters.EmployeeId);
 
                 if (filters.JoinDateFrom.HasValue)
                     query = query.Where(e => e.JoinDate >= filters.JoinDateFrom.Value);
@@ -615,6 +615,8 @@ namespace ERPBackend.API.Controllers
 
                 IsActive = true,
                 IsOtEnabled = dto.IsOtEnabled,
+                ProfileImageUrl = dto.ProfileImageUrl,
+                SignatureImageUrl = dto.SignatureImageUrl,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -810,6 +812,9 @@ namespace ERPBackend.API.Controllers
             if (effectiveCompanyId.HasValue && effectiveCompanyId > 0) employee.CompanyId = effectiveCompanyId;
             if (!string.IsNullOrEmpty(dto.CompanyName)) employee.CompanyName = dto.CompanyName;
             if (!string.IsNullOrEmpty(dto.BloodGroup)) employee.BloodGroup = dto.BloodGroup;
+            
+            if (!string.IsNullOrEmpty(dto.ProfileImageUrl)) employee.ProfileImageUrl = dto.ProfileImageUrl;
+            if (!string.IsNullOrEmpty(dto.SignatureImageUrl)) employee.SignatureImageUrl = dto.SignatureImageUrl;
 
             employee.IsActive = dto.IsActive;
             employee.IsOtEnabled = dto.IsOtEnabled;

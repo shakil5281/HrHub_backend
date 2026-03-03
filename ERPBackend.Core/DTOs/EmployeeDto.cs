@@ -160,6 +160,8 @@ namespace ERPBackend.Core.DTOs
         public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         public string? BloodGroup { get; set; }
+        public string? ProfileImageUrl { get; set; }
+        public string? SignatureImageUrl { get; set; }
         public bool IsOtEnabled { get; set; }
     }
 
@@ -234,6 +236,8 @@ namespace ERPBackend.Core.DTOs
         public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         public string? BloodGroup { get; set; }
+        public string? ProfileImageUrl { get; set; }
+        public string? SignatureImageUrl { get; set; }
 
         public bool IsActive { get; set; }
         public bool IsOtEnabled { get; set; }

@@ -212,29 +212,26 @@ namespace ERPBackend.Services.Services
             int? groupId = null,
             int? companyId = null)
         {
-            // 1. Fetch relevant logs: Extended window to cover full 24-hour cycles and long OT
+            // 1. Fetch relevant logs extending into next day to cover overnight shifts
             var endTime = date.Date.AddDays(2);
 
             var allLogs = await _context.AttendanceLogs
                 .Where(l => l.LogTime >= date.Date && l.LogTime < endTime)
                 .ToListAsync();
 
-            // 2. Fetch all active employees
+            // 2. Fetch all active employees (include Group for Worker OT check)
             var queryEmployees = _context.Employees
                 .Where(e => e.IsActive)
                 .Include(e => e.Shift)
                 .Include(e => e.Department)
+                .Include(e => e.Group)
                 .AsQueryable();
 
             if (employeeCodes != null && employeeCodes.Any())
-            {
                 queryEmployees = queryEmployees.Where(e => employeeCodes.Contains(e.EmployeeId));
-            }
 
             if (departmentId.HasValue)
-            {
                 queryEmployees = queryEmployees.Where(e => e.DepartmentId == departmentId.Value);
-            }
 
             if (sectionId.HasValue) queryEmployees = queryEmployees.Where(e => e.SectionId == sectionId.Value);
             if (designationId.HasValue)
@@ -243,18 +240,16 @@ namespace ERPBackend.Services.Services
             if (shiftId.HasValue) queryEmployees = queryEmployees.Where(e => e.ShiftId == shiftId.Value);
             if (groupId.HasValue) queryEmployees = queryEmployees.Where(e => e.GroupId == groupId.Value);
             if (companyId.HasValue)
-            {
                 queryEmployees = queryEmployees.Where(e => e.Department!.CompanyId == companyId.Value);
-            }
 
             var activeEmployees = await queryEmployees.ToListAsync();
 
-            // 3. Fetch leaves for this date
+            // 3. Fetch approved leaves for this date
             var leaves = await _context.LeaveApplications
                 .Where(l => l.Status == "Approved" && l.StartDate.Date <= date.Date && l.EndDate.Date >= date.Date)
                 .ToListAsync();
 
-            // 4. Fetch roster/off days (with fallback logic)
+            // 4. Fetch roster/off-days
             var empSecondaryIds = activeEmployees.Select(e => e.Id).ToList();
             var allRosters = await _context.EmployeeShiftRosters
                 .Include(r => r.Shift)
@@ -262,49 +257,37 @@ namespace ERPBackend.Services.Services
                 .OrderByDescending(r => r.Date)
                 .ToListAsync();
 
-            // 5. Fetch existing attendance for this date in one go
+            // 5. Existing attendance records for this date
             var existingAttendances = await _context.Attendances
                 .Where(a => a.Date == date.Date)
                 .ToDictionaryAsync(a => a.EmployeeCard);
 
-
             foreach (var emp in activeEmployees)
             {
-                var shift = emp.Shift;
+                // 1. Determine the correct shift (Roster Priority > Default Shift)
+                var employeeRosters = allRosters.Where(r => r.EmployeeId == emp.Id).ToList();
+                var roster = employeeRosters.FirstOrDefault(r => r.Date.Date == date.Date);
+                if (roster == null) roster = employeeRosters.FirstOrDefault();
 
-                // Determine search window for In/Out punches based on ActualInTime
-                DateTime actualInTimeRef = date.Date.AddHours(4); // Default fallback: Start search at 4 AM
-                DateTime inWindowEnd = date.Date.AddHours(12); // Default arrival window: until Noon
-                DateTime outWindowEnd = date.Date.AddDays(1).Add(new TimeSpan(7, 59, 0)); // Default cutoff
+                var shift = (roster != null && roster.Shift != null) ? roster.Shift : emp.Shift;
+                if (shift == null) continue;
 
-                if (shift != null && TimeSpan.TryParse(shift.ActualInTime, out var actualIn))
-                {
-                    // InTime search begins 4 hours before shift start (e.g., 04:00 AM for 08:00 AM shift)
-                    actualInTimeRef = date.Date.Add(actualIn).AddHours(-4);
-                    // Arrival window ends 4 hours after shift start (e.g., 12:00 PM for 08:00 AM shift)
-                    inWindowEnd = date.Date.Add(actualIn).AddHours(4);
+                // 2. Parse shift configurations
+                TimeSpan actualInTs = TimeSpan.TryParse(shift.ActualInTime, out var sAi) ? sAi : TimeSpan.FromHours(5);
+                TimeSpan inTs       = TimeSpan.TryParse(shift.InTime,       out var sIn) ? sIn : sAi;
+                TimeSpan outTs      = TimeSpan.TryParse(shift.OutTime,      out var sOut) ? sOut : TimeSpan.FromHours(17);
+                TimeSpan actualOutTs = TimeSpan.TryParse(shift.ActualOutTime, out var sAo) ? sAo : TimeSpan.FromHours(4);
 
-                    // OutTime cutoff is strictly 24 hours (minus 1 min) from the SHIFT IN time.
-                    // This allows punches at 07:14 AM to be counted for a 07:15 AM shift as requested.
-                    outWindowEnd = date.Date.AddDays(1).Add(actualIn).AddMinutes(-1);
-                }
+                DateTime actualInStart = date.Date.Add(actualInTs);
+                DateTime actualOutEnd  = date.Date.AddDays(1).Add(actualOutTs);
 
-                // Get all punches for this employee within the extended window
-                var empLogs = allLogs.Where(l =>
-                        l.EmployeeCard == emp.Id &&
-                        l.LogTime >= actualInTimeRef &&
-                        l.LogTime <= outWindowEnd)
+                // 3. Filter employee punches within the valid shift window
+                var empLogs = allLogs
+                    .Where(l => l.EmployeeCard == emp.Id && l.LogTime >= actualInStart && l.LogTime <= actualOutEnd)
                     .OrderBy(l => l.LogTime)
                     .ToList();
 
                 var leave = leaves.FirstOrDefault(l => l.EmployeeId == emp.Id);
-                
-                // Fallback logic: 1. Direct match for date, 2. Last submitted roster before date
-                var employeeRosters = allRosters.Where(r => r.EmployeeId == emp.Id).ToList();
-                var roster = employeeRosters.FirstOrDefault(r => r.Date.Date == date.Date) 
-                             ?? employeeRosters.FirstOrDefault(); // allRosters is already ordered by date DESC and filtered by <= date
-
-
                 existingAttendances.TryGetValue(emp.Id, out var attendance);
 
                 if (attendance == null)
@@ -312,141 +295,71 @@ namespace ERPBackend.Services.Services
                     attendance = new Attendance
                     {
                         EmployeeCard = emp.Id,
-                        EmployeeId = emp.EmployeeId,
-                        CompanyId = emp.Department?.CompanyId,
-                        Date = date.Date,
-                        Status = "Absent" // Default
+                        EmployeeId   = emp.EmployeeId,
+                        CompanyId    = emp.Department?.CompanyId,
+                        Date         = date.Date
                     };
-                    _context.Attendances.Add(attendance);
-                }
-                else
-                {
-                    attendance.CompanyId = emp.Department?.CompanyId;
                 }
 
-                // Reset data for fresh calculation
-                attendance.InTime = null;
-                attendance.OutTime = null;
-                attendance.Status = "Absent";
-                attendance.OTHours = 0;
-                attendance.ShiftId = roster?.ShiftId ?? emp.ShiftId;
-                attendance.IsOffDay = false;
+                // Reset record for re-calculation
+                attendance.InTime    = null;
+                attendance.OutTime   = null;
+                attendance.OTHours   = 0;
+                attendance.ShiftId   = shift.Id;
+                string status        = "Absent";
 
-
-                DateTime? inTime = null;
-                DateTime? outTime = null;
-                string status = "Absent";
-
+                // 4. In/Out Time Logic (First/Last Punch)
                 if (empLogs.Any())
                 {
-                    // InTime Logic: Find FIRST punch occurring within the InTime window
-                    AttendanceLog? inTimeLog = null;
-                    var inTimeCandidates = empLogs.Where(l => l.LogTime <= inWindowEnd).ToList();
+                    var firstLog = empLogs.First();
+                    var lastLog  = empLogs.Count > 1 ? empLogs.Last() : null;
 
-                    if (inTimeCandidates.Any())
+                    attendance.InTime  = firstLog.LogTime;
+                    attendance.OutTime = lastLog?.LogTime;
+
+                    // Normalization for calculations: If punch is before Official In, use Official In.
+                    DateTime officialInDateTime = date.Date.Add(inTs);
+                    DateTime effectiveInForMath = firstLog.LogTime < officialInDateTime ? officialInDateTime : firstLog.LogTime;
+
+                    status = "Present";
+                    if (!string.IsNullOrEmpty(shift.LateInTime) && TimeSpan.TryParse(shift.LateInTime, out var lateTs))
                     {
-                        inTimeLog = inTimeCandidates.OrderBy(l => l.LogTime).First();
-                        inTime = inTimeLog.LogTime;
-                        status = "Present";
-
-                        // Late detection logic...
-                        if (shift != null && !string.IsNullOrEmpty(shift.LateInTime) &&
-                            TimeSpan.TryParse(shift.LateInTime, out var lateInTimeValue))
-                        {
-                            var lateInDateTime = date.Date.Add(lateInTimeValue);
-                            if (inTimeLog.LogTime > lateInDateTime) status = "Late";
-                        }
+                        if (firstLog.LogTime > date.Date.Add(lateTs)) status = "Late";
                     }
 
-                    // OutTime Logic: Find the LATEST punch occurring AFTER the InTime (buffer 30 min)
-                    // This avoids picking the arrival punch as departure while catching everything else.
-                    var outTimeLog = inTime.HasValue
-                        ? empLogs.Where(l => l.LogTime > inTime.Value.AddMinutes(30)).LastOrDefault()
-                        : empLogs.Where(l => l.LogTime > inWindowEnd).LastOrDefault();
-
-                    if (outTimeLog != null)
+                    // 5. Overtime (Worker Group Only, Rounded 45min+)
+                    if (lastLog != null)
                     {
-                        outTime = outTimeLog.LogTime;
+                        double lunchHrs = (double)shift.LunchHour;
 
-                        // Calculate OT based on OFFICE OUT TIME (not Actual Out Time)
-                        if (emp.IsOtEnabled && shift != null && !string.IsNullOrEmpty(shift.OutTime) &&
-                            TimeSpan.TryParse(shift.OutTime, out var officeOutTimeValue))
+                        // Overtime: Worker Group Only, Rounded 45min+
+                        if (emp.Group?.NameEn?.ToLower() == "worker" && emp.IsOtEnabled)
                         {
-                            var officeOutTime = officeOutTimeValue;
-                            DateTime officeOutDateTime = date.Date.Add(officeOutTime);
+                            DateTime officialOutDateTime = date.Date.Add(outTs);
+                            if (officialOutDateTime < officialInDateTime) officialOutDateTime = officialOutDateTime.AddDays(1);
 
-                            // Handle overnight shift: If Office Out < Actual In, Office Out is next day
-                            if (shift.ActualInTime != null && TimeSpan.TryParse(shift.ActualInTime, out var aIn) &&
-                                officeOutTime < aIn)
+                            if (lastLog.LogTime > officialOutDateTime)
                             {
-                                officeOutDateTime = date.Date.AddDays(1).Add(officeOutTime);
-                            }
+                                double otMins = (lastLog.LogTime - officialOutDateTime).TotalMinutes;
+                                if (lunchHrs > 0) otMins -= (lunchHrs * 60);
 
-                            if (emp.IsOtEnabled && outTimeLog.LogTime > officeOutDateTime)
-                            {
-                                var otDuration = outTimeLog.LogTime - officeOutDateTime;
-                                double totalMinutes = otDuration.TotalMinutes;
-
-                                // Deduct Special Break if applicable
-                                if (shift.HasSpecialBreak && !string.IsNullOrEmpty(shift.SpecialBreakDates))
-                                {
-                                    var todayStr = date.ToString("yyyy-MM-dd");
-                                    if (shift.SpecialBreakDates.Split(',').Any(d => d.Trim() == todayStr))
-                                    {
-                                        if (TimeSpan.TryParse(shift.SpecialBreakStart, out var sbStart) &&
-                                            TimeSpan.TryParse(shift.SpecialBreakEnd, out var sbEnd))
-                                        {
-                                            var sbStartDateTime = date.Date.Add(sbStart);
-                                            var sbEndDateTime = date.Date.Add(sbEnd);
-
-                                            // Handle overnight shift: If break starts before shift ends (relative to day start), it's next day
-                                            if (officeOutDateTime.Date > date.Date)
-                                            {
-                                                sbStartDateTime = sbStartDateTime.AddDays(1);
-                                                sbEndDateTime = sbEndDateTime.AddDays(1);
-                                            }
-
-                                            // Calculate intersection of [officeOutDateTime, ActualOut] and [sbStart, sbEnd]
-                                            var intersectStart = officeOutDateTime > sbStartDateTime ? officeOutDateTime : sbStartDateTime;
-                                            var intersectEnd = outTimeLog.LogTime < sbEndDateTime ? outTimeLog.LogTime : sbEndDateTime;
-
-                                            if (intersectEnd > intersectStart)
-                                            {
-                                                totalMinutes -= (intersectEnd - intersectStart).TotalMinutes;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (totalMinutes < 0) totalMinutes = 0;
-
-                                // Rounding Rule: 45 minutes up counts as 1 hour
-                                int fullHours = (int)(totalMinutes / 60);
-                                int remainingMinutes = (int)(totalMinutes % 60);
-
-                                attendance.OTHours = remainingMinutes >= 45 ? fullHours + 1 : fullHours;
-                            }
-                            else
-                            {
-                                attendance.OTHours = 0;
+                                int finalOt = (int)(otMins / 60);
+                                if (otMins % 60 >= 45) finalOt += 1;
+                                attendance.OTHours = Math.Max(0, finalOt);
                             }
                         }
                     }
                 }
                 else
                 {
-                    // No punches found
-                    status = leave != null
-                        ? "On Leave"
-                        : (roster?.IsOffDay == true || IsWeekend(date, emp.Shift?.Weekends) ? "Off Day" : "Absent");
+                    // Handle Absent/Leave/OffDay
+                    status = leave != null 
+                        ? "On Leave" 
+                        : (roster?.IsOffDay == true || IsWeekend(date, shift.Weekends) ? "Off Day" : "Absent");
                 }
 
-                // Assign final DateTime values
-                attendance.InTime = inTime;
-                attendance.OutTime = outTime;
-                attendance.Status = status;
+                attendance.Status   = status;
                 attendance.IsOffDay = status == "Off Day";
-
 
                 if (attendance.Id == 0)
                 {
@@ -456,9 +369,6 @@ namespace ERPBackend.Services.Services
                 else
                 {
                     attendance.UpdatedAt = DateTime.UtcNow;
-                    attendance.Remarks = (attendance.Remarks ?? "").Contains("(Updated)")
-                        ? attendance.Remarks
-                        : (attendance.Remarks ?? "") + " (Updated)";
                     _context.Attendances.Update(attendance);
                 }
             }
