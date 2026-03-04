@@ -35,6 +35,10 @@ builder.Services.AddDbContext<ProductionDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ProductionConnection"),
         sqlServerOptionsAction: sqlOptions => { sqlOptions.EnableRetryOnFailure(); }));
 
+builder.Services.AddDbContext<StoreDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("StoreConnection"),
+        sqlServerOptionsAction: sqlOptions => { sqlOptions.EnableRetryOnFailure(); }));
+
 // 2. Identity
 // 2. Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -53,12 +57,12 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 
-if (OperatingSystem.IsWindows())
-{
-    builder.Services.AddScoped<IZkTecoService, ZkTecoService>();
-}
-
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IStoreService, StoreService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ICuttingService, CuttingService>();
+
+if (OperatingSystem.IsWindows())
 
 
 // 4. Authentication
@@ -93,11 +97,21 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll",
         policyBuilder =>
         {
-            policyBuilder.WithOrigins(allowedOrigins)
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials()
-                .WithExposedHeaders("Content-Disposition"); // Expose filename header
+            if (builder.Environment.IsDevelopment())
+            {
+                policyBuilder.SetIsOriginAllowed(origin => true)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            }
+            else
+            {
+                policyBuilder.WithOrigins(allowedOrigins)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials()
+                    .WithExposedHeaders("Content-Disposition");
+            }
         });
 });
 
