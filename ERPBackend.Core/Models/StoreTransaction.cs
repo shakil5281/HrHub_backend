@@ -2,32 +2,11 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Collections.Generic;
+using ERPBackend.Core.Enums;
 
 namespace ERPBackend.Core.Models
 {
-    public enum OrderStatus
-    {
-        Draft,
-        InProgress,
-        Completed,
-        Cancelled
-    }
-
-    public enum TransactionType
-    {
-        StockIn,
-        StockOut,
-        OpeningBalance,
-        Adjustment
-    }
-
-    public enum BookingStatus
-    {
-        Pending,
-        Confirmed,
-        Issued,
-        Cancelled
-    }
+    // OrderStatus, TransactionType, BookingStatus moved to MerchandisingEnums.cs
 
     public class StoreOrder
     {

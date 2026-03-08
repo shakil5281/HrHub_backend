@@ -45,16 +45,5 @@ namespace ERPBackend.Core.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    public class Buyer
-    {
-        [Key]
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string? Country { get; set; }
-        public string? ContactPerson { get; set; }
-        public string? Email { get; set; }
-        public string? Phone { get; set; }
-        public bool IsActive { get; set; } = true;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    }
+    // Buyer moved to MerchandisingModels.cs and enhanced
 }

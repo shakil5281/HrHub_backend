@@ -34,7 +34,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("UsersId");
 
-                    b.ToTable("ApplicationUserCompany", (string)null);
+                    b.ToTable("ApplicationUserCompany");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Entities.Employee", b =>
@@ -319,7 +319,39 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[Proximity] IS NOT NULL AND [CompanyName] IS NOT NULL");
 
-                    b.ToTable("Employees", (string)null);
+                    b.ToTable("Employees");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.AccessoriesBooking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("AccessoriesBookings");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.AdvanceSalary", b =>
@@ -369,7 +401,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("AdvanceSalaries", (string)null);
+                    b.ToTable("AdvanceSalaries");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ApplicationUser", b =>
@@ -536,7 +568,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("Attendances", (string)null);
+                    b.ToTable("Attendances");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.AttendanceLog", b =>
@@ -577,7 +609,61 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeCard");
 
-                    b.ToTable("AttendanceLogs", (string)null);
+                    b.ToTable("AttendanceLogs");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.BOM", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("BOMs");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.BOMItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BOMId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Consumption")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BOMId");
+
+                    b.ToTable("BOMItems");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Bonus", b =>
@@ -625,7 +711,86 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("Bonuses", (string)null);
+                    b.ToTable("Bonuses");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Brand", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BuyerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuyerId");
+
+                    b.ToTable("Brands");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Buyer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ContactPerson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LeadTime")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("PaymentTerms")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("Buyers");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Company", b =>
@@ -702,7 +867,55 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasIndex("RegistrationNo")
                         .IsUnique();
 
-                    b.ToTable("Companies", (string)null);
+                    b.ToTable("Companies");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Costing", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CMCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("EmbroideryCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("FOBPrice")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("FabricCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("OverheadCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("PackingCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("PrintCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("ProfitMargin")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("StyleId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TrimCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("WashCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StyleId");
+
+                    b.ToTable("Costings");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.CounselingRecord", b =>
@@ -766,7 +979,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("CounselingRecords", (string)null);
+                    b.ToTable("CounselingRecords");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Country", b =>
@@ -788,7 +1001,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Countries", (string)null);
+                    b.ToTable("Countries");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.DailySalarySheet", b =>
@@ -843,7 +1056,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("DailySalarySheets", (string)null);
+                    b.ToTable("DailySalarySheets");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Department", b =>
@@ -870,7 +1083,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("CompanyId");
 
-                    b.ToTable("Departments", (string)null);
+                    b.ToTable("Departments");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Designation", b =>
@@ -916,7 +1129,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("SectionId");
 
-                    b.ToTable("Designations", (string)null);
+                    b.ToTable("Designations");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.District", b =>
@@ -943,7 +1156,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DivisionId");
 
-                    b.ToTable("Districts", (string)null);
+                    b.ToTable("Districts");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Division", b =>
@@ -970,7 +1183,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("CountryId");
 
-                    b.ToTable("Divisions", (string)null);
+                    b.ToTable("Divisions");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.EmployeeShiftRoster", b =>
@@ -1011,7 +1224,53 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("EmployeeShiftRosters", (string)null);
+                    b.ToTable("EmployeeShiftRosters");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.FabricBooking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FabricType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("IssuedQuantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OrderReference")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("RequiredQuantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("FabricBookings");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Floor", b =>
@@ -1046,7 +1305,7 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
-                    b.ToTable("Floors", (string)null);
+                    b.ToTable("Floors");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Group", b =>
@@ -1081,7 +1340,7 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
-                    b.ToTable("Groups", (string)null);
+                    b.ToTable("Groups");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.IfterBill", b =>
@@ -1126,7 +1385,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("IfterBills", (string)null);
+                    b.ToTable("IfterBills");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.LeaveApplication", b =>
@@ -1184,7 +1443,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("LeaveTypeId");
 
-                    b.ToTable("LeaveApplications", (string)null);
+                    b.ToTable("LeaveApplications");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.LeaveType", b =>
@@ -1219,7 +1478,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LeaveTypes", (string)null);
+                    b.ToTable("LeaveTypes");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Line", b =>
@@ -1256,7 +1515,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("SectionId");
 
-                    b.ToTable("Lines", (string)null);
+                    b.ToTable("Lines");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ManpowerRequirement", b =>
@@ -1298,7 +1557,42 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DesignationId");
 
-                    b.ToTable("ManpowerRequirements", (string)null);
+                    b.ToTable("ManpowerRequirements");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.MerchProductionPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Factory")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProductionLine")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TargetPerDay")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("MerchProductionPlans");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.MonthlySalarySheet", b =>
@@ -1395,7 +1689,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("MonthlySalarySheets", (string)null);
+                    b.ToTable("MonthlySalarySheets");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.NightBill", b =>
@@ -1440,7 +1734,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("NightBills", (string)null);
+                    b.ToTable("NightBills");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OTDeduction", b =>
@@ -1490,7 +1784,54 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("OtDeductions", (string)null);
+                    b.ToTable("OtDeductions");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderColor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("OrderColors");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSizeBreakdown", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OrderColorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderColorId");
+
+                    b.ToTable("OrderSizeBreakdowns");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.PostOffice", b =>
@@ -1522,7 +1863,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DistrictId");
 
-                    b.ToTable("PostOffices", (string)null);
+                    b.ToTable("PostOffices");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SalaryIncrement", b =>
@@ -1572,7 +1913,38 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("SalaryIncrements", (string)null);
+                    b.ToTable("SalaryIncrements");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.SampleRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BuyerFeedback")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SampleType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StyleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StyleId");
+
+                    b.ToTable("SampleRequests");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Section", b =>
@@ -1604,7 +1976,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DepartmentId");
 
-                    b.ToTable("Sections", (string)null);
+                    b.ToTable("Sections");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Separation", b =>
@@ -1662,7 +2034,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("Separations", (string)null);
+                    b.ToTable("Separations");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Shift", b =>
@@ -1758,7 +2130,172 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
-                    b.ToTable("Shifts", (string)null);
+                    b.ToTable("Shifts");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Shipment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CartonQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Forwarder")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ShipmentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ShippingMethod")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("Shipments");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Style", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BrandId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BuyerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FabricType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GSM")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProductType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Season")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SizeRange")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StyleNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId");
+
+                    b.HasIndex("BuyerId");
+
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("Styles");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.StyleOrder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BuyerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OrderQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PONumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StyleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuyerId");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("StyleId");
+
+                    b.ToTable("StyleOrders");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.TechPack", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("StyleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UploadDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StyleId");
+
+                    b.ToTable("TechPacks");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Thana", b =>
@@ -1785,7 +2322,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DistrictId");
 
-                    b.ToTable("Thanas", (string)null);
+                    b.ToTable("Thanas");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.TiffinBill", b =>
@@ -1830,7 +2367,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("TiffinBills", (string)null);
+                    b.ToTable("TiffinBills");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Transfer", b =>
@@ -1897,7 +2434,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ToDesignationId");
 
-                    b.ToTable("Transfers", (string)null);
+                    b.ToTable("Transfers");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -2116,6 +2653,17 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ERPBackend.Core.Models.AccessoriesBooking", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
+                });
+
             modelBuilder.Entity("ERPBackend.Core.Models.AdvanceSalary", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.Company", "Company")
@@ -2175,6 +2723,28 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("ERPBackend.Core.Models.BOM", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany("BOMs")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.BOMItem", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.BOM", "BOM")
+                        .WithMany("BOMItems")
+                        .HasForeignKey("BOMId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BOM");
+                });
+
             modelBuilder.Entity("ERPBackend.Core.Models.Bonus", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.Company", "Company")
@@ -2190,6 +2760,39 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Company");
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Brand", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.Buyer", "Buyer")
+                        .WithMany("Brands")
+                        .HasForeignKey("BuyerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Buyer");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Buyer", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Costing", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.Style", "Style")
+                        .WithMany("Costings")
+                        .HasForeignKey("StyleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Style");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.CounselingRecord", b =>
@@ -2295,6 +2898,17 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("Shift");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.FabricBooking", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Floor", b =>
@@ -2403,6 +3017,17 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Designation");
                 });
 
+            modelBuilder.Entity("ERPBackend.Core.Models.MerchProductionPlan", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
+                });
+
             modelBuilder.Entity("ERPBackend.Core.Models.MonthlySalarySheet", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.Company", "Company")
@@ -2454,6 +3079,28 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderColor", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany("OrderColors")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSizeBreakdown", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.OrderColor", "OrderColor")
+                        .WithMany("SizeBreakdowns")
+                        .HasForeignKey("OrderColorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OrderColor");
+                });
+
             modelBuilder.Entity("ERPBackend.Core.Models.PostOffice", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.District", "District")
@@ -2480,6 +3127,17 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Company");
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.SampleRequest", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.Style", "Style")
+                        .WithMany("SampleRequests")
+                        .HasForeignKey("StyleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Style");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Section", b =>
@@ -2519,6 +3177,82 @@ namespace ERPBackend.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Shipment", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Style", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERPBackend.Core.Models.Buyer", "Buyer")
+                        .WithMany()
+                        .HasForeignKey("BuyerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Brand");
+
+                    b.Navigation("Buyer");
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.StyleOrder", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.Buyer", "Buyer")
+                        .WithMany()
+                        .HasForeignKey("BuyerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERPBackend.Core.Models.Style", "Style")
+                        .WithMany()
+                        .HasForeignKey("StyleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Buyer");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Style");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.TechPack", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.Style", "Style")
+                        .WithMany("TechPacks")
+                        .HasForeignKey("StyleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Style");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Thana", b =>
@@ -2647,6 +3381,16 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ERPBackend.Core.Models.BOM", b =>
+                {
+                    b.Navigation("BOMItems");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Buyer", b =>
+                {
+                    b.Navigation("Brands");
+                });
+
             modelBuilder.Entity("ERPBackend.Core.Models.Country", b =>
                 {
                     b.Navigation("Divisions");
@@ -2669,11 +3413,32 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Districts");
                 });
 
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderColor", b =>
+                {
+                    b.Navigation("SizeBreakdowns");
+                });
+
             modelBuilder.Entity("ERPBackend.Core.Models.Section", b =>
                 {
                     b.Navigation("Designations");
 
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Style", b =>
+                {
+                    b.Navigation("Costings");
+
+                    b.Navigation("SampleRequests");
+
+                    b.Navigation("TechPacks");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.StyleOrder", b =>
+                {
+                    b.Navigation("BOMs");
+
+                    b.Navigation("OrderColors");
                 });
 #pragma warning restore 612, 618
         }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ERPBackend.Core.DTOs;
 using ERPBackend.Core.Models;
+using ERPBackend.Core.Enums;
 
 namespace ERPBackend.Core.Interfaces
 {

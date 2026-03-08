@@ -21,14 +21,6 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<IncomeCategory> IncomeCategories { get; set; }
         public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
 
-        // Cutting Module Tables
-        public DbSet<CuttingPlan> CuttingPlans { get; set; }
-        public DbSet<FabricBooking> FabricBookings { get; set; }
-        public DbSet<MarkerLayout> MarkerLayouts { get; set; }
-        public DbSet<CuttingBatch> CuttingBatches { get; set; }
-        public DbSet<CuttingBatchItem> CuttingBatchItems { get; set; }
-        public DbSet<Bundle> Bundles { get; set; }
-        public DbSet<WastageRecord> WastageRecords { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

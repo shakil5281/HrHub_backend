@@ -10,57 +10,40 @@ namespace ERPBackend.Core.Models
         public int Id { get; set; }
         
         [Required]
-        public string PlanNumber { get; set; }
+        public string PlanNumber { get; set; } = string.Empty;
         
-        public string StyleName { get; set; }
-        public string OrderNumber { get; set; }
+        public string StyleName { get; set; } = string.Empty;
+        public string OrderNumber { get; set; } = string.Empty;
         
         public DateTime TargetDate { get; set; }
         
         [Column(TypeName = "decimal(18,2)")]
         public decimal PlannedQuantity { get; set; }
         
-        public string Priority { get; set; } // High, Normal, Low
-        public string Status { get; set; } // Pending, Processing, Completed
+        public string Priority { get; set; } = string.Empty; // High, Normal, Low
+        public string Status { get; set; } = string.Empty; // Pending, Processing, Completed
         
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 
-    public class FabricBooking
-    {
-        public int Id { get; set; }
-        
-        [Required]
-        public string OrderReference { get; set; }
-        
-        public string FabricType { get; set; }
-        
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal RequiredQuantity { get; set; }
-        
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal IssuedQuantity { get; set; }
-        
-        public string Unit { get; set; } // Yds, Mtrs, Kg
-        public string Status { get; set; }
-    }
+    // FabricBooking moved to MerchandisingModels.cs and enhanced
 
     public class MarkerLayout
     {
         public int Id { get; set; }
         
         [Required]
-        public string MarkerId { get; set; }
+        public string MarkerId { get; set; } = string.Empty;
         
-        public string StyleName { get; set; }
-        public string Width { get; set; }
-        public string Length { get; set; }
+        public string StyleName { get; set; } = string.Empty;
+        public string Width { get; set; } = string.Empty;
+        public string Length { get; set; } = string.Empty;
         
         [Column(TypeName = "decimal(18,2)")]
         public decimal Efficiency { get; set; }
         
-        public string CADFilePath { get; set; }
-        public string Status { get; set; } // Approved, Printing, Designing
+        public string CADFilePath { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty; // Approved, Printing, Designing
     }
 
     public class CuttingBatch
@@ -68,14 +51,14 @@ namespace ERPBackend.Core.Models
         public int Id { get; set; }
         
         [Required]
-        public string BatchNumber { get; set; }
+        public string BatchNumber { get; set; } = string.Empty;
         
         public int? PlanId { get; set; }
         public int? MarkerId { get; set; }
         
         public DateTime CuttingDate { get; set; }
-        public string CutterName { get; set; }
-        public string TableNumber { get; set; }
+        public string CutterName { get; set; } = string.Empty;
+        public string TableNumber { get; set; } = string.Empty;
         
         public List<CuttingBatchItem> Items { get; set; } = new List<CuttingBatchItem>();
         
@@ -91,7 +74,7 @@ namespace ERPBackend.Core.Models
         public int Id { get; set; }
         public int CuttingBatchId { get; set; }
         
-        public string Size { get; set; }
+        public string Size { get; set; } = string.Empty;
         
         [Column(TypeName = "decimal(18,2)")]
         public decimal Quantity { get; set; }
@@ -105,18 +88,18 @@ namespace ERPBackend.Core.Models
         public int Id { get; set; }
         
         [Required]
-        public string BundleTag { get; set; }
+        public string BundleTag { get; set; } = string.Empty;
         
         public int CuttingBatchId { get; set; }
-        public string StyleName { get; set; }
-        public string Size { get; set; }
+        public string StyleName { get; set; } = string.Empty;
+        public string Size { get; set; } = string.Empty;
         public int PieceCount { get; set; }
         
-        public string SerialRange { get; set; }
-        public string Weight { get; set; }
+        public string SerialRange { get; set; } = string.Empty;
+        public string Weight { get; set; } = string.Empty;
         
-        public string CurrentLocation { get; set; } // Cutting, Transit, Sewing
-        public string Status { get; set; } // Ready, Sent, Received
+        public string CurrentLocation { get; set; } = string.Empty; // Cutting, Transit, Sewing
+        public string Status { get; set; } = string.Empty; // Ready, Sent, Received
     }
 
     public class WastageRecord
@@ -124,11 +107,11 @@ namespace ERPBackend.Core.Models
         public int Id { get; set; }
         public DateTime Date { get; set; }
         
-        public string Category { get; set; } // End-bits, Marker-gaps, Rejects
-        public string Reason { get; set; }
+        public string Category { get; set; } = string.Empty; // End-bits, Marker-gaps, Rejects
+        public string Reason { get; set; } = string.Empty;
         
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
-        public string Unit { get; set; }
+        public string Unit { get; set; } = string.Empty;
     }
 }

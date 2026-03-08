@@ -11,11 +11,13 @@ namespace ERPBackend.Services.Services
 {
     public class CuttingService : ICuttingService
     {
-        private readonly CashbookDbContext _context;
+        private readonly CuttingDbContext _context;
+        private readonly MerchandisingDbContext _merchContext;
 
-        public CuttingService(CashbookDbContext context)
+        public CuttingService(CuttingDbContext context, MerchandisingDbContext merchContext)
         {
             _context = context;
+            _merchContext = merchContext;
         }
 
         public async Task<IEnumerable<CuttingPlan>> GetPlansAsync()
@@ -32,13 +34,13 @@ namespace ERPBackend.Services.Services
 
         public async Task<IEnumerable<FabricBooking>> GetFabricBookingsAsync()
         {
-            return await _context.FabricBookings.ToListAsync();
+            return await _merchContext.FabricBookings.ToListAsync();
         }
 
         public async Task<FabricBooking> CreateFabricBookingAsync(FabricBooking booking)
         {
-            _context.FabricBookings.Add(booking);
-            await _context.SaveChangesAsync();
+            _merchContext.FabricBookings.Add(booking);
+            await _merchContext.SaveChangesAsync();
             return booking;
         }
 

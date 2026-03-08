@@ -7,16 +7,19 @@ using ERPBackend.Core.Interfaces;
 using ERPBackend.Core.Models;
 using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using ERPBackend.Core.Enums;
 
 namespace ERPBackend.Services.Services
 {
     public class StoreService : IStoreService
     {
         private readonly StoreDbContext _context;
+        private readonly MerchandisingDbContext _merchContext;
 
-        public StoreService(StoreDbContext context)
+        public StoreService(StoreDbContext context, MerchandisingDbContext merchContext)
         {
             _context = context;
+            _merchContext = merchContext;
         }
 
         #region Category Management
@@ -197,7 +200,7 @@ namespace ERPBackend.Services.Services
         #region Buyer Management
         public async Task<List<BuyerDto>> GetBuyersAsync()
         {
-            return await _context.Buyers
+            return await _merchContext.Buyers
                 .Select(b => new BuyerDto
                 {
                     Id = b.Id,
@@ -215,14 +218,14 @@ namespace ERPBackend.Services.Services
             var entity = new Buyer
             {
                 Name = buyer.BuyerName,
-                Country = buyer.Country,
-                ContactPerson = buyer.ContactPerson,
-                Email = buyer.Email,
-                Phone = buyer.Phone,
+                Country = buyer.Country ?? string.Empty,
+                ContactPerson = buyer.ContactPerson ?? string.Empty,
+                Email = buyer.Email ?? string.Empty,
+                Phone = buyer.Phone ?? string.Empty,
                 IsActive = true
             };
-            _context.Buyers.Add(entity);
-            await _context.SaveChangesAsync();
+            _merchContext.Buyers.Add(entity);
+            await _merchContext.SaveChangesAsync();
             buyer.Id = entity.Id;
             return buyer;
         }
