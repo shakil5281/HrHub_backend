@@ -16,6 +16,7 @@ namespace ERPBackend.Core.Interfaces
 
         // Brand Management
         Task<IEnumerable<Brand>> GetBrandsByBuyerAsync(int buyerId);
+        Task<IEnumerable<Brand>> GetBrandsByCompanyAsync(int companyId);
         Task<Brand?> GetBrandByIdAsync(int id);
         Task<Brand> CreateBrandAsync(Brand brand);
         Task UpdateBrandAsync(Brand brand);

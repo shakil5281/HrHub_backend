@@ -63,6 +63,15 @@ namespace ERPBackend.Services.Services
         {
             return await _context.Brands
                 .Where(b => b.BuyerId == buyerId)
+                .Include(b => b.Buyer)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Brand>> GetBrandsByCompanyAsync(int companyId)
+        {
+            return await _context.Brands
+                .Include(b => b.Buyer)
+                .Where(b => b.Buyer != null && b.Buyer.CompanyId == companyId)
                 .ToListAsync();
         }
 

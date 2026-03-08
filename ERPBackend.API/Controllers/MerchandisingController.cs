@@ -57,6 +57,13 @@ namespace ERPBackend.API.Controllers
         #endregion
 
         #region Brands
+        [HttpGet("brands/company/{companyId}")]
+        public async Task<ActionResult<IEnumerable<Brand>>> GetBrandsByCompany(int companyId)
+        {
+            var brands = await _merchandisingService.GetBrandsByCompanyAsync(companyId);
+            return Ok(brands);
+        }
+
         [HttpGet("brands/{buyerId}")]
         public async Task<ActionResult<IEnumerable<Brand>>> GetBrands(int buyerId)
         {
