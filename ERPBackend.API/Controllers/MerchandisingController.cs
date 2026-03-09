@@ -172,6 +172,43 @@ namespace ERPBackend.API.Controllers
             var bookings = await _merchandisingService.GetFabricBookingsByOrderAsync(orderId);
             return Ok(bookings);
         }
+
+        [HttpGet("fabric-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<FabricBooking>>> GetAllFabricBookings(int companyId)
+        {
+            var bookings = await _merchandisingService.GetAllFabricBookingsAsync(companyId);
+            return Ok(bookings);
+        }
+
+        [HttpGet("fabric-bookings/detail/{id}")]
+        public async Task<ActionResult<FabricBooking>> GetFabricBooking(int id)
+        {
+            var booking = await _merchandisingService.GetFabricBookingByIdAsync(id);
+            if (booking == null) return NotFound();
+            return Ok(booking);
+        }
+
+        [HttpPost("fabric-bookings")]
+        public async Task<ActionResult<FabricBooking>> CreateFabricBooking(FabricBooking booking)
+        {
+            var createdBooking = await _merchandisingService.CreateFabricBookingAsync(booking);
+            return CreatedAtAction(nameof(GetFabricBooking), new { id = createdBooking.Id }, createdBooking);
+        }
+
+        [HttpPut("fabric-bookings/{id}")]
+        public async Task<IActionResult> UpdateFabricBooking(int id, FabricBooking booking)
+        {
+            if (id != booking.Id) return BadRequest();
+            await _merchandisingService.UpdateFabricBookingAsync(booking);
+            return NoContent();
+        }
+
+        [HttpDelete("fabric-bookings/{id}")]
+        public async Task<IActionResult> DeleteFabricBooking(int id)
+        {
+            await _merchandisingService.DeleteFabricBookingAsync(id);
+            return NoContent();
+        }
         #endregion
 
         #region Production & Shipment
@@ -195,6 +232,79 @@ namespace ERPBackend.API.Controllers
         {
             var createdShipment = await _merchandisingService.CreateShipmentAsync(shipment);
             return Ok(createdShipment);
+        }
+
+        [HttpGet("orders/{orderId}/accessories-bookings")]
+        public async Task<ActionResult<IEnumerable<AccessoriesBooking>>> GetAccessoriesBookings(int orderId)
+        {
+            var bookings = await _merchandisingService.GetAccessoriesBookingsByOrderAsync(orderId);
+            return Ok(bookings);
+        }
+
+        [HttpGet("accessories-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<AccessoriesBooking>>> GetAllAccessoriesBookings(int companyId)
+        {
+            var bookings = await _merchandisingService.GetAllAccessoriesBookingsAsync(companyId);
+            return Ok(bookings);
+        }
+
+        [HttpGet("accessories-bookings/detail/{id}")]
+        public async Task<ActionResult<AccessoriesBooking>> GetAccessoriesBooking(int id)
+        {
+            var booking = await _merchandisingService.GetAccessoriesBookingByIdAsync(id);
+            if (booking == null) return NotFound();
+            return Ok(booking);
+        }
+
+        [HttpPost("accessories-bookings")]
+        public async Task<ActionResult<AccessoriesBooking>> CreateAccessoriesBooking(AccessoriesBooking booking)
+        {
+            var createdBooking = await _merchandisingService.CreateAccessoriesBookingAsync(booking);
+            return CreatedAtAction(nameof(GetAccessoriesBooking), new { id = createdBooking.Id }, createdBooking);
+        }
+
+        [HttpPut("accessories-bookings/{id}")]
+        public async Task<IActionResult> UpdateAccessoriesBooking(int id, AccessoriesBooking booking)
+        {
+            if (id != booking.Id) return BadRequest();
+            await _merchandisingService.UpdateAccessoriesBookingAsync(booking);
+            return NoContent();
+        }
+
+        [HttpDelete("accessories-bookings/{id}")]
+        public async Task<IActionResult> DeleteAccessoriesBooking(int id)
+        {
+            await _merchandisingService.DeleteAccessoriesBookingAsync(id);
+            return NoContent();
+        }
+        #endregion
+        #region Tech Packs
+        [HttpGet("techpacks/{companyId}")]
+        public async Task<ActionResult<IEnumerable<TechPack>>> GetAllTechPacks(int companyId)
+        {
+            var techPacks = await _merchandisingService.GetAllTechPacksAsync(companyId);
+            return Ok(techPacks);
+        }
+
+        [HttpGet("techpacks/style/{styleId}")]
+        public async Task<ActionResult<IEnumerable<TechPack>>> GetTechPacksByStyle(int styleId)
+        {
+            var techPacks = await _merchandisingService.GetTechPacksByStyleAsync(styleId);
+            return Ok(techPacks);
+        }
+
+        [HttpPost("techpacks")]
+        public async Task<ActionResult<TechPack>> CreateTechPack(TechPack techPack)
+        {
+            var createdTechPack = await _merchandisingService.CreateTechPackAsync(techPack);
+            return Ok(createdTechPack);
+        }
+
+        [HttpDelete("techpacks/{id}")]
+        public async Task<IActionResult> DeleteTechPack(int id)
+        {
+            await _merchandisingService.DeleteTechPackAsync(id);
+            return NoContent();
         }
         #endregion
     }

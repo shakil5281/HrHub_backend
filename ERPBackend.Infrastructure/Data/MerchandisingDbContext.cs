@@ -178,6 +178,10 @@ namespace ERPBackend.Infrastructure.Data
                 .HasForeignKey(sb => sb.OrderSheetColorId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.Entity<OrderSheet>()
+                .HasIndex(o => new { o.CompanyId, o.ProgramNumber })
+                .IsUnique();
+
             // Configure decimal precision
             foreach (var property in builder.Model.GetEntityTypes()
                 .SelectMany(t => t.GetProperties())

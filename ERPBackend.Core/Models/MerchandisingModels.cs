@@ -220,6 +220,8 @@ namespace ERPBackend.Core.Models
         public string ItemName { get; set; } = string.Empty;
         [Column(TypeName = "decimal(18,4)")]
         public decimal Quantity { get; set; }
+        public string Unit { get; set; } = "Pcs";
+        public string Status { get; set; } = "Pending";
         public string Supplier { get; set; } = string.Empty;
         public DateTime DeliveryDate { get; set; }
 

@@ -38,11 +38,29 @@ namespace ERPBackend.Core.Interfaces
         Task<BOM?> GetBOMByOrderIdAsync(int orderId);
         Task<BOM> CreateBOMAsync(BOM bom);
         Task<IEnumerable<FabricBooking>> GetFabricBookingsByOrderAsync(int orderId);
+        Task<IEnumerable<FabricBooking>> GetAllFabricBookingsAsync(int companyId);
+        Task<FabricBooking?> GetFabricBookingByIdAsync(int id);
         Task<FabricBooking> CreateFabricBookingAsync(FabricBooking booking);
+        Task UpdateFabricBookingAsync(FabricBooking booking);
+        Task DeleteFabricBookingAsync(int id);
 
         // Production & Shipment
         Task<IEnumerable<MerchProductionPlan>> GetProductionPlansByOrderAsync(int orderId);
         Task<Shipment?> GetShipmentByOrderIdAsync(int orderId);
         Task<Shipment> CreateShipmentAsync(Shipment shipment);
+
+        // Accessories Booking
+        Task<IEnumerable<AccessoriesBooking>> GetAccessoriesBookingsByOrderAsync(int orderId);
+        Task<IEnumerable<AccessoriesBooking>> GetAllAccessoriesBookingsAsync(int companyId);
+        Task<AccessoriesBooking?> GetAccessoriesBookingByIdAsync(int id);
+        Task<AccessoriesBooking> CreateAccessoriesBookingAsync(AccessoriesBooking booking);
+        Task UpdateAccessoriesBookingAsync(AccessoriesBooking booking);
+        Task DeleteAccessoriesBookingAsync(int id);
+
+        // Tech Pack Management
+        Task<IEnumerable<TechPack>> GetAllTechPacksAsync(int companyId);
+        Task<IEnumerable<TechPack>> GetTechPacksByStyleAsync(int styleId);
+        Task<TechPack> CreateTechPackAsync(TechPack techPack);
+        Task DeleteTechPackAsync(int id);
     }
 }

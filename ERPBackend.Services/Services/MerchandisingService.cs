@@ -192,11 +192,43 @@ namespace ERPBackend.Services.Services
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<FabricBooking>> GetAllFabricBookingsAsync(int companyId)
+        {
+            return await _context.FabricBookings
+                .Include(fb => fb.StyleOrder)
+                    .ThenInclude(o => o.Style)
+                .Where(fb => fb.StyleOrder != null && fb.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+
+        public async Task<FabricBooking?> GetFabricBookingByIdAsync(int id)
+        {
+            return await _context.FabricBookings
+                .Include(fb => fb.StyleOrder)
+                .FirstOrDefaultAsync(fb => fb.Id == id);
+        }
+
         public async Task<FabricBooking> CreateFabricBookingAsync(FabricBooking booking)
         {
             _context.FabricBookings.Add(booking);
             await _context.SaveChangesAsync();
             return booking;
+        }
+
+        public async Task UpdateFabricBookingAsync(FabricBooking booking)
+        {
+            _context.Entry(booking).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteFabricBookingAsync(int id)
+        {
+            var booking = await _context.FabricBookings.FindAsync(id);
+            if (booking != null)
+            {
+                _context.FabricBookings.Remove(booking);
+                await _context.SaveChangesAsync();
+            }
         }
         #endregion
 
@@ -219,6 +251,85 @@ namespace ERPBackend.Services.Services
             _context.Shipments.Add(shipment);
             await _context.SaveChangesAsync();
             return shipment;
+        }
+
+        public async Task<IEnumerable<AccessoriesBooking>> GetAccessoriesBookingsByOrderAsync(int orderId)
+        {
+            return await _context.AccessoriesBookings
+                .Where(ab => ab.OrderId == orderId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<AccessoriesBooking>> GetAllAccessoriesBookingsAsync(int companyId)
+        {
+            return await _context.AccessoriesBookings
+                .Include(ab => ab.StyleOrder)
+                    .ThenInclude(o => o.Style)
+                .Where(ab => ab.StyleOrder != null && ab.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+
+        public async Task<AccessoriesBooking?> GetAccessoriesBookingByIdAsync(int id)
+        {
+            return await _context.AccessoriesBookings
+                .Include(ab => ab.StyleOrder)
+                .FirstOrDefaultAsync(ab => ab.Id == id);
+        }
+
+        public async Task<AccessoriesBooking> CreateAccessoriesBookingAsync(AccessoriesBooking booking)
+        {
+            _context.AccessoriesBookings.Add(booking);
+            await _context.SaveChangesAsync();
+            return booking;
+        }
+
+        public async Task UpdateAccessoriesBookingAsync(AccessoriesBooking booking)
+        {
+            _context.Entry(booking).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteAccessoriesBookingAsync(int id)
+        {
+            var booking = await _context.AccessoriesBookings.FindAsync(id);
+            if (booking != null)
+            {
+                _context.AccessoriesBookings.Remove(booking);
+                await _context.SaveChangesAsync();
+            }
+        }
+        #endregion
+        #region Tech Pack
+        public async Task<IEnumerable<TechPack>> GetAllTechPacksAsync(int companyId)
+        {
+            return await _context.TechPacks
+                .Include(t => t.Style)
+                .Where(t => t.Style != null && t.Style.CompanyId == companyId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<TechPack>> GetTechPacksByStyleAsync(int styleId)
+        {
+            return await _context.TechPacks
+                .Where(t => t.StyleId == styleId)
+                .ToListAsync();
+        }
+
+        public async Task<TechPack> CreateTechPackAsync(TechPack techPack)
+        {
+            _context.TechPacks.Add(techPack);
+            await _context.SaveChangesAsync();
+            return techPack;
+        }
+
+        public async Task DeleteTechPackAsync(int id)
+        {
+            var techPack = await _context.TechPacks.FindAsync(id);
+            if (techPack != null)
+            {
+                _context.TechPacks.Remove(techPack);
+                await _context.SaveChangesAsync();
+            }
         }
         #endregion
     }

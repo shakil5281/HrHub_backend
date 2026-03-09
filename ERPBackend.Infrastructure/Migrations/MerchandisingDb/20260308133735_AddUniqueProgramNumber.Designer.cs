@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 {
     [DbContext(typeof(MerchandisingDbContext))]
-    partial class MerchandisingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308133735_AddUniqueProgramNumber")]
+    partial class AddUniqueProgramNumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -44,15 +47,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Supplier")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Unit")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

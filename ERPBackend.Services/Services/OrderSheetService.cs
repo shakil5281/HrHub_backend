@@ -23,6 +23,7 @@ namespace ERPBackend.Services.Services
         public async Task<IEnumerable<OrderSheet>> GetAllAsync(int companyId)
         {
             return await _context.OrderSheets
+                .Include(o => o.Items)
                 .Where(o => o.CompanyId == companyId)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
@@ -94,6 +95,8 @@ namespace ERPBackend.Services.Services
 
         public async Task<OrderSheet> CreateAsync(OrderSheet orderSheet)
         {
+            orderSheet.ProgramNumber = (orderSheet.ProgramNumber ?? "").Trim().ToUpper();
+            
             // Auto-calculate Row Totals for all size breakdowns
             foreach (var item in orderSheet.Items)
             {
@@ -114,6 +117,8 @@ namespace ERPBackend.Services.Services
 
         public async Task UpdateAsync(OrderSheet orderSheet)
         {
+            orderSheet.ProgramNumber = (orderSheet.ProgramNumber ?? "").Trim().ToUpper();
+
             var existingOrder = await _context.OrderSheets
                 .Include(o => o.Items)
                     .ThenInclude(i => i.Colors)
@@ -301,31 +306,63 @@ namespace ERPBackend.Services.Services
 
         public async Task<int> ImportOrderSheetsAsync(List<OrderSheetImportDto> importData, int companyId, int branchId)
         {
-            // Efficiency: Group by program (OrderSheet) -> Group by item (OrderSheetItem)
+            // Normalize all ProgramNumbers first
+            foreach (var d in importData)
+            {
+                d.ProgramNumber = (d.ProgramNumber ?? "").Trim().ToUpper();
+            }
+
+            // Efficiency: Group by program (OrderSheet)
             var programs = importData.GroupBy(d => d.ProgramNumber);
             int count = 0;
+
+            // Fetch existing programs to check for updates
+            var programNumbers = programs.Select(g => g.Key).Where(k => !string.IsNullOrEmpty(k)).ToList();
+            
+            var existingOrders = await _context.OrderSheets
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Colors)
+                        .ThenInclude(c => c.SizeBreakdowns)
+                .Where(o => o.CompanyId == companyId && programNumbers.Contains(o.ProgramNumber))
+                .ToListAsync();
 
             foreach (var programGroup in programs)
             {
                 var first = programGroup.First();
-                var orderSheet = new OrderSheet
+                
+                // Robust matching: Ignore case and trim existing DB values during memory check
+                var existingOrder = existingOrders.FirstOrDefault(o => 
+                    o.ProgramNumber.Trim().Equals(programGroup.Key, StringComparison.OrdinalIgnoreCase));
+                
+                bool isNew = existingOrder == null;
+                var orderSheet = existingOrder ?? new OrderSheet();
+
+                // Update / Set header Info (ensure saved value is normalized)
+                orderSheet.ProgramNumber = (first.ProgramNumber ?? "").Trim().ToUpper();
+                orderSheet.BuyerName = first.BuyerName;
+                orderSheet.CustomerName = first.CustomerName;
+                orderSheet.OrderDate = first.OrderDate;
+                orderSheet.FabricDescription = first.FabricDescription;
+                orderSheet.CompanyId = companyId;
+                orderSheet.BranchId = branchId;
+                
+                if (isNew)
                 {
-                    ProgramNumber = first.ProgramNumber,
-                    BuyerName = first.BuyerName,
-                    CustomerName = first.CustomerName,
-                    OrderDate = first.OrderDate,
-                    FabricDescription = first.FabricDescription,
-                    CompanyId = companyId,
-                    BranchId = branchId,
-                    Items = new List<OrderSheetItem>()
-                };
+                    orderSheet.Items = new List<OrderSheetItem>();
+                }
+                else
+                {
+                    // Clean up existing items for replacement (Upsert strategy)
+                    _context.OrderSheetItems.RemoveRange(orderSheet.Items);
+                    orderSheet.Items.Clear();
+                }
 
                 // Group by Article / Item combination
                 var itemGroups = programGroup.GroupBy(d => new { d.OldArticleNo, d.NewArticleNo, d.ItemName });
                 foreach (var itemGroup in itemGroups)
                 {
                     var firstItem = itemGroup.First();
-                    var packType = firstItem.PackType?.ToLower() switch
+                    var packType = firstItem.PackType?.ToLower().Replace(" ", "") switch
                     {
                         "packa" => PackType.PackA,
                         "packb" => PackType.PackB,
@@ -375,7 +412,10 @@ namespace ERPBackend.Services.Services
                     orderSheet.Items.Add(orderItem);
                 }
 
-                _context.OrderSheets.Add(orderSheet);
+                if (isNew)
+                {
+                    _context.OrderSheets.Add(orderSheet);
+                }
                 count++;
             }
 
