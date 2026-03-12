@@ -14,6 +14,7 @@ namespace ERPBackend.Core.Interfaces
 
         // Transactions
         Task<List<AccountTransactionDto>> GetTransactionsAsync(string? type = null, string? fundSource = null);
+        Task<AccountTransactionDto?> GetTransactionByIdAsync(int id);
         Task<AccountTransactionDto> CreateTransactionAsync(AccountTransactionDto transaction);
         
         // Advance Payments
@@ -27,5 +28,9 @@ namespace ERPBackend.Core.Interfaces
         // Dashboard & Reports
         Task<AccountDashboardSummaryDto> GetDashboardSummaryAsync();
         Task<List<GeneralReportDto>> GetLedgerReportAsync(int? branchId, string? fundSource);
+        Task<byte[]> ExportTransactionsToExcelAsync(string? type = null, string? fundSource = null);
+        Task<byte[]> ExportTransactionsToPdfAsync(string? type = null, string? fundSource = null);
+        Task<byte[]> ExportVoucherExcelAsync(int id);
+        Task<byte[]> ExportVoucherPdfAsync(int id);
     }
 }

@@ -2,12 +2,14 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ERPBackend.Core.DTOs;
 using ERPBackend.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ERPBackend.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [AllowAnonymous]
     public class AccountController : ControllerBase
     {
         private readonly IAccountService _accountService;
@@ -54,6 +56,14 @@ namespace ERPBackend.API.Controllers
             return Ok(await _accountService.GetTransactionsAsync(type, fundSource));
         }
 
+        [HttpGet("transactions/{id}")]
+        public async Task<ActionResult<AccountTransactionDto>> GetTransaction(int id)
+        {
+            var transaction = await _accountService.GetTransactionByIdAsync(id);
+            if (transaction == null) return NotFound();
+            return Ok(transaction);
+        }
+
         [HttpPost("transactions")]
         public async Task<ActionResult<AccountTransactionDto>> CreateTransaction(AccountTransactionDto transaction)
         {
@@ -93,6 +103,48 @@ namespace ERPBackend.API.Controllers
         public async Task<ActionResult<List<GeneralReportDto>>> GetLedgerReport([FromQuery] int? branchId, [FromQuery] string? fundSource)
         {
             return Ok(await _accountService.GetLedgerReportAsync(branchId, fundSource));
+        }
+
+        [HttpGet("reports/export/excel")]
+        public async Task<IActionResult> ExportExcel([FromQuery] string? type, [FromQuery] string? fundSource)
+        {
+            var content = await _accountService.ExportTransactionsToExcelAsync(type, fundSource);
+            return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Transactions_{DateTime.Now:yyyyMMddHHmm}.xlsx");
+        }
+
+        [HttpGet("reports/export/pdf")]
+        public async Task<IActionResult> ExportPdf([FromQuery] string? type, [FromQuery] string? fundSource)
+        {
+            var content = await _accountService.ExportTransactionsToPdfAsync(type, fundSource);
+            return File(content, "application/pdf", $"Transactions_{DateTime.Now:yyyyMMddHHmm}.pdf");
+        }
+
+        [HttpGet("transactions/{id}/export/excel")]
+        public async Task<IActionResult> ExportVoucherExcel(int id)
+        {
+            try
+            {
+                var content = await _accountService.ExportVoucherExcelAsync(id);
+                return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Voucher_{id}_{DateTime.Now:yyyyMMdd}.xlsx");
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("transactions/{id}/export/pdf")]
+        public async Task<IActionResult> ExportVoucherPdf(int id)
+        {
+            try
+            {
+                var content = await _accountService.ExportVoucherPdfAsync(id);
+                return File(content, "application/pdf", $"Voucher_{id}_{DateTime.Now:yyyyMMdd}.pdf");
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
         #endregion
     }

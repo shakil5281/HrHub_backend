@@ -70,7 +70,9 @@ builder.Services.AddScoped<IMerchandisingService, MerchandisingService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ICuttingService, CuttingService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+#pragma warning disable CA1416
 builder.Services.AddScoped<IZkTecoService, ZkTecoService>();
+#pragma warning restore CA1416
 builder.Services.AddScoped<IOrderSheetService, OrderSheetService>();
 builder.Services.AddScoped<IMerchandisingMasterService, MerchandisingMasterService>();
 builder.Services.AddScoped<ICostingService, CostingService>();
@@ -117,7 +119,8 @@ builder.Services.AddCors(options =>
                 policyBuilder.SetIsOriginAllowed(origin => true)
                     .AllowAnyMethod()
                     .AllowAnyHeader()
-                    .AllowCredentials();
+                    .AllowCredentials()
+                    .WithExposedHeaders("Content-Disposition", "Content-Length", "X-Content-Type-Options");
             }
             else
             {
@@ -125,7 +128,7 @@ builder.Services.AddCors(options =>
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials()
-                    .WithExposedHeaders("Content-Disposition");
+                    .WithExposedHeaders("Content-Disposition", "Content-Length", "X-Content-Type-Options");
             }
         });
 });

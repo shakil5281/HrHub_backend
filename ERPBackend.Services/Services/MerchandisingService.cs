@@ -71,7 +71,7 @@ namespace ERPBackend.Services.Services
         {
             return await _context.Brands
                 .Include(b => b.Buyer)
-                .Where(b => b.Buyer != null && b.Buyer.CompanyId == companyId)
+                .Where(b => b.Buyer != null && b.Buyer!.CompanyId == companyId)
                 .ToListAsync();
         }
 
@@ -195,7 +195,7 @@ namespace ERPBackend.Services.Services
         public async Task<IEnumerable<FabricBooking>> GetAllFabricBookingsAsync(int companyId)
         {
             return await _context.FabricBookings
-                .Include(fb => fb.StyleOrder)
+                .Include(fb => fb.StyleOrder!)
                     .ThenInclude(o => o.Style)
                 .Where(fb => fb.StyleOrder != null && fb.StyleOrder.CompanyId == companyId)
                 .ToListAsync();
@@ -263,7 +263,7 @@ namespace ERPBackend.Services.Services
         public async Task<IEnumerable<AccessoriesBooking>> GetAllAccessoriesBookingsAsync(int companyId)
         {
             return await _context.AccessoriesBookings
-                .Include(ab => ab.StyleOrder)
+                .Include(ab => ab.StyleOrder!)
                     .ThenInclude(o => o.Style)
                 .Where(ab => ab.StyleOrder != null && ab.StyleOrder.CompanyId == companyId)
                 .ToListAsync();
