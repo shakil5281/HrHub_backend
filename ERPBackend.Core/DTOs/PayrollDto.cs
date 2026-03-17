@@ -118,6 +118,9 @@ namespace ERPBackend.Core.DTOs
         public string EmployeeId { get; set; } = string.Empty;
         public int CompanyId { get; set; }
         public string EmployeeName { get; set; } = string.Empty;
+        public string Designation { get; set; } = string.Empty;
+        public DateTime? JoiningDate { get; set; }
+        public string? Grade { get; set; }
         public decimal Amount { get; set; }
         public DateTime RequestDate { get; set; }
         public int RepaymentMonth { get; set; }
@@ -125,6 +128,22 @@ namespace ERPBackend.Core.DTOs
         public string Status { get; set; } = string.Empty;
         public string? Remarks { get; set; }
         public string? CompanyName { get; set; }
+        public decimal BasicSalary { get; set; }
+        public decimal HouseRent { get; set; }
+        public decimal MedicalAllowance { get; set; }
+        public decimal FoodAllowance { get; set; }
+        public decimal TransportAllowance { get; set; }
+        public decimal GrossSalary { get; set; }
+        public int PresentDays { get; set; }
+        public int AbsentDays { get; set; }
+        public decimal AbsentDeduction { get; set; }
+        public decimal TotalPayableWages { get; set; }
+        public decimal OTHours { get; set; }
+        public decimal OTRate { get; set; }
+        public decimal OTAmount { get; set; }
+        public string? BankAccountNo { get; set; }
+        public string? PaymentMethod { get; set; }
+        public decimal NetPayable { get; set; }
     }
 
     public class SalaryIncrementDto
@@ -236,6 +255,89 @@ namespace ERPBackend.Core.DTOs
         public int ProcessedCount { get; set; }
         public int SkippedCount { get; set; }
         public string Message { get; set; } = string.Empty;
+    }
+
+    public class BatchCreateAdvanceSalaryDto
+    {
+        public List<string> EmployeeIds { get; set; } = new();
+        public int CompanyId { get; set; }
+        public decimal Amount { get; set; }
+        public bool IsDateRange { get; set; }
+        public DateTime? FromDate { get; set; }
+        public DateTime? ToDate { get; set; }
+        public DateTime RequestDate { get; set; }
+        public int RepaymentMonth { get; set; }
+        public int RepaymentYear { get; set; }
+        public string? Remarks { get; set; }
+    }
+
+    public class AdvanceSalarySummaryDto
+    {
+        public decimal TotalAdvanceDisbursed { get; set; }
+        public int TotalPendingRequests { get; set; }
+        public decimal TotalPendingAmount { get; set; }
+        public decimal TotalRepaid { get; set; }
+        public int TotalEmployees { get; set; }
+        public List<DepartmentAdvanceSummaryDto> DepartmentSummaries { get; set; } = new();
+        public List<SectionAdvanceSummaryDto> SectionSummaries { get; set; } = new();
+        public List<LineAdvanceSummaryDto> LineSummaries { get; set; } = new();
+        public List<DesignationAdvanceSummaryDto> DesignationSummaries { get; set; } = new();
+    }
+
+    public class DepartmentAdvanceSummaryDto
+    {
+        public string DepartmentName { get; set; } = string.Empty;
+        public int EmployeeCount { get; set; }
+        public decimal BasicSalary { get; set; }
+        public decimal GrossSalary { get; set; }
+        public decimal AbsentDays { get; set; }
+        public decimal AbsentDeduction { get; set; }
+        public decimal TotalPayableWages { get; set; }
+        public decimal OTHours { get; set; }
+        public decimal OTAmount { get; set; }
+        public decimal NetPayable { get; set; }
+    }
+
+    public class SectionAdvanceSummaryDto
+    {
+        public string SectionName { get; set; } = string.Empty;
+        public int EmployeeCount { get; set; }
+        public decimal BasicSalary { get; set; }
+        public decimal GrossSalary { get; set; }
+        public decimal AbsentDays { get; set; }
+        public decimal AbsentDeduction { get; set; }
+        public decimal TotalPayableWages { get; set; }
+        public decimal OTHours { get; set; }
+        public decimal OTAmount { get; set; }
+        public decimal NetPayable { get; set; }
+    }
+
+    public class LineAdvanceSummaryDto
+    {
+        public string LineName { get; set; } = string.Empty;
+        public int EmployeeCount { get; set; }
+        public decimal BasicSalary { get; set; }
+        public decimal GrossSalary { get; set; }
+        public decimal AbsentDays { get; set; }
+        public decimal AbsentDeduction { get; set; }
+        public decimal TotalPayableWages { get; set; }
+        public decimal OTHours { get; set; }
+        public decimal OTAmount { get; set; }
+        public decimal NetPayable { get; set; }
+    }
+
+    public class DesignationAdvanceSummaryDto
+    {
+        public string DesignationName { get; set; } = string.Empty;
+        public int EmployeeCount { get; set; }
+        public decimal BasicSalary { get; set; }
+        public decimal GrossSalary { get; set; }
+        public decimal AbsentDays { get; set; }
+        public decimal AbsentDeduction { get; set; }
+        public decimal TotalPayableWages { get; set; }
+        public decimal OTHours { get; set; }
+        public decimal OTAmount { get; set; }
+        public decimal NetPayable { get; set; }
     }
 }
 

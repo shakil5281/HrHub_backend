@@ -196,6 +196,7 @@ try
     {
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         
+        /*
         // Ensure at least one company exists
         if (!context.Companies.Any())
         {
@@ -213,6 +214,7 @@ try
             });
             await context.SaveChangesAsync();
         }
+        */
 
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var roles = new[]

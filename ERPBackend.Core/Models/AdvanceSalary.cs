@@ -24,7 +24,27 @@ namespace ERPBackend.Core.Models
 
         [StringLength(50)] public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
 
+        [StringLength(50)] public string? Grade { get; set; }
         [StringLength(500)] public string? Remarks { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")] public decimal BasicSalary { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal HouseRent { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal MedicalAllowance { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal FoodAllowance { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal TransportAllowance { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal GrossSalary { get; set; }
+        
+        public int PresentDays { get; set; }
+        public int AbsentDays { get; set; }
+        
+        [Column(TypeName = "decimal(18,2)")] public decimal AbsentDeduction { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal TotalPayableWages { get; set; }
+        
+        [Column(TypeName = "decimal(18,2)")] public decimal OTHours { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal OTRate { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal OTAmount { get; set; }
+        
+        [Column(TypeName = "decimal(18,2)")] public decimal NetPayable { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

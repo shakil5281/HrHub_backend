@@ -1,4 +1,4 @@
-﻿using ERPBackend.Core.DTOs;
+using ERPBackend.Core.DTOs;
 using ERPBackend.Core.Models;
 using ERPBackend.Core.Entities;
 using ERPBackend.Infrastructure.Data;
@@ -332,10 +332,15 @@ namespace ERPBackend.API.Controllers
                 .Where(a => a.Date >= startDate && a.Date <= endDate)
                 .ToListAsync();
 
+            var monthAdvances = await _context.AdvanceSalaries
+                .Where(a => a.RepaymentMonth == request.Month && a.RepaymentYear == request.Year && a.Status == "Approved")
+                .ToListAsync();
+
             foreach (var emp in employees)
             {
                 var sheet = existingSheets.FirstOrDefault(s => s.EmployeeId == emp.Id) ?? new MonthlySalarySheet();
                 var empAttendances = monthAttendances.Where(a => a.EmployeeCard == emp.Id).ToList();
+                var empAdvances = monthAdvances.Where(a => a.EmployeeId == emp.Id).ToList();
 
                 sheet.EmployeeId = emp.Id;
                 sheet.CompanyId = emp.CompanyId;
@@ -363,7 +368,7 @@ namespace ERPBackend.API.Controllers
 
                 decimal perDayGross = sheet.TotalDays > 0 ? sheet.GrossSalary / sheet.TotalDays : 0;
                 sheet.AbsentDeduction = sheet.AbsentDays * perDayGross;
-                sheet.AdvanceDeduction = 0;
+                sheet.AdvanceDeduction = empAdvances.Sum(a => a.Amount);
                 sheet.OTDeduction = 0;
 
                 sheet.TotalDeduction = sheet.AbsentDeduction + sheet.AdvanceDeduction + sheet.OTDeduction;
@@ -398,19 +403,62 @@ namespace ERPBackend.API.Controllers
             if (year.HasValue) query = query.Where(a => a.RepaymentYear == year.Value);
 
             var records = await query.ToListAsync();
-            return Ok(records.Select(a => new AdvanceSalaryDto
-            {
-                Id = a.Id,
-                EmployeeId = a.Employee?.EmployeeId ?? "",
-                CompanyId = a.Employee?.CompanyId ?? a.CompanyId ?? 0,
-                EmployeeName = a.Employee?.FullNameEn ?? "",
-                Amount = a.Amount,
-                RequestDate = a.RequestDate,
-                RepaymentMonth = a.RepaymentMonth,
-                RepaymentYear = a.RepaymentYear,
-                Status = a.Status,
-                Remarks = a.Remarks,
-                CompanyName = a.Employee?.Company?.CompanyNameEn ?? a.Company?.CompanyNameEn ?? ""
+            
+            var m = month ?? DateTime.Now.Month;
+            var y = year ?? DateTime.Now.Year;
+            
+            var startOfMonth = new DateTime(y, m, 1);
+            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+
+            var employeeIds = records.Select(r => r.EmployeeId).Distinct().ToList();
+
+            var attendances = await _context.Attendances
+                .Where(a => employeeIds.Contains(a.EmployeeCard) && a.Date.Date >= startOfMonth && a.Date.Date <= endOfMonth)
+                .ToListAsync();
+
+            return Ok(records.Select(a => {
+                var empAttendances = attendances.Where(att => att.EmployeeCard == a.Employee?.Id).ToList();
+                int currentPresent = empAttendances.Count(att => att.Status == "Present" || att.Status == "Late");
+                int currentAbsent = empAttendances.Count(att => att.Status == "Absent");
+
+                return new AdvanceSalaryDto
+                {
+                    Id = a.Id,
+                    EmployeeId = a.Employee?.EmployeeId ?? "",
+                    CompanyId = a.Employee?.CompanyId ?? a.CompanyId ?? 0,
+                    EmployeeName = a.Employee?.FullNameEn ?? "",
+                    Designation = a.Employee?.Designation?.NameEn ?? "",
+                    JoiningDate = a.Employee?.JoinDate,
+                    Grade = a.Grade ?? a.Employee?.Grade ?? "N/A",
+                    Amount = a.Amount,
+                    RequestDate = a.RequestDate,
+                    RepaymentMonth = a.RepaymentMonth,
+                    RepaymentYear = a.RepaymentYear,
+                    Status = a.Status,
+                    Remarks = a.Remarks,
+                    CompanyName = a.Employee?.Company?.CompanyNameEn ?? a.Company?.CompanyNameEn ?? "",
+                    
+                    BasicSalary = a.BasicSalary > 0 ? a.BasicSalary : (a.Employee?.BasicSalary ?? 0),
+                    HouseRent = a.HouseRent > 0 ? a.HouseRent : (a.Employee?.HouseRent ?? 0),
+                    MedicalAllowance = a.MedicalAllowance > 0 ? a.MedicalAllowance : (a.Employee?.MedicalAllowance ?? 0),
+                    FoodAllowance = a.FoodAllowance > 0 ? a.FoodAllowance : (a.Employee?.FoodAllowance ?? 0),
+                    TransportAllowance = a.TransportAllowance > 0 ? a.TransportAllowance : (a.Employee?.Conveyance ?? 0),
+                    GrossSalary = a.GrossSalary > 0 ? a.GrossSalary : (a.Employee?.GrossSalary ?? 0),
+                    
+                    PresentDays = a.PresentDays > 0 ? a.PresentDays : currentPresent,
+                    AbsentDays = a.AbsentDays > 0 ? a.AbsentDays : currentAbsent,
+                    
+                    AbsentDeduction = a.AbsentDeduction,
+                    TotalPayableWages = a.TotalPayableWages,
+                    
+                    OTHours = a.OTHours,
+                    OTRate = a.OTRate,
+                    OTAmount = a.OTAmount,
+                    
+                    BankAccountNo = a.Employee?.BankAccountNo,
+                    PaymentMethod = a.Employee?.BankName ?? "Cash",
+                    NetPayable = a.NetPayable > 0 ? a.NetPayable : a.Amount
+                };
             }));
         }
 
@@ -422,6 +470,31 @@ namespace ERPBackend.API.Controllers
 
             if (employee == null) return NotFound("Employee not found");
 
+            // Calculate current month's attendance to date
+            var startOfMonth = new DateTime(dto.RepaymentYear, dto.RepaymentMonth, 1);
+            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+            if (endOfMonth > DateTime.Now) endOfMonth = DateTime.Now;
+
+            var empAttendances = await _context.Attendances
+                .Where(a => a.EmployeeCard == employee.Id && a.Date >= startOfMonth && a.Date <= endOfMonth)
+                .ToListAsync();
+
+            int presentDays = empAttendances.Count(a => a.Status == "Present" || a.Status == "Late");
+            int absentDays = empAttendances.Count(a => a.Status == "Absent");
+            decimal otHours = empAttendances.Sum(a => a.OTHours);
+
+            int totalDaysInMonth = DateTime.DaysInMonth(dto.RepaymentYear, dto.RepaymentMonth);
+            decimal gross = employee.GrossSalary ?? 0;
+            decimal perDay = totalDaysInMonth > 0 ? (gross / totalDaysInMonth) : 0;
+            
+            decimal basic = employee.BasicSalary ?? 0;
+            decimal otRate = totalDaysInMonth > 0 ? (basic / 208) * 2 : 0;
+            decimal otAmount = Math.Round(otHours * otRate, 2);
+            
+            decimal absentDeduction = Math.Round(absentDays * perDay, 2);
+            decimal totalPayableWages = Math.Round(gross - absentDeduction, 2);
+            decimal netPayable = Math.Round(totalPayableWages + otAmount, 2);
+
             var advance = new AdvanceSalary
             {
                 EmployeeId = employee.Id,
@@ -431,12 +504,678 @@ namespace ERPBackend.API.Controllers
                 RepaymentMonth = dto.RepaymentMonth,
                 RepaymentYear = dto.RepaymentYear,
                 Remarks = dto.Remarks,
-                Status = "Approved" // Auto approve for demo
+                Status = "Approved",
+                Grade = employee.Grade,
+                
+                BasicSalary = basic,
+                HouseRent = employee.HouseRent ?? 0,
+                MedicalAllowance = employee.MedicalAllowance ?? 0,
+                FoodAllowance = employee.FoodAllowance ?? 0,
+                TransportAllowance = employee.Conveyance ?? 0,
+                GrossSalary = gross,
+                PresentDays = presentDays,
+                AbsentDays = absentDays,
+                AbsentDeduction = absentDeduction,
+                TotalPayableWages = totalPayableWages,
+                OTHours = otHours,
+                OTRate = otRate,
+                OTAmount = otAmount,
+                NetPayable = netPayable
             };
 
             _context.AdvanceSalaries.Add(advance);
             await _context.SaveChangesAsync();
             return Ok(new { message = "Advance salary request created." });
+        }
+
+        [HttpPost("batch-advance-salary")]
+        public async Task<ActionResult> BatchCreateAdvanceSalary([FromBody] BatchCreateAdvanceSalaryDto dto)
+        {
+            if (dto.EmployeeIds == null || !dto.EmployeeIds.Any())
+                return BadRequest("No employees selected");
+
+            var employees = await _context.Employees
+                .Include(e => e.Shift)
+                .Where(e => dto.EmployeeIds.Contains(e.EmployeeId) && e.CompanyId == dto.CompanyId)
+                .ToListAsync();
+
+            if (!employees.Any()) return NotFound("No employees found matching the criteria");
+
+            var employeeIdsList = employees.Select(e => e.Id).ToList();
+            var existingAdvances = await _context.AdvanceSalaries
+                .Where(a => employeeIdsList.Contains(a.EmployeeId) && a.RepaymentMonth == dto.RepaymentMonth && a.RepaymentYear == dto.RepaymentYear)
+                .ToListAsync();
+
+            int createdCount = 0;
+            int updatedCount = 0;
+
+            foreach (var employee in employees)
+            {
+                decimal advanceAmount = dto.Amount;
+                
+                // Fetch attendance for the period if date range is provided
+                int presentDays = 0;
+                int absentDays = 0;
+                decimal otHours = 0;
+                
+                if (dto.IsDateRange && dto.FromDate.HasValue && dto.ToDate.HasValue)
+                {
+                    var empAttendances = await _context.Attendances
+                        .Include(a => a.Shift)
+                        .Where(a => a.EmployeeCard == employee.Id && a.Date >= dto.FromDate.Value && a.Date <= dto.ToDate.Value)
+                        .ToListAsync();
+                    
+                    int totalRangeDays = (dto.ToDate.Value - dto.FromDate.Value).Days + 1;
+                    absentDays = empAttendances.Count(a => a.Status == "Absent");
+                    presentDays = totalRangeDays - absentDays; 
+
+                    // Calculate OT with 45-min rule
+                    foreach (var att in empAttendances)
+                    {
+                        if (employee.IsOtEnabled && att.InTime.HasValue && att.OutTime.HasValue)
+                        {
+                            var s = att.Shift ?? employee.Shift;
+                            if (s != null && TimeSpan.TryParse(s.OutTime, out var sOut))
+                            {
+                                var limit = att.Date.Date.Add(sOut);
+                                if (s.ActualInTime != null && TimeSpan.TryParse(s.ActualInTime, out var aIn) && sOut < aIn) 
+                                    limit = limit.AddDays(1);
+
+                                if (att.OutTime.Value > limit)
+                                {
+                                    double mins = (att.OutTime.Value - limit).TotalMinutes;
+                                    int h = (int)(mins / 60);
+                                    if ((mins % 60) >= 45) h++;
+                                    otHours += h;
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    var startOfMonth = new DateTime(dto.RepaymentYear, dto.RepaymentMonth, 1);
+                    var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+                    
+                    var empAttendances = await _context.Attendances
+                        .Include(a => a.Shift)
+                        .Where(a => a.EmployeeCard == employee.Id && a.Date >= startOfMonth && a.Date <= endOfMonth)
+                        .ToListAsync();
+                        
+                    absentDays = empAttendances.Count(a => a.Status == "Absent");
+                    int totalMonthDays = DateTime.DaysInMonth(dto.RepaymentYear, dto.RepaymentMonth);
+                    presentDays = totalMonthDays - absentDays;
+
+                    foreach (var att in empAttendances)
+                    {
+                        if (employee.IsOtEnabled && att.InTime.HasValue && att.OutTime.HasValue)
+                        {
+                            var s = att.Shift ?? employee.Shift;
+                            if (s != null && TimeSpan.TryParse(s.OutTime, out var sOut))
+                            {
+                                var limit = att.Date.Date.Add(sOut);
+                                if (s.ActualInTime != null && TimeSpan.TryParse(s.ActualInTime, out var aIn) && sOut < aIn) 
+                                    limit = limit.AddDays(1);
+
+                                if (att.OutTime.Value > limit)
+                                {
+                                    double mins = (att.OutTime.Value - limit).TotalMinutes;
+                                    int h = (int)(mins / 60);
+                                    if ((mins % 60) >= 45) h++;
+                                    otHours += h;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                int daysInMonth = DateTime.DaysInMonth(dto.RepaymentYear, dto.RepaymentMonth);
+                decimal gross = employee.GrossSalary ?? 0;
+                decimal perDay = daysInMonth > 0 ? (gross / daysInMonth) : 0;
+                
+                decimal basic = employee.BasicSalary ?? 0;
+                decimal otRate = daysInMonth > 0 ? (basic / 208) * 2 : 0; 
+                decimal otAmount = Math.Round(otHours * otRate, 2);
+                
+                decimal absentDeduction = Math.Round(absentDays * perDay, 2);
+                decimal totalPayableWages = Math.Round(presentDays * perDay, 2); // Calculate based on present days
+                decimal netPayable = Math.Round(totalPayableWages + otAmount, 2);
+
+                // Use calculated netPayable as the advance amount
+                advanceAmount = netPayable;
+
+                var existingAdvance = existingAdvances.FirstOrDefault(a => a.EmployeeId == employee.Id);
+
+                if (existingAdvance != null)
+                {
+                    existingAdvance.Amount = advanceAmount;
+                    existingAdvance.RequestDate = dto.RequestDate;
+                    existingAdvance.Remarks = dto.Remarks;
+                    existingAdvance.Grade = employee.Grade;
+                    
+                    existingAdvance.BasicSalary = basic;
+                    existingAdvance.HouseRent = employee.HouseRent ?? 0;
+                    existingAdvance.MedicalAllowance = employee.MedicalAllowance ?? 0;
+                    existingAdvance.FoodAllowance = employee.FoodAllowance ?? 0;
+                    existingAdvance.TransportAllowance = employee.Conveyance ?? 0;
+                    existingAdvance.GrossSalary = gross;
+                    existingAdvance.PresentDays = presentDays;
+                    existingAdvance.AbsentDays = absentDays;
+                    existingAdvance.AbsentDeduction = absentDeduction;
+                    existingAdvance.TotalPayableWages = totalPayableWages;
+                    existingAdvance.OTHours = otHours;
+                    existingAdvance.OTRate = otRate;
+                    existingAdvance.OTAmount = otAmount;
+                    existingAdvance.NetPayable = netPayable;
+                    
+                    _context.AdvanceSalaries.Update(existingAdvance);
+                    updatedCount++;
+                }
+                else
+                {
+                    var advance = new AdvanceSalary
+                    {
+                        EmployeeId = employee.Id,
+                        CompanyId = employee.CompanyId,
+                        Amount = advanceAmount,
+                        RequestDate = dto.RequestDate,
+                        RepaymentMonth = dto.RepaymentMonth,
+                        RepaymentYear = dto.RepaymentYear,
+                        Remarks = dto.Remarks,
+                        Status = "Approved",
+                        Grade = employee.Grade,
+                        
+                        BasicSalary = basic,
+                        HouseRent = employee.HouseRent ?? 0,
+                        MedicalAllowance = employee.MedicalAllowance ?? 0,
+                        FoodAllowance = employee.FoodAllowance ?? 0,
+                        TransportAllowance = employee.Conveyance ?? 0,
+                        GrossSalary = gross,
+                        PresentDays = presentDays,
+                        AbsentDays = absentDays,
+                        AbsentDeduction = absentDeduction,
+                        TotalPayableWages = totalPayableWages,
+                        OTHours = otHours,
+                        OTRate = otRate,
+                        OTAmount = otAmount,
+                        NetPayable = netPayable
+                    };
+                    _context.AdvanceSalaries.Add(advance);
+                    createdCount++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Successfully processed advance salary requests: {createdCount} created, {updatedCount} updated." });
+        }
+
+        [HttpPost("batch-delete-advance-salary")]
+        public async Task<ActionResult> BatchDeleteAdvanceSalary([FromBody] List<int> ids)
+        {
+            if (ids == null || !ids.Any())
+                return BadRequest("No records selected");
+
+            var records = await _context.AdvanceSalaries
+                .Where(a => ids.Contains(a.Id))
+                .ToListAsync();
+
+            if (!records.Any()) return NotFound("No records found to delete");
+
+            _context.AdvanceSalaries.RemoveRange(records);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Successfully deleted {records.Count} advance salary records." });
+        }
+
+        [HttpGet("advance-salary-summary")]
+        public async Task<ActionResult<AdvanceSalarySummaryDto>> GetAdvanceSalarySummary(
+            [FromQuery] int? companyId,
+            [FromQuery] int? month,
+            [FromQuery] int? year)
+        {
+            var query = _context.AdvanceSalaries
+                .Include(a => a.Employee)
+                    .ThenInclude(e => e!.Department)
+                .Include(a => a.Employee)
+                    .ThenInclude(e => e!.Section)
+                .Include(a => a.Employee)
+                    .ThenInclude(e => e!.Line)
+                .Include(a => a.Employee)
+                    .ThenInclude(e => e!.Designation)
+                .AsQueryable();
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(a => a.Employee!.CompanyId == companyId.Value || a.CompanyId == companyId.Value);
+
+            if (month.HasValue) query = query.Where(a => a.RepaymentMonth == month.Value);
+            if (year.HasValue) query = query.Where(a => a.RepaymentYear == year.Value);
+
+            var records = await query.ToListAsync();
+
+            if (!records.Any()) return Ok(new AdvanceSalarySummaryDto());
+
+            var summary = new AdvanceSalarySummaryDto
+            {
+                TotalAdvanceDisbursed = records.Where(r => r.Status == "Approved").Sum(r => r.Amount),
+                TotalPendingRequests = records.Count(r => r.Status == "Pending"),
+                TotalPendingAmount = records.Where(r => r.Status == "Pending").Sum(r => r.Amount),
+                TotalRepaid = records.Where(r => r.Status == "Paid" || r.Status == "Completed").Sum(r => r.Amount),
+                TotalEmployees = records.Select(r => r.EmployeeId).Distinct().Count(),
+                DepartmentSummaries = records
+                    .GroupBy(r => r.Employee?.Department?.NameEn ?? "Unknown")
+                    .Select(g => new DepartmentAdvanceSummaryDto
+                    {
+                        DepartmentName = g.Key,
+                        EmployeeCount = g.Select(x => x.EmployeeId).Distinct().Count(),
+                        BasicSalary = g.Sum(x => x.BasicSalary),
+                        GrossSalary = g.Sum(x => x.GrossSalary),
+                        AbsentDays = g.Sum(x => x.AbsentDays),
+                        AbsentDeduction = g.Sum(x => x.AbsentDeduction),
+                        TotalPayableWages = g.Sum(x => x.TotalPayableWages),
+                        OTHours = g.Sum(x => x.OTHours),
+                        OTAmount = g.Sum(x => x.OTAmount),
+                        NetPayable = g.Sum(x => x.NetPayable)
+                    }).OrderByDescending(x => x.NetPayable).ToList(),
+                SectionSummaries = records
+                    .GroupBy(r => r.Employee?.Section?.NameEn ?? "Unknown")
+                    .Select(g => new SectionAdvanceSummaryDto
+                    {
+                        SectionName = g.Key,
+                        EmployeeCount = g.Select(x => x.EmployeeId).Distinct().Count(),
+                        BasicSalary = g.Sum(x => x.BasicSalary),
+                        GrossSalary = g.Sum(x => x.GrossSalary),
+                        AbsentDays = g.Sum(x => x.AbsentDays),
+                        AbsentDeduction = g.Sum(x => x.AbsentDeduction),
+                        TotalPayableWages = g.Sum(x => x.TotalPayableWages),
+                        OTHours = g.Sum(x => x.OTHours),
+                        OTAmount = g.Sum(x => x.OTAmount),
+                        NetPayable = g.Sum(x => x.NetPayable)
+                    }).OrderByDescending(x => x.NetPayable).ToList(),
+                LineSummaries = records
+                    .GroupBy(r => r.Employee?.Line?.NameEn ?? "Unknown")
+                    .Select(g => new LineAdvanceSummaryDto
+                    {
+                        LineName = g.Key,
+                        EmployeeCount = g.Select(x => x.EmployeeId).Distinct().Count(),
+                        BasicSalary = g.Sum(x => x.BasicSalary),
+                        GrossSalary = g.Sum(x => x.GrossSalary),
+                        AbsentDays = g.Sum(x => x.AbsentDays),
+                        AbsentDeduction = g.Sum(x => x.AbsentDeduction),
+                        TotalPayableWages = g.Sum(x => x.TotalPayableWages),
+                        OTHours = g.Sum(x => x.OTHours),
+                        OTAmount = g.Sum(x => x.OTAmount),
+                        NetPayable = g.Sum(x => x.NetPayable)
+                    }).OrderByDescending(x => x.NetPayable).ToList(),
+                DesignationSummaries = records
+                    .GroupBy(r => r.Employee?.Designation?.NameEn ?? "Unknown")
+                    .Select(g => new DesignationAdvanceSummaryDto
+                    {
+                        DesignationName = g.Key,
+                        EmployeeCount = g.Select(x => x.EmployeeId).Distinct().Count(),
+                        BasicSalary = g.Sum(x => x.BasicSalary),
+                        GrossSalary = g.Sum(x => x.GrossSalary),
+                        AbsentDays = g.Sum(x => x.AbsentDays),
+                        AbsentDeduction = g.Sum(x => x.AbsentDeduction),
+                        TotalPayableWages = g.Sum(x => x.TotalPayableWages),
+                        OTHours = g.Sum(x => x.OTHours),
+                        OTAmount = g.Sum(x => x.OTAmount),
+                        NetPayable = g.Sum(x => x.NetPayable)
+                    }).OrderByDescending(x => x.NetPayable).ToList()
+            };
+
+            return Ok(summary);
+        }
+
+        [HttpGet("export-advance-salary-summary")]
+        public async Task<IActionResult> ExportAdvanceSalarySummary(
+            [FromQuery] int? companyId,
+            [FromQuery] int? month,
+            [FromQuery] int? year)
+        {
+            var query = _context.AdvanceSalaries
+                .Include(a => a.Employee).ThenInclude(e => e!.Department)
+                .Include(a => a.Employee).ThenInclude(e => e!.Section)
+                .Include(a => a.Employee).ThenInclude(e => e!.Line)
+                .Include(a => a.Employee).ThenInclude(e => e!.Designation)
+                .AsQueryable();
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(a => a.Employee!.CompanyId == companyId.Value || a.CompanyId == companyId.Value);
+
+            if (month.HasValue) query = query.Where(a => a.RepaymentMonth == month.Value);
+            if (year.HasValue) query = query.Where(a => a.RepaymentYear == year.Value);
+
+            var records = await query.ToListAsync();
+            var company = companyId > 0 ? await _context.Companies.FindAsync(companyId) : await _context.Companies.FirstOrDefaultAsync();
+
+            using var package = new ExcelPackage();
+
+            // Helper to add a summary sheet
+            void AddSummarySheet(string sheetName, IEnumerable<IGrouping<string, ERPBackend.Core.Models.AdvanceSalary>> groups, string categoryLabel)
+            {
+                var ws = package.Workbook.Worksheets.Add(sheetName);
+                ws.Cells.Style.Font.Name = "Arial";
+                ws.Cells.Style.Font.Size = 10;
+
+                // Header
+                ws.Cells[1, 1, 1, 11].Merge = true;
+                ws.Cells[1, 1].Value = company?.CompanyNameEn ?? "HR HUB";
+                ws.Cells[1, 1].Style.Font.Size = 14;
+                ws.Cells[1, 1].Style.Font.Bold = true;
+                ws.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                ws.Cells[2, 1, 2, 11].Merge = true;
+                ws.Cells[2, 1].Value = $"ADVANCE SALARY SUMMARY BY {sheetName.ToUpper()}";
+                ws.Cells[2, 1].Style.Font.Bold = true;
+                ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                ws.Cells[3, 1, 3, 11].Merge = true;
+                ws.Cells[3, 1].Value = $"FOR {CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month ?? 1).ToUpper()} {year}";
+                ws.Cells[3, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                string[] headers = { "SL", categoryLabel, "Emp", "Basic", "Gross", "Abs", "Abs.Ded", "Payable", "OT Hr", "OT Pay", "Net Pay" };
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    var cell = ws.Cells[5, i + 1];
+                    cell.Value = headers[i];
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                }
+
+                int rowValue = 6;
+                int sl = 1;
+                foreach (var g in groups.OrderByDescending(x => x.Sum(r => r.NetPayable)))
+                {
+                    ws.Cells[rowValue, 1].Value = sl++;
+                    ws.Cells[rowValue, 2].Value = g.Key;
+                    ws.Cells[rowValue, 3].Value = g.Select(x => x.EmployeeId).Distinct().Count();
+                    ws.Cells[rowValue, 4].Value = g.Sum(x => x.BasicSalary);
+                    ws.Cells[rowValue, 5].Value = g.Sum(x => x.GrossSalary);
+                    ws.Cells[rowValue, 6].Value = g.Sum(x => x.AbsentDays);
+                    ws.Cells[rowValue, 7].Value = g.Sum(x => x.AbsentDeduction);
+                    ws.Cells[rowValue, 8].Value = g.Sum(x => x.TotalPayableWages);
+                    ws.Cells[rowValue, 9].Value = g.Sum(x => x.OTHours);
+                    ws.Cells[rowValue, 10].Value = g.Sum(x => x.OTAmount);
+                    ws.Cells[rowValue, 11].Value = g.Sum(x => x.NetPayable);
+
+                    // Formatting
+                    ws.Cells[rowValue, 4, rowValue, 11].Style.Numberformat.Format = "#,##0.00";
+                    for (int i = 1; i <= 11; i++)
+                    {
+                        ws.Cells[rowValue, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    }
+                    rowValue++;
+                }
+
+                // Totals
+                ws.Cells[rowValue, 1, rowValue, 2].Merge = true;
+                ws.Cells[rowValue, 1].Value = "GRAND TOTAL";
+                ws.Cells[rowValue, 1].Style.Font.Bold = true;
+                ws.Cells[rowValue, 3].Formula = $"SUM(C6:C{rowValue - 1})";
+                ws.Cells[rowValue, 4].Formula = $"SUM(D6:D{rowValue - 1})";
+                ws.Cells[rowValue, 5].Formula = $"SUM(E6:E{rowValue - 1})";
+                ws.Cells[rowValue, 6].Formula = $"SUM(F6:F{rowValue - 1})";
+                ws.Cells[rowValue, 7].Formula = $"SUM(G6:G{rowValue - 1})";
+                ws.Cells[rowValue, 8].Formula = $"SUM(H6:H{rowValue - 1})";
+                ws.Cells[rowValue, 9].Formula = $"SUM(I6:I{rowValue - 1})";
+                ws.Cells[rowValue, 10].Formula = $"SUM(J6:J{rowValue - 1})";
+                ws.Cells[rowValue, 11].Formula = $"SUM(K6:K{rowValue - 1})";
+                ws.Cells[rowValue, 3, rowValue, 11].Style.Font.Bold = true;
+                ws.Cells[rowValue, 4, rowValue, 11].Style.Numberformat.Format = "#,##0.00";
+                for (int i = 3; i <= 11; i++) ws.Cells[rowValue, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+                ws.Cells.AutoFitColumns();
+            }
+
+            AddSummarySheet("Department", records.GroupBy(r => r.Employee?.Department?.NameEn ?? "Unknown"), "Department Name");
+            AddSummarySheet("Section", records.GroupBy(r => r.Employee?.Section?.NameEn ?? "Unknown"), "Section Name");
+            AddSummarySheet("Line", records.GroupBy(r => r.Employee?.Line?.NameEn ?? "Unknown"), "Line Name");
+            AddSummarySheet("Designation", records.GroupBy(r => r.Employee?.Designation?.NameEn ?? "Unknown"), "Designation Title");
+
+            var fileContent = package.GetAsByteArray();
+            return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                $"Advance_Salary_Summary_{month}_{year}.xlsx");
+        }
+
+        [HttpGet("export-advance-salary-bank-sheet")]
+        public async Task<IActionResult> ExportAdvanceSalaryBankSheet(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? companyId,
+            [FromQuery] int? departmentId,
+            [FromQuery] string? searchTerm)
+        {
+            var query = _context.AdvanceSalaries
+                .Include(b => b.Employee).ThenInclude(e => e!.Department)
+                .Include(b => b.Employee).ThenInclude(e => e!.Designation)
+                .Include(b => b.Employee).ThenInclude(e => e!.Group)
+                .Where(b => b.RepaymentYear == year && b.RepaymentMonth == month && b.Employee != null && b.Status == "Approved");
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(b => b.Employee!.CompanyId == companyId.Value || b.CompanyId == companyId.Value);
+
+            if (departmentId.HasValue)
+                query = query.Where(b => b.Employee!.DepartmentId == departmentId.Value);
+
+            if (!string.IsNullOrEmpty(searchTerm))
+                query = query.Where(b => b.Employee!.FullNameEn.Contains(searchTerm) || b.Employee!.EmployeeId.Contains(searchTerm));
+
+            var allRecords = await query.ToListAsync();
+
+            using var package = new ExcelPackage();
+
+            // Define classification logic
+            bool IsmCash(Employee? e)
+            {
+                if (e == null) return false;
+                var bankName = e.BankName ?? "";
+                var accountType = e.BankAccountType ?? "";
+                var accountNo = e.BankAccountNo ?? "";
+
+                if (accountType.Equals("mCash", StringComparison.OrdinalIgnoreCase) && accountNo.StartsWith("01"))
+                    return true;
+
+                if (bankName.Contains("Nagad", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("Rocket", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("Bkash", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("mCash", StringComparison.OrdinalIgnoreCase) ||
+                    bankName.Contains("Upay", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                return false;
+            }
+
+            bool IsCard(Employee? e)
+            {
+                if (e == null) return false;
+                var accountType = e.BankAccountType ?? "";
+                var accountNo = e.BankAccountNo ?? "";
+
+                var cardTypes = new[] { "Card", "Bank", "Savings", "Current", "Salary" };
+                if (cardTypes.Any(t => accountType.Equals(t, StringComparison.OrdinalIgnoreCase)))
+                    return true;
+
+                if (accountNo.StartsWith("2050"))
+                    return true;
+
+                return false;
+            }
+
+            bool IsStaff(Employee? e) => e?.Group?.NameEn?.Contains("Staff", StringComparison.OrdinalIgnoreCase) == true;
+
+            var activeRecords = allRecords.Where(s => s.Employee!.Status == "Active" && s.Employee.IsActive).ToList();
+
+            var staffMcash = activeRecords.Where(s => IsStaff(s.Employee) && IsmCash(s.Employee)).Select(s => new MonthlySalarySheet { Employee = s.Employee, NetPayable = s.Amount }).ToList();
+            var staffCard = activeRecords.Where(s => IsStaff(s.Employee) && IsCard(s.Employee)).Select(s => new MonthlySalarySheet { Employee = s.Employee, NetPayable = s.Amount }).ToList();
+            var workerMcash = activeRecords.Where(s => !IsStaff(s.Employee) && IsmCash(s.Employee)).Select(s => new MonthlySalarySheet { Employee = s.Employee, NetPayable = s.Amount }).ToList();
+            var workerCard = activeRecords.Where(s => !IsStaff(s.Employee) && IsCard(s.Employee)).Select(s => new MonthlySalarySheet { Employee = s.Employee, NetPayable = s.Amount }).ToList();
+
+            // 1. Summary Sheet
+            var summarySheet = package.Workbook.Worksheets.Add("Summary");
+            CreateSummarySheet(summarySheet, year, month, staffMcash, staffCard, workerMcash, workerCard, new List<MonthlySalarySheet>(), new List<MonthlySalarySheet>());
+
+            // 2-5. Individual Sheets
+            AddDataSheet(package, "Staff - mCash", staffMcash);
+            AddDataSheet(package, "Staff - Card", staffCard);
+            AddDataSheet(package, "Worker - mCash", workerMcash);
+            AddDataSheet(package, "Worker - Card", workerCard);
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"Advance_Salary_Bank_Payment_{monthName}_{year}.xlsx");
+        }
+
+        [HttpGet("export-advance-salary-sheet")]
+        public async Task<IActionResult> ExportAdvanceSalarySheet(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? companyId,
+            [FromQuery] int? departmentId,
+            [FromQuery] string? searchTerm)
+        {
+            var query = _context.AdvanceSalaries
+                .Include(a => a.Employee).ThenInclude(e => e!.Department)
+                .Include(a => a.Employee).ThenInclude(e => e!.Designation)
+                .Where(a => a.RepaymentYear == year && a.RepaymentMonth == month);
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(a => a.Employee!.CompanyId == companyId.Value || a.CompanyId == companyId.Value);
+
+            if (departmentId.HasValue)
+                query = query.Where(a => a.Employee!.DepartmentId == departmentId.Value);
+
+            if (!string.IsNullOrEmpty(searchTerm))
+                query = query.Where(a =>
+                    a.Employee!.FullNameEn.Contains(searchTerm) || a.Employee.EmployeeId.Contains(searchTerm));
+
+            var records = await query.OrderBy(a => a.Employee!.EmployeeId).ToListAsync();
+
+            var company = companyId > 0 ? await _context.Companies.FindAsync(companyId) : await _context.Companies.FirstOrDefaultAsync();
+
+            using var package = new ExcelPackage();
+            var ws = package.Workbook.Worksheets.Add("Advance Salary Sheet");
+
+            // Page Setup
+            ws.PrinterSettings.Orientation = eOrientation.Landscape;
+            ws.PrinterSettings.PaperSize = ePaperSize.Legal;
+            ws.PrinterSettings.FitToPage = true;
+            ws.PrinterSettings.FitToWidth = 1;
+            ws.PrinterSettings.FitToHeight = 0;
+
+            ws.Cells.Style.Font.Name = "Arial";
+            ws.Cells.Style.Font.Size = 9;
+
+            // Company Header
+            int colCount = 23;
+            ws.Cells[1, 1, 1, colCount].Merge = true;
+            ws.Cells[1, 1].Value = company?.CompanyNameEn ?? "HR HUB";
+            ws.Cells[1, 1].Style.Font.Size = 18;
+            ws.Cells[1, 1].Style.Font.Bold = true;
+            ws.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+            ws.Cells[2, 1, 2, colCount].Merge = true;
+            ws.Cells[2, 1].Value = company?.AddressEn ?? "Industrial Area, Dhaka, Bangladesh";
+            ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+            ws.Cells[3, 1, 3, colCount].Merge = true;
+            ws.Cells[3, 1].Value = $"ADVANCE SALARY SHEET FOR THE MONTH OF {CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month).ToUpper()} {year}";
+            ws.Cells[3, 1].Style.Font.Size = 12;
+            ws.Cells[3, 1].Style.Font.Bold = true;
+            ws.Cells[3, 1].Style.Font.UnderLine = true;
+            ws.Cells[3, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+            // Headers
+            string[] headers = { 
+                "SL.No", "Emp.ID", "Name", "Designation", "Joining Date", "Grade", 
+                "Basic", "House Rent", "Medical", "Food", "Transport", "Gross", 
+                "Ways", "Abs", "Day", "Absent Deduction", "Total Payable Wages", 
+                "OT Hr", "OT Rate", "OT payable", "Bank Account /Bkash", "Net Payble", "Signature" 
+            };
+
+            int headerRow = 5;
+            for (int i = 0; i < headers.Length; i++)
+            {
+                var cell = ws.Cells[headerRow, i + 1];
+                cell.Value = headers[i];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(31, 73, 125)); // Dark Blue
+                cell.Style.Font.Color.SetColor(Color.White);
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            }
+            ws.Row(headerRow).Height = 25;
+
+            int row = 6;
+            foreach (var a in records)
+            {
+                ws.Cells[row, 1].Value = row - 1; 
+                ws.Cells[row, 2].Value = a.Employee?.EmployeeId;
+                ws.Cells[row, 3].Value = a.Employee?.FullNameEn;
+                ws.Cells[row, 4].Value = a.Employee?.Designation?.NameEn;
+                ws.Cells[row, 5].Value = a.Employee?.JoinDate.ToString("dd MMM yyyy");
+                ws.Cells[row, 6].Value = a.Grade ?? a.Employee?.Grade;
+
+                // Data Columns
+                ws.Cells[row, 7].Value = a.BasicSalary > 0 ? a.BasicSalary : a.Employee?.BasicSalary ?? 0;
+                ws.Cells[row, 8].Value = a.HouseRent > 0 ? a.HouseRent : a.Employee?.HouseRent ?? 0;
+                ws.Cells[row, 9].Value = a.MedicalAllowance > 0 ? a.MedicalAllowance : a.Employee?.MedicalAllowance ?? 0;
+                ws.Cells[row, 10].Value = a.FoodAllowance > 0 ? a.FoodAllowance : a.Employee?.FoodAllowance ?? 0;
+                ws.Cells[row, 11].Value = a.TransportAllowance > 0 ? a.TransportAllowance : a.Employee?.Conveyance ?? 0;
+
+                // Formula Columns
+                ws.Cells[row, 12].Formula = $"SUM(G{row}:K{row})"; // L (Gross)
+                
+                int recordDaysInMonth = DateTime.DaysInMonth(a.RepaymentYear, a.RepaymentMonth);
+                ws.Cells[row, 13].Value = a.PresentDays + a.AbsentDays; // M (Ways - Range duration)
+                ws.Cells[row, 14].Value = a.AbsentDays; // N (Abs)
+                ws.Cells[row, 15].Formula = $"M{row}-N{row}"; // O (Day - Present)
+                
+                ws.Cells[row, 16].Formula = $"(L{row}/{recordDaysInMonth})*N{row}"; // P (Absent Deduction using month rate)
+                ws.Cells[row, 17].Formula = $"(L{row}/{recordDaysInMonth})*O{row}"; // Q (Total Payable Wages for range)
+                
+                ws.Cells[row, 18].Value = a.OTHours; // R (OT Hr)
+                ws.Cells[row, 19].Formula = $"IF(208>0, (G{row}/208)*2, 0)"; // S (OT Rate)
+                ws.Cells[row, 20].Formula = $"R{row}*S{row}"; // T (OT payable)
+                
+                ws.Cells[row, 21].Value = a.Employee?.BankAccountNo; // U (Bank Account /Bkash)
+                ws.Cells[row, 22].Formula = $"Q{row}+T{row}"; // V (Net Payble)
+
+                // Style numbers
+                for (int i = 7; i <= 12; i++) ws.Cells[row, i].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 16].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 17].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 19].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 20].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 22].Style.Numberformat.Format = "#,##0.00";
+
+                for (int i = 1; i <= 23; i++) ws.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+                row++;
+            }
+
+            ws.Cells.AutoFitColumns();
+            ws.Column(1).Width = 5;
+            ws.Column(2).Width = 10;
+            ws.Column(3).Width = 25;
+            ws.Column(4).Width = 20;
+            ws.Column(21).Width = 20;
+            ws.Column(23).Width = 15;
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"Advance_Salary_Sheet_{monthName}_{year}.xlsx");
         }
 
         [HttpGet("increments")]

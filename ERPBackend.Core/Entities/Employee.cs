@@ -109,6 +109,7 @@ namespace ERPBackend.Core.Entities
         // Kept for backward compatibility and Excel imports
         [StringLength(200)] public string? CompanyName { get; set; }
         [StringLength(20)] public string? BloodGroup { get; set; }
+        [StringLength(50)] public string? Grade { get; set; }
 
         public bool IsActive { get; set; } = true;
         public bool IsOtEnabled { get; set; } = false;
