@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using ERPBackend.Core.DTOs;
 using System.Threading.Tasks;
+using System.Runtime.Versioning;
 
 namespace ERPBackend.Core.Interfaces
 {
+    [SupportedOSPlatform("windows")]
     public interface IZkTecoService
     {
         Task<int> SyncDataFromDeviceAsync(string dbPath, DateTime? startDate = null, DateTime? endDate = null,

@@ -60,7 +60,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("AccessoriesBookings");
+                    b.ToTable("AccessoriesBookings", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.AccessoriesConsumption", b =>
@@ -100,7 +100,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("AccessoriesConsumptions");
+                    b.ToTable("AccessoriesConsumptions", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.BOM", b =>
@@ -118,7 +118,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("BOMs");
+                    b.ToTable("BOMs", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.BOMItem", b =>
@@ -156,7 +156,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("BOMId");
 
-                    b.ToTable("BOMItems");
+                    b.ToTable("BOMItems", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Brand", b =>
@@ -179,7 +179,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("BuyerId");
 
-                    b.ToTable("Brands");
+                    b.ToTable("Brands", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Buyer", b =>
@@ -236,7 +236,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("Buyers");
+                    b.ToTable("Buyers", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Costing", b =>
@@ -300,7 +300,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("StyleId");
 
-                    b.ToTable("Costings");
+                    b.ToTable("Costings", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.CourierInfo", b =>
@@ -334,7 +334,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("CourierInfos");
+                    b.ToTable("CourierInfos", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.DyeingMachine", b =>
@@ -372,7 +372,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("DyeingMachines");
+                    b.ToTable("DyeingMachines", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ExportItem", b =>
@@ -406,7 +406,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("ExportItems");
+                    b.ToTable("ExportItems", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.FabricBooking", b =>
@@ -454,7 +454,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("FabricBookings");
+                    b.ToTable("FabricBookings", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.FabricColorPantone", b =>
@@ -488,7 +488,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("FabricColorPantones");
+                    b.ToTable("FabricColorPantones", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.FabricConsumption", b =>
@@ -539,7 +539,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("FabricConsumptions");
+                    b.ToTable("FabricConsumptions", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.FabricTypeGsm", b =>
@@ -573,7 +573,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("FabricTypeGsms");
+                    b.ToTable("FabricTypeGsms", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.KnitMachine", b =>
@@ -619,7 +619,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("KnitMachines");
+                    b.ToTable("KnitMachines", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.LocalAgent", b =>
@@ -657,7 +657,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("LocalAgents");
+                    b.ToTable("LocalAgents", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.MerchProductionPlan", b =>
@@ -692,7 +692,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("MerchProductionPlans");
+                    b.ToTable("MerchProductionPlans", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.MerchandisingDepartment", b =>
@@ -722,7 +722,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("MerchandisingDepartments");
+                    b.ToTable("MerchandisingDepartments", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OrderColor", b =>
@@ -744,7 +744,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderColors");
+                    b.ToTable("OrderColors", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OrderSheet", b =>
@@ -800,7 +800,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasIndex("CompanyId", "ProgramNumber")
                         .IsUnique();
 
-                    b.ToTable("OrderSheets");
+                    b.ToTable("OrderSheets", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetColor", b =>
@@ -822,7 +822,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderSheetItemId");
 
-                    b.ToTable("OrderSheetColors");
+                    b.ToTable("OrderSheetColors", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetItem", b =>
@@ -858,7 +858,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderSheetId");
 
-                    b.ToTable("OrderSheetItems");
+                    b.ToTable("OrderSheetItems", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetSizeBreakdown", b =>
@@ -910,7 +910,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderSheetColorId");
 
-                    b.ToTable("OrderSheetSizeBreakdowns");
+                    b.ToTable("OrderSheetSizeBreakdowns", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OrderSizeBreakdown", b =>
@@ -935,7 +935,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderColorId");
 
-                    b.ToTable("OrderSizeBreakdowns");
+                    b.ToTable("OrderSizeBreakdowns", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.PaymentModeTerms", b =>
@@ -969,7 +969,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("PaymentModeTerms");
+                    b.ToTable("PaymentModeTerms", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SampleRequest", b =>
@@ -1000,7 +1000,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("StyleId");
 
-                    b.ToTable("SampleRequests");
+                    b.ToTable("SampleRequests", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Season", b =>
@@ -1034,7 +1034,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("Seasons");
+                    b.ToTable("Seasons", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Shipment", b =>
@@ -1071,7 +1071,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("Shipments");
+                    b.ToTable("Shipments", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ShipmentModeTerms", b =>
@@ -1105,7 +1105,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("ShipmentModeTerms");
+                    b.ToTable("ShipmentModeTerms", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SizeName", b =>
@@ -1138,7 +1138,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("SizeNames");
+                    b.ToTable("SizeNames", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Style", b =>
@@ -1192,7 +1192,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("BuyerId");
 
-                    b.ToTable("Styles");
+                    b.ToTable("Styles", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.StyleOrder", b =>
@@ -1243,7 +1243,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("StyleId");
 
-                    b.ToTable("StyleOrders");
+                    b.ToTable("StyleOrders", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SubContractOrder", b =>
@@ -1287,7 +1287,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("SubContractOrders");
+                    b.ToTable("SubContractOrders", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SupplierInfo", b =>
@@ -1337,7 +1337,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("SupplierInfos");
+                    b.ToTable("SupplierInfos", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.TechPack", b =>
@@ -1366,7 +1366,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("StyleId");
 
-                    b.ToTable("TechPacks");
+                    b.ToTable("TechPacks", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.YarnInventory", b =>
@@ -1415,7 +1415,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("YarnInventories");
+                    b.ToTable("YarnInventories", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.AccessoriesBooking", b =>

@@ -34,7 +34,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("UsersId");
 
-                    b.ToTable("ApplicationUserCompany");
+                    b.ToTable("ApplicationUserCompany", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Entities.Employee", b =>
@@ -323,7 +323,7 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[Proximity] IS NOT NULL AND [CompanyName] IS NOT NULL");
 
-                    b.ToTable("Employees");
+                    b.ToTable("Employees", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.AdvanceSalary", b =>
@@ -419,7 +419,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("AdvanceSalaries");
+                    b.ToTable("AdvanceSalaries", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ApplicationUser", b =>
@@ -586,7 +586,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("Attendances");
+                    b.ToTable("Attendances", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.AttendanceLog", b =>
@@ -627,7 +627,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeCard");
 
-                    b.ToTable("AttendanceLogs");
+                    b.ToTable("AttendanceLogs", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Bonus", b =>
@@ -675,7 +675,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("Bonuses");
+                    b.ToTable("Bonuses", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Company", b =>
@@ -752,7 +752,7 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasIndex("RegistrationNo")
                         .IsUnique();
 
-                    b.ToTable("Companies");
+                    b.ToTable("Companies", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.CounselingRecord", b =>
@@ -816,7 +816,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("CounselingRecords");
+                    b.ToTable("CounselingRecords", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Country", b =>
@@ -838,7 +838,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Countries");
+                    b.ToTable("Countries", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.DailySalarySheet", b =>
@@ -893,7 +893,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("DailySalarySheets");
+                    b.ToTable("DailySalarySheets", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Department", b =>
@@ -920,7 +920,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("CompanyId");
 
-                    b.ToTable("Departments");
+                    b.ToTable("Departments", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Designation", b =>
@@ -966,7 +966,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("SectionId");
 
-                    b.ToTable("Designations");
+                    b.ToTable("Designations", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.District", b =>
@@ -993,7 +993,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DivisionId");
 
-                    b.ToTable("Districts");
+                    b.ToTable("Districts", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Division", b =>
@@ -1020,7 +1020,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("CountryId");
 
-                    b.ToTable("Divisions");
+                    b.ToTable("Divisions", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.EmployeeShiftRoster", b =>
@@ -1061,7 +1061,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("EmployeeShiftRosters");
+                    b.ToTable("EmployeeShiftRosters", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Floor", b =>
@@ -1096,7 +1096,7 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
-                    b.ToTable("Floors");
+                    b.ToTable("Floors", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Group", b =>
@@ -1131,7 +1131,7 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
-                    b.ToTable("Groups");
+                    b.ToTable("Groups", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.IfterBill", b =>
@@ -1176,7 +1176,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("IfterBills");
+                    b.ToTable("IfterBills", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.LeaveApplication", b =>
@@ -1234,7 +1234,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("LeaveTypeId");
 
-                    b.ToTable("LeaveApplications");
+                    b.ToTable("LeaveApplications", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.LeaveType", b =>
@@ -1269,7 +1269,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LeaveTypes");
+                    b.ToTable("LeaveTypes", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Line", b =>
@@ -1306,7 +1306,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("SectionId");
 
-                    b.ToTable("Lines");
+                    b.ToTable("Lines", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ManpowerRequirement", b =>
@@ -1348,7 +1348,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DesignationId");
 
-                    b.ToTable("ManpowerRequirements");
+                    b.ToTable("ManpowerRequirements", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.MonthlySalarySheet", b =>
@@ -1445,7 +1445,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("MonthlySalarySheets");
+                    b.ToTable("MonthlySalarySheets", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.NightBill", b =>
@@ -1490,7 +1490,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("NightBills");
+                    b.ToTable("NightBills", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OTDeduction", b =>
@@ -1540,7 +1540,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("OtDeductions");
+                    b.ToTable("OtDeductions", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.PostOffice", b =>
@@ -1572,7 +1572,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DistrictId");
 
-                    b.ToTable("PostOffices");
+                    b.ToTable("PostOffices", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SalaryIncrement", b =>
@@ -1622,7 +1622,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("SalaryIncrements");
+                    b.ToTable("SalaryIncrements", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Section", b =>
@@ -1654,7 +1654,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DepartmentId");
 
-                    b.ToTable("Sections");
+                    b.ToTable("Sections", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Separation", b =>
@@ -1712,7 +1712,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("Separations");
+                    b.ToTable("Separations", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Shift", b =>
@@ -1808,7 +1808,7 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
-                    b.ToTable("Shifts");
+                    b.ToTable("Shifts", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Thana", b =>
@@ -1835,7 +1835,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("DistrictId");
 
-                    b.ToTable("Thanas");
+                    b.ToTable("Thanas", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.TiffinBill", b =>
@@ -1880,7 +1880,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.ToTable("TiffinBills");
+                    b.ToTable("TiffinBills", (string)null);
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Transfer", b =>
@@ -1947,7 +1947,7 @@ namespace ERPBackend.Infrastructure.Migrations
 
                     b.HasIndex("ToDesignationId");
 
-                    b.ToTable("Transfers");
+                    b.ToTable("Transfers", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

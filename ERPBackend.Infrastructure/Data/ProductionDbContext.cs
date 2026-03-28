@@ -31,6 +31,15 @@ namespace ERPBackend.Infrastructure.Data
                 .WithOne(c => c.Production)
                 .HasForeignKey(c => c.ProductionId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure decimal precision
+            foreach (var property in builder.Model.GetEntityTypes()
+                .SelectMany(t => t.GetProperties())
+                .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
+            {
+                property.SetPrecision(18);
+                property.SetScale(2);
+            }
         }
     }
 }
