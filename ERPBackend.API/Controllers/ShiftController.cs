@@ -55,9 +55,6 @@ namespace ERPBackend.API.Controllers
                     SpecialBreakStart = s.SpecialBreakStart,
                     SpecialBreakEnd = s.SpecialBreakEnd,
                     SpecialBreakDates = s.SpecialBreakDates,
-                    IfterBillAmount = s.IfterBillAmount,
-                    TiffinBillAmount = s.TiffinBillAmount,
-                    NightBillAmount = s.NightBillAmount
                 })
                 .ToListAsync();
         }
@@ -89,9 +86,6 @@ namespace ERPBackend.API.Controllers
                 SpecialBreakStart = s.SpecialBreakStart,
                 SpecialBreakEnd = s.SpecialBreakEnd,
                 SpecialBreakDates = s.SpecialBreakDates,
-                IfterBillAmount = s.IfterBillAmount,
-                TiffinBillAmount = s.TiffinBillAmount,
-                NightBillAmount = s.NightBillAmount
             };
         }
 
@@ -120,9 +114,6 @@ namespace ERPBackend.API.Controllers
                 SpecialBreakStart = dto.SpecialBreakStart,
                 SpecialBreakEnd = dto.SpecialBreakEnd,
                 SpecialBreakDates = dto.SpecialBreakDates,
-                IfterBillAmount = dto.IfterBillAmount,
-                TiffinBillAmount = dto.TiffinBillAmount,
-                NightBillAmount = dto.NightBillAmount
             };
 
             _context.Shifts.Add(shift);
@@ -148,9 +139,6 @@ namespace ERPBackend.API.Controllers
                 SpecialBreakStart = shift.SpecialBreakStart,
                 SpecialBreakEnd = shift.SpecialBreakEnd,
                 SpecialBreakDates = shift.SpecialBreakDates,
-                IfterBillAmount = shift.IfterBillAmount,
-                TiffinBillAmount = shift.TiffinBillAmount,
-                NightBillAmount = shift.NightBillAmount
             });
         }
 
@@ -180,9 +168,6 @@ namespace ERPBackend.API.Controllers
             shift.SpecialBreakStart = dto.SpecialBreakStart;
             shift.SpecialBreakEnd = dto.SpecialBreakEnd;
             shift.SpecialBreakDates = dto.SpecialBreakDates;
-            shift.IfterBillAmount = dto.IfterBillAmount;
-            shift.TiffinBillAmount = dto.TiffinBillAmount;
-            shift.NightBillAmount = dto.NightBillAmount;
 
             await _context.SaveChangesAsync();
             return NoContent();

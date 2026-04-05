@@ -105,9 +105,6 @@ namespace ERPBackend.Core.Models
         [StringLength(10)] public string? SpecialBreakStart { get; set; }
         [StringLength(10)] public string? SpecialBreakEnd { get; set; }
         public string? SpecialBreakDates { get; set; }
-        [Column(TypeName = "decimal(18,2)")] public decimal IfterBillAmount { get; set; }
-        [Column(TypeName = "decimal(18,2)")] public decimal TiffinBillAmount { get; set; }
-        [Column(TypeName = "decimal(18,2)")] public decimal NightBillAmount { get; set; }
     }
 
     public class Group

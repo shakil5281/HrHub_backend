@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using ERPBackend.Core.Interfaces;
 using ERPBackend.Core.Models;
 using ERPBackend.Core.DTOs;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace ERPBackend.API.Controllers
 {
@@ -21,9 +23,22 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpGet("{companyId}")]
-        public async Task<ActionResult<IEnumerable<OrderSheet>>> GetAll(int companyId)
+        public async Task<ActionResult<IEnumerable<OrderSheetDto>>> GetAll(int companyId)
         {
-            return Ok(await _orderSheetService.GetAllAsync(companyId));
+            try 
+            {
+                var results = await _orderSheetService.GetAllAsync(companyId);
+                return Ok(results);
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { 
+                    message = "Error fetching order sheets", 
+                    error = ex.Message, 
+                    innerError = ex.InnerException?.Message,
+                    stackTrace = ex.StackTrace 
+                });
+            }
         }
 
         [HttpGet("detail/{id}")]

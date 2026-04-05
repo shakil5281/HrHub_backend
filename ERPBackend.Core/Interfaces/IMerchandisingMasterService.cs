@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using ERPBackend.Core.Models;
 
@@ -29,5 +30,12 @@ namespace ERPBackend.Core.Interfaces
         // Logistics
         Task<IEnumerable<CourierInfo>> GetAllCouriersAsync(int companyId);
         Task<IEnumerable<ShipmentModeTerms>> GetAllShipmentModesAsync(int companyId);
+
+        // Colors
+        Task<IEnumerable<FabricColorPantone>> GetAllColorsAsync(int companyId);
+        Task<FabricColorPantone> CreateColorAsync(FabricColorPantone color);
+        Task<FabricColorPantone> UpdateColorAsync(FabricColorPantone color);
+        Task<bool> DeleteColorAsync(int id);
+        Task<int> ImportColorsAsync(Stream fileStream, int companyId, int branchId);
     }
 }

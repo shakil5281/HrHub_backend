@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
 using ERPBackend.Core.Interfaces;
 using ERPBackend.Core.Models;
 using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 
 namespace ERPBackend.Services.Services
 {
@@ -68,5 +70,75 @@ namespace ERPBackend.Services.Services
 
         public async Task<IEnumerable<ShipmentModeTerms>> GetAllShipmentModesAsync(int companyId)
             => await _context.ShipmentModeTerms.Where(x => x.CompanyId == companyId).ToListAsync();
+
+        public async Task<IEnumerable<FabricColorPantone>> GetAllColorsAsync(int companyId)
+            => await _context.FabricColorPantones.Where(x => x.CompanyId == companyId).ToListAsync();
+
+        public async Task<FabricColorPantone> CreateColorAsync(FabricColorPantone color)
+        {
+            _context.FabricColorPantones.Add(color);
+            await _context.SaveChangesAsync();
+            return color;
+        }
+
+        public async Task<FabricColorPantone> UpdateColorAsync(FabricColorPantone color)
+        {
+            _context.FabricColorPantones.Update(color);
+            await _context.SaveChangesAsync();
+            return color;
+        }
+
+        public async Task<bool> DeleteColorAsync(int id)
+        {
+            var color = await _context.FabricColorPantones.FindAsync(id);
+            if (color == null) return false;
+            
+            _context.FabricColorPantones.Remove(color);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<int> ImportColorsAsync(Stream fileStream, int companyId, int branchId)
+        {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            using var package = new ExcelPackage(fileStream);
+            var worksheet = package.Workbook.Worksheets[0];
+            int rowCount = worksheet.Dimension.Rows;
+            int importCount = 0;
+
+            for (int row = 2; row <= rowCount; row++)
+            {
+                var colorName = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
+                if (string.IsNullOrEmpty(colorName)) continue;
+
+                var pantoneCode = worksheet.Cells[row, 2].Value?.ToString()?.Trim() ?? "";
+
+                // Check if already exists to avoid duplicates
+                var exists = await _context.FabricColorPantones
+                    .AnyAsync(x => x.CompanyId == companyId && x.ColorName.ToLower() == colorName.ToLower());
+                
+                if (exists) continue;
+
+                var color = new FabricColorPantone
+                {
+                    ColorName = colorName,
+                    PantoneCode = pantoneCode,
+                    CompanyId = companyId,
+                    BranchId = branchId,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.FabricColorPantones.Add(color);
+                importCount++;
+            }
+
+            if (importCount > 0)
+            {
+                await _context.SaveChangesAsync();
+            }
+
+            return importCount;
+        }
     }
 }

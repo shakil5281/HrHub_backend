@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
+using OfficeOpenXml;
 using ERPBackend.Core.Interfaces;
 using ERPBackend.Core.Models;
 using ERPBackend.Core.DTOs;
@@ -20,12 +22,35 @@ namespace ERPBackend.Services.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<OrderSheet>> GetAllAsync(int companyId)
+        public async Task<IEnumerable<OrderSheetDto>> GetAllAsync(int companyId)
         {
             return await _context.OrderSheets
                 .Include(o => o.Items)
                 .Where(o => o.CompanyId == companyId)
                 .OrderByDescending(o => o.OrderDate)
+                .Select(o => new OrderSheetDto
+                {
+                    Id = o.Id,
+                    CompanyId = o.CompanyId,
+                    BranchId = o.BranchId,
+                    ProgramNumber = o.ProgramNumber,
+                    BuyerName = o.BuyerName,
+                    CustomerName = o.CustomerName,
+                    FabricDescription = o.FabricDescription,
+                    ProgramName = o.ProgramName,
+                    OrderDate = o.OrderDate,
+                    FactoryName = o.FactoryName,
+                    FactoryAddress = o.FactoryAddress,
+                    Items = o.Items.Select(i => new OrderSheetItemDto
+                    {
+                        Id = i.Id,
+                        OldArticleNo = i.OldArticleNo,
+                        NewArticleNo = i.NewArticleNo,
+                        PackType = i.PackType,
+                        ItemName = i.ItemName,
+                        TotalQty = i.TotalQty
+                    }).ToList()
+                })
                 .ToListAsync();
         }
 

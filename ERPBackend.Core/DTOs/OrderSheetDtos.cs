@@ -8,6 +8,7 @@ namespace ERPBackend.Core.DTOs
         public int CompanyId { get; set; }
         public int BranchId { get; set; }
         public string ProgramNumber { get; set; } = string.Empty;
+        // public int BuyerId { get; set; }
         public string BuyerName { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
         public string FabricDescription { get; set; } = string.Empty;
@@ -22,6 +23,7 @@ namespace ERPBackend.Core.DTOs
     public class OrderSheetItemDto
     {
         public int Id { get; set; }
+        public int StyleId { get; set; }
         public string OldArticleNo { get; set; } = string.Empty;
         public string NewArticleNo { get; set; } = string.Empty;
         public PackType PackType { get; set; }
@@ -34,6 +36,7 @@ namespace ERPBackend.Core.DTOs
     public class OrderSheetColorDto
     {
         public int Id { get; set; }
+        public int ColorId { get; set; }
         public string ColorName { get; set; } = string.Empty;
         public List<OrderSheetSizeBreakdownDto> SizeBreakdowns { get; set; } = new();
     }

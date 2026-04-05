@@ -14,6 +14,7 @@ namespace ERPBackend.Core.Models
         [Required, StringLength(100)]
         public string ProgramNumber { get; set; } = string.Empty;
         
+        // public int BuyerId { get; set; }
         [Required, StringLength(200)]
         public string BuyerName { get; set; } = string.Empty;
         
@@ -30,6 +31,7 @@ namespace ERPBackend.Core.Models
         public string FactoryName { get; set; } = string.Empty;
         public string FactoryAddress { get; set; } = string.Empty;
         
+        // public virtual Buyer? Buyer { get; set; }
         public virtual ICollection<OrderSheetItem> Items { get; set; } = new List<OrderSheetItem>();
     }
 
@@ -39,6 +41,7 @@ namespace ERPBackend.Core.Models
         public int Id { get; set; }
         public int OrderSheetId { get; set; }
         
+        public int? StyleId { get; set; }
         public string OldArticleNo { get; set; } = string.Empty;
         public string NewArticleNo { get; set; } = string.Empty;
         
@@ -50,6 +53,7 @@ namespace ERPBackend.Core.Models
         public int TotalQty { get; set; }
         
         public virtual OrderSheet? OrderSheet { get; set; }
+        public virtual Style? Style { get; set; }
         public virtual ICollection<OrderSheetColor> Colors { get; set; } = new List<OrderSheetColor>();
     }
 
@@ -59,10 +63,12 @@ namespace ERPBackend.Core.Models
         public int Id { get; set; }
         public int OrderSheetItemId { get; set; }
         
+        public int? ColorId { get; set; }
         [Required]
         public string ColorName { get; set; } = string.Empty;
         
         public virtual OrderSheetItem? OrderSheetItem { get; set; }
+        public virtual FabricColorPantone? Color { get; set; }
         public virtual ICollection<OrderSheetSizeBreakdown> SizeBreakdowns { get; set; } = new List<OrderSheetSizeBreakdown>();
     }
 

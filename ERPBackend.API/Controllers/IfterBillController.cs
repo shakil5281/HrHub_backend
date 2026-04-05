@@ -160,7 +160,7 @@ namespace ERPBackend.API.Controllers
                                     {
                                         EmployeeId = emp.Id,
                                         Date = date,
-                                        Amount = shift.IfterBillAmount,
+                                        Amount = 0, // Removd from Shift Management
                                         ShiftId = shift.Id,
                                         CompanyId = emp.CompanyId,
                                         Status = "Approved",

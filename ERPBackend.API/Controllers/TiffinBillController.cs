@@ -107,7 +107,7 @@ namespace ERPBackend.API.Controllers
                 foreach (var att in attendanceRecords)
                 {
                     var emp = employees.FirstOrDefault(e => e.Id == att.EmployeeCard);
-                    if (emp == null || emp.Shift == null || emp.Shift.TiffinBillAmount <= 0) continue;
+                    if (emp == null || emp.Shift == null) continue;
 
                     var existing = existingBills.FirstOrDefault(i => i.EmployeeId == emp.Id && i.Date.Date == att.Date.Date);
                     if (existing == null)
@@ -116,7 +116,7 @@ namespace ERPBackend.API.Controllers
                         {
                             EmployeeId = emp.Id,
                             Date = att.Date,
-                            Amount = emp.Shift.TiffinBillAmount,
+                            Amount = 0, // Removd from Shift Management
                             ShiftId = emp.Shift.Id,
                             CompanyId = emp.CompanyId,
                             Status = "Approved",

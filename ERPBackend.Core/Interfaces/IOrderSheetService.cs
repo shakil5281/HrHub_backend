@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.IO;
 using ERPBackend.Core.Models;
 using ERPBackend.Core.DTOs;
 
@@ -7,7 +8,7 @@ namespace ERPBackend.Core.Interfaces
 {
     public interface IOrderSheetService
     {
-        Task<IEnumerable<OrderSheet>> GetAllAsync(int companyId);
+        Task<IEnumerable<OrderSheetDto>> GetAllAsync(int companyId);
         Task<OrderSheet?> GetByIdAsync(int id);
         Task<OrderSheetDto?> GetDtoByIdAsync(int id);
         Task<OrderSheet> CreateAsync(OrderSheet orderSheet);
