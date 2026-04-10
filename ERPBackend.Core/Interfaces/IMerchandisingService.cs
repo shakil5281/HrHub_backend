@@ -27,6 +27,7 @@ namespace ERPBackend.Core.Interfaces
         Task<Style?> GetStyleByIdAsync(int id);
         Task<Style> CreateStyleAsync(Style style);
         Task UpdateStyleAsync(Style style);
+        Task DeleteStyleAsync(int id);
 
         // Order Management
         Task<IEnumerable<StyleOrder>> GetOrdersByCompanyAsync(int companyId);

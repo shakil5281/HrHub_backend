@@ -216,6 +216,20 @@ try
         }
         */
 
+        // Seed Leave Types
+        if (!context.LeaveTypes.Any())
+        {
+            var leaveTypes = new List<LeaveType>
+            {
+                new LeaveType { Name = "Casual Leave", Code = "CL", YearlyLimit = 10, IsCarryForward = false, Description = "Standard annual casual leave", IsActive = true },
+                new LeaveType { Name = "Sick Leave", Code = "SL", YearlyLimit = 14, IsCarryForward = false, Description = "Medical/Sick leave with certificate", IsActive = true },
+                new LeaveType { Name = "Earned Leave", Code = "EL", YearlyLimit = 18, IsCarryForward = true, Description = "Annual earned leave", IsActive = true },
+                new LeaveType { Name = "Maternity Leave", Code = "ML", YearlyLimit = 112, IsCarryForward = false, Description = "Maternity leave for female employees", IsActive = true }
+            };
+            context.LeaveTypes.AddRange(leaveTypes);
+            await context.SaveChangesAsync();
+        }
+
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var roles = new[]
         {

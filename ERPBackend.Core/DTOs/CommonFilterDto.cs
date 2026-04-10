@@ -21,6 +21,7 @@ namespace ERPBackend.Core.DTOs
         public string? Status { get; set; }
         public bool? IsActive { get; set; }
         public string? EmployeeId { get; set; }
+        public int? EmployeeCard { get; set; }
         public string? SearchTerm { get; set; }
         public DateTime? JoinDateFrom { get; set; }
         public DateTime? JoinDateTo { get; set; }

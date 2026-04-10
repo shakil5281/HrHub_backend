@@ -1,4 +1,4 @@
-﻿using ERPBackend.Core.Constants;
+using ERPBackend.Core.Constants;
 using ERPBackend.Core.DTOs;
 using ERPBackend.Core.Models;
 using ERPBackend.Core.Entities;
@@ -1142,12 +1142,43 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/attendance/job-card
         [HttpGet("job-card")]
-        public async Task<ActionResult<JobCardResponseDto>> GetJobCard(int employeeCard, DateTime fromDate,
-            DateTime toDate)
+        public async Task<ActionResult<JobCardResponseDto>> GetJobCard([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var response = await GetJobCardInternal(employeeCard, fromDate, toDate);
+                int employeeIdToUse = filters.EmployeeCard ?? 0;
+
+                // If no specific employee ID, but we have group filters, find the first relevant employee
+                if (employeeIdToUse == 0)
+                {
+                    var empQuery = _context.Employees.Where(e => e.IsActive).AsQueryable();
+                    
+                    if (filters.CompanyId.HasValue) empQuery = empQuery.Where(e => e.CompanyId == filters.CompanyId);
+                    if (filters.DepartmentId.HasValue) empQuery = empQuery.Where(e => e.DepartmentId == filters.DepartmentId);
+                    if (filters.SectionId.HasValue) empQuery = empQuery.Where(e => e.SectionId == filters.SectionId);
+                    if (filters.LineId.HasValue) empQuery = empQuery.Where(e => e.LineId == filters.LineId);
+                    if (filters.GroupId.HasValue) empQuery = empQuery.Where(e => e.GroupId == filters.GroupId);
+                    if (filters.ShiftId.HasValue) empQuery = empQuery.Where(e => e.ShiftId == filters.ShiftId);
+
+                    var firstEmp = await empQuery.OrderBy(e => e.EmployeeId).FirstOrDefaultAsync();
+                    if (firstEmp == null) return NotFound("No employees found with the selected group filters.");
+                    employeeIdToUse = firstEmp.Id;
+                }
+
+                if (!filters.StartDate.HasValue || !filters.EndDate.HasValue)
+                    return BadRequest("StartDate and EndDate are required.");
+
+                var allFilteredIds = await GetFilteredEmployeeIds(filters);
+                var currentIndex = allFilteredIds.IndexOf(employeeIdToUse);
+                
+                var response = await GetJobCardInternal(employeeIdToUse, filters.StartDate.Value, filters.EndDate.Value);
+                
+                if (currentIndex > 0) 
+                    response.PreviousEmployeeId = allFilteredIds[currentIndex - 1];
+                
+                if (currentIndex >= 0 && currentIndex < allFilteredIds.Count - 1)
+                    response.NextEmployeeId = allFilteredIds[currentIndex + 1];
+
                 return Ok(response);
             }
             catch (Exception ex)
@@ -1159,11 +1190,16 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/attendance/job-card/export/excel
         [HttpGet("job-card/export/excel")]
-        public async Task<IActionResult> ExportJobCardToExcel(int employeeCard, DateTime fromDate, DateTime toDate)
+        public async Task<IActionResult> ExportJobCardToExcel([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var data = await GetJobCardInternal(employeeCard, fromDate, toDate);
+                if (!filters.StartDate.HasValue || !filters.EndDate.HasValue)
+                    return BadRequest("StartDate and EndDate are required.");
+
+                var employeeIds = await GetFilteredEmployeeIds(filters);
+                if (!employeeIds.Any()) return NotFound("No employees found for export.");
+
                 var companyIdStr = User.FindFirst("CompanyId")?.Value ?? "0";
                 var compId = int.Parse(companyIdStr);
                 var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId) 
@@ -1171,80 +1207,88 @@ namespace ERPBackend.API.Controllers
 
                 using (var package = new ExcelPackage())
                 {
-                    var worksheet = package.Workbook.Worksheets.Add("Job Card");
-                    
-                    // Header
-                    worksheet.Cells["A1:J1"].Merge = true;
-                    worksheet.Cells["A1"].Value = company?.CompanyNameEn ?? "HR HUB";
-                    worksheet.Cells["A1"].Style.Font.Size = 16;
-                    worksheet.Cells["A1"].Style.Font.Bold = true;
-                    worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-                    worksheet.Cells["A2:J2"].Merge = true;
-                    worksheet.Cells["A2"].Value = "Monthly Job Card";
-                    worksheet.Cells["A2"].Style.Font.Size = 12;
-                    worksheet.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-                    worksheet.Cells["A3:J3"].Merge = true;
-                    worksheet.Cells["A3"].Value = $"Period: {fromDate:dd MMM yyyy} to {toDate:dd MMM yyyy}";
-                    worksheet.Cells["A3"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-                    // Employee Info
-                    worksheet.Cells["A5"].Value = "Employee Name:";
-                    worksheet.Cells["B5"].Value = data.Employee.EmployeeName;
-                    worksheet.Cells["A6"].Value = "Employee ID:";
-                    worksheet.Cells["B6"].Value = data.Employee.EmployeeId;
-                    worksheet.Cells["D5"].Value = "Department:";
-                    worksheet.Cells["E5"].Value = data.Employee.Department;
-                    worksheet.Cells["D6"].Value = "Designation:";
-                    worksheet.Cells["E6"].Value = data.Employee.Designation;
-
-                    // Table Headers
-                    int row = 8;
-                    string[] headers = { "Date", "Day", "Shift", "In", "Out", "Late (m)", "OT (h)", "Total (h)", "Status", "Remarks" };
-                    for (int i = 0; i < headers.Length; i++)
+                    foreach (var empId in employeeIds.Take(100)) // Limit to 100 for safety, can be adjusted
                     {
-                        worksheet.Cells[row, i + 1].Value = headers[i];
-                        worksheet.Cells[row, i + 1].Style.Font.Bold = true;
-                        worksheet.Cells[row, i + 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                        worksheet.Cells[row, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                        worksheet.Cells[row, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-                    }
+                        var data = await GetJobCardInternal(empId, filters.StartDate.Value, filters.EndDate.Value);
+                        // Clean sheet name
+                        string sheetName = data.Employee.EmployeeId.Replace(":", "").Replace("\\", "").Replace("/", "").Replace("?", "").Replace("*", "").Replace("[", "").Replace("]", "");
+                        if (sheetName.Length > 31) sheetName = sheetName.Substring(0, 31);
+                        var worksheet = package.Workbook.Worksheets.Add(sheetName);
+                        
+                        // Header
+                        worksheet.Cells["A1:J1"].Merge = true;
+                        worksheet.Cells["A1"].Value = company?.CompanyNameEn ?? "HR HUB";
+                        worksheet.Cells["A1"].Style.Font.Size = 16;
+                        worksheet.Cells["A1"].Style.Font.Bold = true;
+                        worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                    // Data
-                    row++;
-                    foreach (var record in data.AttendanceRecords)
-                    {
-                        worksheet.Cells[row, 1].Value = record.Date;
-                        worksheet.Cells[row, 2].Value = record.Day;
-                        worksheet.Cells[row, 3].Value = record.Shift;
-                        worksheet.Cells[row, 4].Value = record.InTime;
-                        worksheet.Cells[row, 5].Value = record.OutTime;
-                        worksheet.Cells[row, 6].Value = record.LateMinutes;
-                        worksheet.Cells[row, 7].Value = record.OTHours;
-                        worksheet.Cells[row, 8].Value = record.TotalHours;
-                        worksheet.Cells[row, 9].Value = record.Status;
-                        worksheet.Cells[row, 10].Value = record.Remarks;
+                        worksheet.Cells["A2:J2"].Merge = true;
+                        worksheet.Cells["A2"].Value = "Monthly Job Card";
+                        worksheet.Cells["A2"].Style.Font.Size = 12;
+                        worksheet.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                        for (int i = 1; i <= 10; i++)
+                        worksheet.Cells["A3:J3"].Merge = true;
+                        worksheet.Cells["A3"].Value = $"Period: {filters.StartDate.Value:dd MMM yyyy} to {filters.EndDate.Value:dd MMM yyyy}";
+                        worksheet.Cells["A3"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                        // Employee Info
+                        worksheet.Cells["A5"].Value = "Employee Name:";
+                        worksheet.Cells["B5"].Value = data.Employee.EmployeeName;
+                        worksheet.Cells["A6"].Value = "Employee ID:";
+                        worksheet.Cells["B6"].Value = data.Employee.EmployeeId;
+                        worksheet.Cells["D5"].Value = "Department:";
+                        worksheet.Cells["E5"].Value = data.Employee.Department;
+                        worksheet.Cells["D6"].Value = "Designation:";
+                        worksheet.Cells["E6"].Value = data.Employee.Designation;
+
+                        // Table Headers
+                        int row = 8;
+                        string[] headers = { "Date", "Day", "Shift", "In", "Out", "Late (m)", "OT (h)", "Total (h)", "Status", "Remarks" };
+                        for (int i = 0; i < headers.Length; i++)
                         {
-                            worksheet.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                            worksheet.Cells[row, i + 1].Value = headers[i];
+                            worksheet.Cells[row, i + 1].Style.Font.Bold = true;
+                            worksheet.Cells[row, i + 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                            worksheet.Cells[row, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                            worksheet.Cells[row, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
                         }
+
+                        // Data
                         row++;
+                        foreach (var record in data.AttendanceRecords)
+                        {
+                            worksheet.Cells[row, 1].Value = record.Date;
+                            worksheet.Cells[row, 2].Value = record.Day;
+                            worksheet.Cells[row, 3].Value = record.Shift;
+                            worksheet.Cells[row, 4].Value = record.InTime;
+                            worksheet.Cells[row, 5].Value = record.OutTime;
+                            worksheet.Cells[row, 6].Value = record.LateMinutes;
+                            worksheet.Cells[row, 7].Value = record.OTHours;
+                            worksheet.Cells[row, 8].Value = record.TotalHours;
+                            worksheet.Cells[row, 9].Value = record.Status;
+                            worksheet.Cells[row, 10].Value = record.Remarks;
+
+                            for (int i = 1; i <= 10; i++)
+                            {
+                                worksheet.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                            }
+                            row++;
+                        }
+
+                        // Summary
+                        row += 2;
+                        worksheet.Cells[row, 1].Value = "Summary";
+                        worksheet.Cells[row, 1].Style.Font.Bold = true;
+                        row++;
+                        worksheet.Cells[row, 1].Value = "Present Days:"; worksheet.Cells[row, 2].Value = data.Summary.PresentDays;
+                        worksheet.Cells[row + 1, 1].Value = "Absent Days:"; worksheet.Cells[row + 1, 2].Value = data.Summary.AbsentDays;
+                        worksheet.Cells[row + 2, 1].Value = "Total OT:"; worksheet.Cells[row + 2, 2].Value = data.Summary.TotalOTHours;
+
+                        worksheet.Cells.AutoFitColumns();
                     }
 
-                    // Summary
-                    row += 2;
-                    worksheet.Cells[row, 1].Value = "Summary";
-                    worksheet.Cells[row, 1].Style.Font.Bold = true;
-                    row++;
-                    worksheet.Cells[row, 1].Value = "Present Days:"; worksheet.Cells[row, 2].Value = data.Summary.PresentDays;
-                    worksheet.Cells[row + 1, 1].Value = "Absent Days:"; worksheet.Cells[row + 1, 2].Value = data.Summary.AbsentDays;
-                    worksheet.Cells[row + 2, 1].Value = "Total OT:"; worksheet.Cells[row + 2, 2].Value = data.Summary.TotalOTHours;
-
-                    worksheet.Cells.AutoFitColumns();
                     var content = package.GetAsByteArray();
-                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"JobCard_{data.Employee.EmployeeId}_{fromDate:yyyyMMdd}.xlsx");
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Bulk_JobCard_{DateTime.Now:yyyyMMdd}.xlsx");
                 }
             }
             catch (Exception ex)
@@ -1255,11 +1299,16 @@ namespace ERPBackend.API.Controllers
 
         // GET: api/attendance/job-card/export/pdf
         [HttpGet("job-card/export/pdf")]
-        public async Task<IActionResult> ExportJobCardToPdf(int employeeCard, DateTime fromDate, DateTime toDate)
+        public async Task<IActionResult> ExportJobCardToPdf([FromQuery] CommonFilterDto filters)
         {
             try
             {
-                var data = await GetJobCardInternal(employeeCard, fromDate, toDate);
+                if (!filters.StartDate.HasValue || !filters.EndDate.HasValue)
+                    return BadRequest("StartDate and EndDate are required.");
+
+                var employeeIds = await GetFilteredEmployeeIds(filters);
+                if (!employeeIds.Any()) return NotFound("No employees found for export.");
+
                 var companyIdStr2 = User.FindFirst("CompanyId")?.Value ?? "0";
                 var compId2 = int.Parse(companyIdStr2);
                 var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId2)
@@ -1267,114 +1316,155 @@ namespace ERPBackend.API.Controllers
 
                 var document = Document.Create(container =>
                 {
-                    container.Page(page =>
+                    var empDataList = new List<JobCardResponseDto>();
+                    foreach (var empId in employeeIds.Take(50))
                     {
-                        page.Size(PageSizes.A4);
-                        page.Margin(1, Unit.Centimetre);
-                        page.PageColor(Colors.White);
-                        page.DefaultTextStyle(x => x.FontSize(9));
+                        var data = GetJobCardInternal(empId, filters.StartDate.Value, filters.EndDate.Value).GetAwaiter().GetResult();
+                        empDataList.Add(data);
+                    }
 
-                        page.Header().Column(col =>
+                    foreach (var data in empDataList)
+                    {
+                        container.Page(page =>
                         {
-                            col.Item().AlignCenter().Text(company?.CompanyNameEn ?? "HR HUB").FontSize(16).Bold();
-                            col.Item().AlignCenter().Text(company?.AddressEn ?? "").FontSize(9);
-                            col.Item().PaddingTop(5).AlignCenter().Text("Monthly Job Card").FontSize(12).SemiBold().Underline();
-                            col.Item().AlignCenter().Text($"Period: {fromDate:dd MMM yyyy} to {toDate:dd MMM yyyy}").FontSize(9);
-                        });
+                            page.Size(PageSizes.A4);
+                            page.Margin(1, Unit.Centimetre);
+                            page.PageColor(Colors.White);
+                            page.DefaultTextStyle(x => x.FontSize(9));
 
-                        page.Content().PaddingVertical(10).Column(col =>
-                        {
-                            // Employee Info Grid
-                            col.Item().PaddingBottom(10).Row(row =>
+                            page.Header().Column(col =>
                             {
-                                row.RelativeItem().Column(c =>
+                                col.Item().AlignCenter().Text(company?.CompanyNameEn ?? "HR HUB").FontSize(16).Bold();
+                                col.Item().AlignCenter().Text(company?.AddressEn ?? "").FontSize(9);
+                                col.Item().PaddingTop(5).AlignCenter().Text("Monthly Job Card").FontSize(12).SemiBold().Underline();
+                                col.Item().AlignCenter().Text($"Period: {filters.StartDate.Value:dd MMM yyyy} to {filters.EndDate.Value:dd MMM yyyy}").FontSize(9);
+                            });
+
+                            page.Content().PaddingVertical(10).Column(col =>
+                            {
+                                // Employee Info Grid
+                                col.Item().PaddingBottom(10).Row(row =>
                                 {
-                                    c.Item().Text(t => { t.Span("Name: ").Bold(); t.Span(data.Employee.EmployeeName); });
-                                    c.Item().Text(t => { t.Span("ID: ").Bold(); t.Span(data.Employee.EmployeeId); });
+                                    row.RelativeItem().Column(c =>
+                                    {
+                                        c.Item().Text(t => { t.Span("Name: ").Bold(); t.Span(data.Employee.EmployeeName); });
+                                        c.Item().Text(t => { t.Span("ID: ").Bold(); t.Span(data.Employee.EmployeeId); });
+                                    });
+                                    row.RelativeItem().Column(c =>
+                                    {
+                                        c.Item().Text(t => { t.Span("Dept: ").Bold(); t.Span(data.Employee.Department); });
+                                        c.Item().Text(t => { t.Span("Desig: ").Bold(); t.Span(data.Employee.Designation); });
+                                    });
                                 });
-                                row.RelativeItem().Column(c =>
+
+                                // Table
+                                col.Item().Table(table =>
                                 {
-                                    c.Item().Text(t => { t.Span("Dept: ").Bold(); t.Span(data.Employee.Department); });
-                                    c.Item().Text(t => { t.Span("Desig: ").Bold(); t.Span(data.Employee.Designation); });
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        columns.ConstantColumn(35); // Date
+                                        columns.ConstantColumn(30); // Day
+                                        columns.RelativeColumn(); // Shift
+                                        columns.ConstantColumn(35); // In
+                                        columns.ConstantColumn(35); // Out
+                                        columns.ConstantColumn(30); // Late
+                                        columns.ConstantColumn(30); // OT
+                                        columns.ConstantColumn(50); // Status
+                                        columns.RelativeColumn(); // Remarks
+                                    });
+
+                                    table.Header(header =>
+                                    {
+                                        header.Cell().Element(CellStyle).Text("Date");
+                                        header.Cell().Element(CellStyle).Text("Day");
+                                        header.Cell().Element(CellStyle).Text("Shift");
+                                        header.Cell().Element(CellStyle).Text("In");
+                                        header.Cell().Element(CellStyle).Text("Out");
+                                        header.Cell().Element(CellStyle).Text("Late");
+                                        header.Cell().Element(CellStyle).Text("OT");
+                                        header.Cell().Element(CellStyle).Text("Status");
+                                        header.Cell().Element(CellStyle).Text("Remarks");
+                                    });
+
+                                    foreach (var record in data.AttendanceRecords)
+                                    {
+                                        table.Cell().Element(CellContentStyle).Text(record.Date);
+                                        table.Cell().Element(CellContentStyle).Text(record.Day);
+                                        table.Cell().Element(CellContentStyle).Text(record.Shift);
+                                        table.Cell().Element(CellContentStyle).Text(record.InTime);
+                                        table.Cell().Element(CellContentStyle).Text(record.OutTime);
+                                        table.Cell().Element(CellContentStyle).Text(record.LateMinutes.ToString());
+                                        table.Cell().Element(CellContentStyle).Text(record.OTHours.ToString());
+                                        table.Cell().Element(CellContentStyle).Text(record.Status);
+                                        table.Cell().Element(CellContentStyle).Text(record.Remarks);
+                                    }
+                                });
+
+                                // Summary
+                                col.Item().PaddingTop(10).Row(row =>
+                                {
+                                    row.RelativeItem().Column(c =>
+                                    {
+                                        c.Item().Text(t => { t.Span("Present: ").Bold(); t.Span(data.Summary.PresentDays.ToString()); });
+                                        c.Item().Text(t => { t.Span("Absent: ").Bold(); t.Span(data.Summary.AbsentDays.ToString()); });
+                                    });
+                                    row.RelativeItem().Column(c =>
+                                    {
+                                        c.Item().Text(t => { t.Span("Total OT: ").Bold(); t.Span(data.Summary.TotalOTHours.ToString() + " h"); });
+                                        c.Item().Text(t => { t.Span("Total Late: ").Bold(); t.Span(data.Summary.TotalLateMinutes.ToString() + " m"); });
+                                    });
                                 });
                             });
 
-                            // Table
-                            col.Item().Table(table =>
+                            page.Footer().AlignCenter().Text(x =>
                             {
-                                table.ColumnsDefinition(columns =>
-                                {
-                                    columns.ConstantColumn(35); // Date
-                                    columns.ConstantColumn(30); // Day
-                                    columns.RelativeColumn(); // Shift
-                                    columns.ConstantColumn(35); // In
-                                    columns.ConstantColumn(35); // Out
-                                    columns.ConstantColumn(30); // Late
-                                    columns.ConstantColumn(30); // OT
-                                    columns.ConstantColumn(50); // Status
-                                    columns.RelativeColumn(); // Remarks
-                                });
-
-                                table.Header(header =>
-                                {
-                                    header.Cell().Element(CellStyle).Text("Date");
-                                    header.Cell().Element(CellStyle).Text("Day");
-                                    header.Cell().Element(CellStyle).Text("Shift");
-                                    header.Cell().Element(CellStyle).Text("In");
-                                    header.Cell().Element(CellStyle).Text("Out");
-                                    header.Cell().Element(CellStyle).Text("Late");
-                                    header.Cell().Element(CellStyle).Text("OT");
-                                    header.Cell().Element(CellStyle).Text("Status");
-                                    header.Cell().Element(CellStyle).Text("Remarks");
-                                });
-
-                                foreach (var record in data.AttendanceRecords)
-                                {
-                                    table.Cell().Element(CellContentStyle).Text(record.Date);
-                                    table.Cell().Element(CellContentStyle).Text(record.Day);
-                                    table.Cell().Element(CellContentStyle).Text(record.Shift);
-                                    table.Cell().Element(CellContentStyle).Text(record.InTime);
-                                    table.Cell().Element(CellContentStyle).Text(record.OutTime);
-                                    table.Cell().Element(CellContentStyle).Text(record.LateMinutes.ToString());
-                                    table.Cell().Element(CellContentStyle).Text(record.OTHours.ToString());
-                                    table.Cell().Element(CellContentStyle).Text(record.Status);
-                                    table.Cell().Element(CellContentStyle).Text(record.Remarks);
-                                }
-                            });
-
-                            // Summary
-                            col.Item().PaddingTop(10).Row(row =>
-                            {
-                                row.RelativeItem().Column(c =>
-                                {
-                                    c.Item().Text(t => { t.Span("Present: ").Bold(); t.Span(data.Summary.PresentDays.ToString()); });
-                                    c.Item().Text(t => { t.Span("Absent: ").Bold(); t.Span(data.Summary.AbsentDays.ToString()); });
-                                });
-                                row.RelativeItem().Column(c =>
-                                {
-                                    c.Item().Text(t => { t.Span("Total OT: ").Bold(); t.Span(data.Summary.TotalOTHours.ToString() + " h"); });
-                                    c.Item().Text(t => { t.Span("Total Late: ").Bold(); t.Span(data.Summary.TotalLateMinutes.ToString() + " m"); });
-                                });
+                                x.Span("Page ");
+                                x.CurrentPageNumber();
                             });
                         });
-
-                        page.Footer().AlignCenter().Text(x =>
-                        {
-                            x.Span("Page ");
-                            x.CurrentPageNumber();
-                        });
-                    });
+                    }
                 });
 
                 var stream = new MemoryStream();
                 document.GeneratePdf(stream);
                 stream.Position = 0;
-                return File(stream, "application/pdf", $"JobCard_{data.Employee.EmployeeId}_{fromDate:yyyyMMdd}.pdf");
+                return File(stream, "application/pdf", $"Bulk_JobCard_{DateTime.Now:yyyyMMdd}.pdf");
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Export failed", error = ex.Message });
             }
+        }
+
+        private async Task<List<int>> GetFilteredEmployeeIds(CommonFilterDto filters)
+        {
+            var query = _context.Employees.Where(e => e.IsActive).AsQueryable();
+            
+            if (filters.CompanyId.HasValue && filters.CompanyId > 0) 
+                query = query.Where(e => e.CompanyId == filters.CompanyId);
+                
+            if (filters.DepartmentId.HasValue) 
+                query = query.Where(e => e.DepartmentId == filters.DepartmentId);
+                
+            if (filters.SectionId.HasValue) 
+                query = query.Where(e => e.SectionId == filters.SectionId);
+                
+            if (filters.LineId.HasValue) 
+                query = query.Where(e => e.LineId == filters.LineId);
+                
+            if (filters.GroupId.HasValue) 
+                query = query.Where(e => e.GroupId == filters.GroupId);
+                
+            if (filters.ShiftId.HasValue) 
+                query = query.Where(e => e.ShiftId == filters.ShiftId);
+                
+            if (!string.IsNullOrEmpty(filters.EmployeeId)) 
+                query = query.Where(e => e.EmployeeId == filters.EmployeeId);
+                
+            if (filters.EmployeeCard.HasValue && filters.EmployeeCard > 0) 
+                query = query.Where(e => e.Id == filters.EmployeeCard);
+
+            return await query.OrderBy(e => e.EmployeeId).Select(e => e.Id).ToListAsync();
         }
 
         private async Task<JobCardResponseDto> GetJobCardInternal(int employeeCard, DateTime fromDate, DateTime toDate)
@@ -1389,6 +1479,7 @@ namespace ERPBackend.API.Controllers
                     .Include(e => e.Designation)
                     .Include(e => e.Section)
                     .Include(e => e.Shift)
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(e => e.Id == employeeCard);
 
                 if (employee == null)
@@ -1400,6 +1491,7 @@ namespace ERPBackend.API.Controllers
                                 a.Date >= from &&
                                 a.Date <= to)
                     .OrderBy(a => a.Date)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 // Get shift roster (with fallback support: fetch all up to 'to' date)
@@ -1422,6 +1514,7 @@ namespace ERPBackend.API.Controllers
                                 l.LogTime >= minDate &&
                                 l.LogTime <= maxDate)
                     .OrderBy(l => l.LogTime)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 // If no logs found via EmployeeCard, try string EmployeeId (for legacy/imported data support)
@@ -1437,85 +1530,47 @@ namespace ERPBackend.API.Controllers
 
                 // 24-hour overlap logic using RAW LOGS
                 var missingOutAttendance = attendances.Where(a => a.InTime.HasValue && !a.OutTime.HasValue).ToList();
-                Console.WriteLine(
-                    $"[JobCard] Found {missingOutAttendance.Count} attendance records with missing OutTime");
 
                 if (missingOutAttendance.Any())
                 {
-                    // Reuse the logs we already fetched for the entire range
-                    Console.WriteLine($"[JobCard] Using {logs.Count} log entries for processing missing OutTimes");
-
-
-                    Console.WriteLine($"[JobCard] Retrieved {logs.Count} log entries");
-                    foreach (var log in logs)
-                    {
-                        Console.WriteLine($"  - Log: {log.LogTime:yyyy-MM-dd HH:mm:ss}");
-                    }
-
                     foreach (var att in missingOutAttendance)
                     {
                         var inTime = att.InTime!.Value;
-                        Console.WriteLine(
-                            $"[JobCard] Processing Date={att.Date:yyyy-MM-dd}, InTime={inTime:yyyy-MM-dd HH:mm:ss}");
-
                         var nextDay = att.Date.AddDays(1);
                         var nextAtt = attendances.FirstOrDefault(a => a.Date.Date == nextDay.Date);
 
-                        // Use shift end time as search limit, not next day's InTime
-                        // Shift ends at 07:10 AM next day, so search up to that time
                         DateTime searchLimit;
                         if (!string.IsNullOrEmpty(employee.Shift?.ActualOutTime))
                         {
-                            // Parse the time string (e.g., "07:10 AM")
                             if (TimeOnly.TryParse(employee.Shift.ActualOutTime, out var shiftEndTime))
                             {
                                 searchLimit = new DateTime(nextDay.Year, nextDay.Month, nextDay.Day,
                                     shiftEndTime.Hour, shiftEndTime.Minute, 0);
-                                Console.WriteLine(
-                                    $"  - Using shift end time as searchLimit={searchLimit:yyyy-MM-dd HH:mm:ss}");
                             }
                             else
                             {
-                                // Parse failed, default to 24 hours
                                 searchLimit = inTime.AddHours(24);
-                                Console.WriteLine(
-                                    $"  - Parse failed, using 24h limit={searchLimit:yyyy-MM-dd HH:mm:ss}");
                             }
                         }
                         else
                         {
-                            // Fallback: 24 hours from InTime
                             searchLimit = inTime.AddHours(24);
-                            Console.WriteLine(
-                                $"  - No shift end time, using 24h limit={searchLimit:yyyy-MM-dd HH:mm:ss}");
                         }
 
-                        var candidateLogs = logs.Where(l => l.LogTime > inTime.AddMinutes(1) && l.LogTime < searchLimit)
-                            .ToList();
-                        Console.WriteLine(
-                            $"  - Found {candidateLogs.Count} candidate logs between {inTime.AddMinutes(1):yyyy-MM-dd HH:mm:ss} and {searchLimit:yyyy-MM-dd HH:mm:ss}");
-
-                        var potentialOut = candidateLogs.LastOrDefault();
+                        var potentialOut = logs.Where(l => l.LogTime > inTime.AddMinutes(1) && l.LogTime < searchLimit)
+                            .LastOrDefault();
 
                         if (potentialOut != null)
                         {
-                            Console.WriteLine(
-                                $"  - Using potentialOut={potentialOut.LogTime:yyyy-MM-dd HH:mm:ss} as OutTime");
                             att.OutTime = potentialOut.LogTime;
                             if (nextAtt != null && nextAtt.InTime.HasValue)
                             {
                                 var diff = Math.Abs((nextAtt.InTime.Value - potentialOut.LogTime).TotalMinutes);
                                 if (diff < 5)
                                 {
-                                    Console.WriteLine(
-                                        $"  - Duplicate punch detected (diff={diff:F2} min), clearing next day InTime");
                                     nextAtt.InTime = null;
                                 }
                             }
-                        }
-                        else
-                        {
-                            Console.WriteLine($"  - No potential OutTime found");
                         }
                     }
                 }
@@ -3496,7 +3551,7 @@ foreach (var att in attendances)
             if (!string.IsNullOrEmpty(filters.Religion))
                 query = query.Where(a => a.Employee != null && a.Employee.Religion == filters.Religion);
 
-            if (!string.IsNullOrEmpty(filters.Status) && filters.Status != "all")
+            if (!string.IsNullOrEmpty(filters.Status) && !filters.Status.Equals("all", StringComparison.OrdinalIgnoreCase))
                 query = query.Where(a => a.Status == filters.Status);
 
             if (!string.IsNullOrEmpty(filters.EmployeeId))

@@ -48,5 +48,7 @@ namespace ERPBackend.Core.DTOs
         public List<JobCardDto> AttendanceRecords { get; set; } = new();
         public DateTime FromDate { get; set; }
         public DateTime ToDate { get; set; }
+        public int? PreviousEmployeeId { get; set; }
+        public int? NextEmployeeId { get; set; }
     }
 }

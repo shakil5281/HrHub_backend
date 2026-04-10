@@ -81,6 +81,10 @@ namespace ERPBackend.API.Controllers
                 MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(s.Month),
                 GrossSalary = s.GrossSalary,
                 BasicSalary = s.BasicSalary,
+                HouseRent = s.Employee?.HouseRent ?? 0,
+                MedicalAllowance = s.Employee?.MedicalAllowance ?? 0,
+                FoodAllowance = s.Employee?.FoodAllowance ?? 0,
+                Conveyance = s.Employee?.Conveyance ?? 0,
                 TotalDays = s.TotalDays,
                 PresentDays = s.PresentDays,
                 AbsentDays = s.AbsentDays,
@@ -88,14 +92,18 @@ namespace ERPBackend.API.Controllers
                 Holidays = s.Holidays,
                 WeekendDays = s.WeekendDays,
                 OTHours = s.OTHours,
+                OTRate = s.OTRate,
                 OTAmount = s.OTAmount,
                 AttendanceBonus = s.AttendanceBonus,
                 OtherAllowances = s.OtherAllowances,
                 TotalEarning = s.TotalEarning,
+                AbsentDeduction = s.AbsentDeduction,
                 TotalDeduction = s.TotalDeduction,
                 NetPayable = s.NetPayable,
                 Status = s.Status,
-                CompanyName = s.Employee?.Company?.CompanyNameEn ?? s.Company?.CompanyNameEn ?? ""
+                CompanyName = s.Employee?.Company?.CompanyNameEn ?? s.Company?.CompanyNameEn ?? "",
+                JoinedDate = s.Employee?.JoinDate.ToString("yyyy-MM-dd"),
+                BankAccountNo = s.Employee?.BankAccountNo
             }).ToList();
 
             return Ok(result);
@@ -1369,13 +1377,16 @@ namespace ERPBackend.API.Controllers
             [FromQuery] int month,
             [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
-            [FromQuery] string? searchTerm)
+            [FromQuery] string? searchTerm,
+            [FromQuery] string? exportType = "master")
         {
             var query = _context.MonthlySalarySheets
                 .Include(s => s.Employee)
                 .ThenInclude(e => e!.Department)
                 .Include(s => s.Employee)
                 .ThenInclude(e => e!.Designation)
+                .Include(s => s.Employee)
+                .ThenInclude(e => e!.Line)
                 .Where(s => s.Year == year && s.Month == month);
 
             if (companyId.HasValue && companyId > 0)
@@ -1395,57 +1406,141 @@ namespace ERPBackend.API.Controllers
             }
 
             var records = await query.ToListAsync();
+            var sortedRecords = records
+                .OrderBy(r => r.Employee?.Line?.NameEn ?? "Unknown")
+                .ThenBy(r => r.Employee?.EmployeeId ?? "")
+                .ToList();
 
             using var package = new OfficeOpenXml.ExcelPackage();
-            var worksheet = package.Workbook.Worksheets.Add($"Salary Sheet {month}-{year}");
-
-            // Headers
             var headers = new[]
             {
-                "SL", "ID", "Name", "Designation", "Department",
-                "Gross Salary", "Basic", "Total Days", "Present", "Absent", "Leave",
-                "OT Hours", "OT Amount", "Total Earning", "Total Deduction", "Net Payable"
+                "SL", "Name", "Emp. ID", "Designation & Joining Date", "Total days of the month", 
+                "Weekly leave", "Leave", "Total Absent", "Total working days",
+                "Basic Salary", "Rent Bill", "Medical allowance", "Food allowance", "Travel allowance",
+                "Total Salary", "Absence deduction", "Wages payable", 
+                "Overtime hours", "Overtime rate", "Overtime pay", "Attendance bonus", 
+                "Deduction", "Account No.", "Total payable"
             };
 
-            for (int i = 0; i < headers.Length; i++)
+            void FillSheet(ExcelWorksheet worksheet, List<MonthlySalarySheet> sourceRecords)
             {
-                worksheet.Cells[1, i + 1].Value = headers[i];
-                worksheet.Cells[1, i + 1].Style.Font.Bold = true;
-                worksheet.Cells[1, i + 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                worksheet.Cells[1, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                worksheet.Cells.Style.Font.Size = 9;
+                worksheet.Cells.Style.WrapText = true;
+                worksheet.Cells.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                worksheet.Cells.Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                worksheet.Row(1).Height = 40;
+                worksheet.Row(1).Style.Font.Bold = true;
+                worksheet.PrinterSettings.PaperSize = OfficeOpenXml.ePaperSize.Legal;
+                worksheet.PrinterSettings.Orientation = OfficeOpenXml.eOrientation.Landscape;
+                worksheet.PrinterSettings.FitToPage = true;
+                worksheet.PrinterSettings.FitToWidth = 1;
+                worksheet.PrinterSettings.FitToHeight = 0;
+
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    var cell = worksheet.Cells[1, i + 1];
+                    cell.Value = headers[i];
+                    cell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    cell.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                    if (i == 1) cell.Style.WrapText = false;
+                }
+
+                int row = 2;
+                foreach (var s in sourceRecords)
+                {
+                    var emp = s.Employee;
+                    worksheet.Cells[row, 1].Value = row - 1;
+                    var nameCell = worksheet.Cells[row, 2];
+                    nameCell.Value = emp?.FullNameEn;
+                    nameCell.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+                    nameCell.Style.WrapText = false;
+                    worksheet.Cells[row, 3].Value = emp?.EmployeeId;
+                    worksheet.Cells[row, 4].Value = $"{emp?.Designation?.NameEn}\n{emp?.JoinDate:dd/MM/yyyy}";
+                    worksheet.Cells[row, 5].Value = s.TotalDays;
+                    worksheet.Cells[row, 6].Value = s.WeekendDays;
+                    worksheet.Cells[row, 7].Value = s.LeaveDays;
+                    worksheet.Cells[row, 8].Value = s.AbsentDays;
+                    worksheet.Cells[row, 9].Value = s.PresentDays + s.WeekendDays + s.Holidays + s.LeaveDays;
+                    worksheet.Cells[row, 10].Value = emp?.BasicSalary ?? 0;
+                    worksheet.Cells[row, 11].Value = emp?.HouseRent ?? 0;
+                    worksheet.Cells[row, 12].Value = emp?.MedicalAllowance ?? 0;
+                    worksheet.Cells[row, 13].Value = emp?.FoodAllowance ?? 0;
+                    worksheet.Cells[row, 14].Value = emp?.Conveyance ?? 0;
+                    worksheet.Cells[row, 15].Value = s.GrossSalary;
+                    worksheet.Cells[row, 16].Value = s.AbsentDeduction;
+                    worksheet.Cells[row, 17].Value = s.TotalEarning - s.OTAmount;
+                    worksheet.Cells[row, 18].Value = s.OTHours;
+                    worksheet.Cells[row, 19].Value = s.OTRate;
+                    worksheet.Cells[row, 20].Value = s.OTAmount;
+                    worksheet.Cells[row, 21].Value = s.AttendanceBonus;
+                    worksheet.Cells[row, 22].Value = s.TotalDeduction;
+                    worksheet.Cells[row, 23].Value = emp?.BankAccountNo;
+                    worksheet.Cells[row, 24].Value = s.NetPayable;
+
+                    for (int i = 1; i <= headers.Length; i++)
+                    {
+                        worksheet.Cells[row, i].Style.Border.BorderAround(OfficeOpenXml.Style.ExcelBorderStyle.Thin);
+                    }
+                    row++;
+                }
+
+                worksheet.Cells.AutoFitColumns();
             }
 
-            int row = 2;
-            foreach (var s in records)
+            string SanitizeSheetName(string rawName)
             {
-                worksheet.Cells[row, 1].Value = row - 1;
-                worksheet.Cells[row, 2].Value = s.Employee?.EmployeeId;
-                worksheet.Cells[row, 3].Value = s.Employee?.FullNameEn;
-                worksheet.Cells[row, 4].Value = s.Employee?.Designation?.NameEn;
-                worksheet.Cells[row, 5].Value = s.Employee?.Department?.NameEn;
-                worksheet.Cells[row, 6].Value = s.GrossSalary;
-                worksheet.Cells[row, 7].Value = s.BasicSalary;
-                worksheet.Cells[row, 8].Value = s.TotalDays;
-                worksheet.Cells[row, 9].Value = s.PresentDays;
-                worksheet.Cells[row, 10].Value = s.AbsentDays;
-                worksheet.Cells[row, 11].Value = s.LeaveDays;
-                worksheet.Cells[row, 12].Value = s.OTHours;
-                worksheet.Cells[row, 13].Value = s.OTAmount;
-                worksheet.Cells[row, 14].Value = s.TotalEarning;
-                worksheet.Cells[row, 15].Value = s.TotalDeduction;
-                worksheet.Cells[row, 16].Value = s.NetPayable;
-                row++;
+                var invalid = new[] { "\\", "/", "?", "*", "[", "]", ":" };
+                var cleaned = string.IsNullOrWhiteSpace(rawName) ? "Unknown" : rawName.Trim();
+                foreach (var ch in invalid)
+                {
+                    cleaned = cleaned.Replace(ch, "");
+                }
+                if (cleaned.Length > 31) cleaned = cleaned.Substring(0, 31);
+                return string.IsNullOrWhiteSpace(cleaned) ? "Unknown" : cleaned;
             }
 
-            worksheet.Cells.AutoFitColumns();
+            var exportTypeValue = (exportType ?? "master").Trim().ToLowerInvariant();
+
+            if (exportTypeValue == "salary")
+            {
+                var groupedByLine = sortedRecords
+                    .GroupBy(r => r.Employee?.Line?.NameEn ?? "Unknown")
+                    .OrderBy(g => g.Key);
+
+                var usedSheetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var group in groupedByLine)
+                {
+                    var baseName = SanitizeSheetName(group.Key);
+                    var sheetName = baseName;
+                    int suffix = 1;
+                    while (usedSheetNames.Contains(sheetName))
+                    {
+                        var suffixText = $"_{suffix++}";
+                        var maxBaseLength = 31 - suffixText.Length;
+                        var truncatedBase = baseName.Length > maxBaseLength ? baseName.Substring(0, maxBaseLength) : baseName;
+                        sheetName = $"{truncatedBase}{suffixText}";
+                    }
+                    usedSheetNames.Add(sheetName);
+
+                    var sheet = package.Workbook.Worksheets.Add(sheetName);
+                    FillSheet(sheet, group.ToList());
+                }
+            }
+            else
+            {
+                var worksheet = package.Workbook.Worksheets.Add($"Master Sheet {month}-{year}");
+                FillSheet(worksheet, sortedRecords);
+            }
 
             var stream = new MemoryStream();
             package.SaveAs(stream);
             stream.Position = 0;
 
             string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+            var filePrefix = exportTypeValue == "salary" ? "Salary_Sheet_By_Line" : "Master_Salary_Sheet";
             return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                $"Salary_Sheet_{monthName}_{year}.xlsx");
+                $"{filePrefix}_{monthName}_{year}.xlsx");
         }
 
         [HttpGet("export-bank-sheet")]

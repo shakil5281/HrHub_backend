@@ -363,6 +363,7 @@ namespace ERPBackend.API.Controllers
 
             return query.Select(r => new DailyReportItemDto
             {
+                AssignmentId = r.AssignmentId,
                 LineName = r.Assignment!.Line!.LineName,
                 StyleNo = r.Assignment!.Production!.StyleNo,
                 Buyer = r.Assignment!.Production!.Buyer,

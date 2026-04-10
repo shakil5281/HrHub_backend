@@ -44,7 +44,7 @@ namespace ERPBackend.Core.Models
         public int CompanyId { get; set; }
         public int BranchId { get; set; }
         public int BuyerId { get; set; }
-        public int BrandId { get; set; }
+        public int? BrandId { get; set; }
         [Required, StringLength(100)]
         public string StyleNumber { get; set; } = string.Empty;
         public string ProductType { get; set; } = string.Empty;

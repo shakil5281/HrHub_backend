@@ -22,8 +22,8 @@ namespace ERPBackend.Core.Interfaces
         OrderSummaryDto GetOrderSummary(int orderSheetId);
 
         // Import Excel
-        Task<List<OrderSheetImportDto>> ParseExcelAsync(Stream fileStream);
-        Task<int> ImportOrderSheetsAsync(List<OrderSheetImportDto> importData, int companyId, int branchId);
+        Task<MultiSheetOrderImportDto> ParseExcelAsync(Stream fileStream);
+        Task<int> ImportOrderSheetsAsync(MultiSheetOrderImportDto importData, int companyId, int branchId);
         Task<byte[]> DownloadTemplateAsync();
         Task<byte[]> ExportOrderSheetAsync(int id);
         Task<GlobalOrderSummaryDto> GetGlobalSummaryAsync(int companyId);

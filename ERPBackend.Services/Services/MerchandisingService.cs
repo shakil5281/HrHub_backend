@@ -134,6 +134,16 @@ namespace ERPBackend.Services.Services
             _context.Entry(style).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }
+
+        public async Task DeleteStyleAsync(int id)
+        {
+            var style = await _context.Styles.FindAsync(id);
+            if (style != null)
+            {
+                _context.Styles.Remove(style);
+                await _context.SaveChangesAsync();
+            }
+        }
         #endregion
 
         #region Order

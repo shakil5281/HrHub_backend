@@ -124,6 +124,21 @@ namespace ERPBackend.API.Controllers
             var createdStyle = await _merchandisingService.CreateStyleAsync(style);
             return CreatedAtAction(nameof(GetStyle), new { id = createdStyle.Id }, createdStyle);
         }
+
+        [HttpPut("styles/{id}")]
+        public async Task<IActionResult> UpdateStyle(int id, Style style)
+        {
+            if (id != style.Id) return BadRequest();
+            await _merchandisingService.UpdateStyleAsync(style);
+            return NoContent();
+        }
+
+        [HttpDelete("styles/{id}")]
+        public async Task<IActionResult> DeleteStyle(int id)
+        {
+            await _merchandisingService.DeleteStyleAsync(id);
+            return NoContent();
+        }
         #endregion
 
         #region Orders

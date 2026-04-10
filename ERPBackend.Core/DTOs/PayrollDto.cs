@@ -13,6 +13,10 @@ namespace ERPBackend.Core.DTOs
         public string MonthName { get; set; } = string.Empty;
         public decimal GrossSalary { get; set; }
         public decimal BasicSalary { get; set; }
+        public decimal HouseRent { get; set; }
+        public decimal MedicalAllowance { get; set; }
+        public decimal FoodAllowance { get; set; }
+        public decimal Conveyance { get; set; }
         public int TotalDays { get; set; }
         public int PresentDays { get; set; }
         public int AbsentDays { get; set; }
@@ -20,14 +24,18 @@ namespace ERPBackend.Core.DTOs
         public int Holidays { get; set; }
         public int WeekendDays { get; set; }
         public decimal OTHours { get; set; }
+        public decimal OTRate { get; set; }
         public decimal OTAmount { get; set; }
         public decimal AttendanceBonus { get; set; }
         public decimal OtherAllowances { get; set; }
         public decimal TotalEarning { get; set; }
+        public decimal AbsentDeduction { get; set; }
         public decimal TotalDeduction { get; set; }
         public decimal NetPayable { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? CompanyName { get; set; }
+        public string? JoinedDate { get; set; }
+        public string? BankAccountNo { get; set; }
     }
 
     public class DailySalarySheetDto

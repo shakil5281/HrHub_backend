@@ -85,6 +85,7 @@ namespace ERPBackend.Core.DTOs
 
     public class DailyReportItemDto
     {
+        public int AssignmentId { get; set; }
         public string LineName { get; set; } = "";
         public string StyleNo { get; set; } = "";
         public string Buyer { get; set; } = "";

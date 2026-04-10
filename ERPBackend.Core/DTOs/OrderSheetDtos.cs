@@ -8,7 +8,7 @@ namespace ERPBackend.Core.DTOs
         public int CompanyId { get; set; }
         public int BranchId { get; set; }
         public string ProgramNumber { get; set; } = string.Empty;
-        // public int BuyerId { get; set; }
+        public int BuyerId { get; set; }
         public string BuyerName { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
         public string FabricDescription { get; set; } = string.Empty;
@@ -96,6 +96,32 @@ namespace ERPBackend.Core.DTOs
         public DateTime OrderDate { get; set; }
     }
 
+    public class MultiSheetOrderImportDto
+    {
+        public List<StyleImportDto> Styles { get; set; } = new();
+        public List<ColorImportDto> Colors { get; set; } = new();
+        public List<OrderSheetImportDto> Orders { get; set; } = new();
+    }
+
+    public class StyleImportDto
+    {
+        public string StyleNumber { get; set; } = string.Empty;
+        public string BuyerName { get; set; } = string.Empty;
+        public string ProductType { get; set; } = string.Empty;
+        public string Season { get; set; } = string.Empty;
+        public string FabricType { get; set; } = string.Empty;
+        public string GSM { get; set; } = string.Empty;
+        public string SizeRange { get; set; } = string.Empty;
+        public int RowIndex { get; set; }
+    }
+
+    public class ColorImportDto
+    {
+        public string ColorName { get; set; } = string.Empty;
+        public string PantoneCode { get; set; } = string.Empty;
+        public int RowIndex { get; set; }
+    }
+
     public class OrderSheetImportDto
     {
         public string ProgramNumber { get; set; } = string.Empty;
@@ -103,11 +129,13 @@ namespace ERPBackend.Core.DTOs
         public string CustomerName { get; set; } = string.Empty;
         public DateTime OrderDate { get; set; }
         public string FabricDescription { get; set; } = string.Empty;
+        public string ProgramName { get; set; } = string.Empty;
+        public string FactoryName { get; set; } = string.Empty;
         public string OldArticleNo { get; set; } = string.Empty;
-        public string NewArticleNo { get; set; } = string.Empty;
+        public string NewArticleNo { get; set; } = string.Empty; // This links to StyleNumber
         public string PackType { get; set; } = string.Empty; // "PackA", "PackB", "PackAB"
         public string ItemName { get; set; } = string.Empty;
-        public string Color { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty; // This links to ColorName
         public int SizeM { get; set; }
         public int SizeL { get; set; }
         public int SizeXL { get; set; }

@@ -59,9 +59,21 @@ namespace ERPBackend.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, OrderSheet orderSheet)
         {
-            if (id != orderSheet.Id) return BadRequest();
-            await _orderSheetService.UpdateAsync(orderSheet);
-            return NoContent();
+            try 
+            {
+                if (id != orderSheet.Id) return BadRequest(new { message = "ID mismatch" });
+                await _orderSheetService.UpdateAsync(orderSheet);
+                return NoContent();
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { 
+                    message = "Error updating order sheet", 
+                    error = ex.Message, 
+                    innerError = ex.InnerException?.Message,
+                    stackTrace = ex.StackTrace 
+                });
+            }
         }
 
         [HttpDelete("{id}")]
@@ -84,7 +96,7 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpPost("preview")]
-        public async Task<ActionResult<List<OrderSheetImportDto>>> Preview(IFormFile file)
+        public async Task<ActionResult<MultiSheetOrderImportDto>> Preview(IFormFile file)
         {
             if (file == null || file.Length == 0) return BadRequest("File is empty");
             using var stream = file.OpenReadStream();
@@ -93,9 +105,9 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpPost("import")]
-        public async Task<IActionResult> Import([FromBody] List<OrderSheetImportDto> data, [FromQuery] int companyId, [FromQuery] int branchId)
+        public async Task<IActionResult> Import([FromBody] MultiSheetOrderImportDto data, [FromQuery] int companyId, [FromQuery] int branchId)
         {
-            if (data == null || !data.Any()) return BadRequest("No data to import");
+            if (data == null || (data.Orders == null && data.Styles == null && data.Colors == null)) return BadRequest("No data to import");
             var count = await _orderSheetService.ImportOrderSheetsAsync(data, companyId, branchId);
             return Ok(new { message = "Import successful", count });
         }

@@ -72,7 +72,7 @@ namespace ERPBackend.API.Controllers
                 if (filters.FloorId.HasValue)
                     query = query.Where(e => e.FloorId == filters.FloorId);
 
-                if (!string.IsNullOrEmpty(filters.Status))
+                if (!string.IsNullOrEmpty(filters.Status) && filters.Status.ToLower() != "all")
                     query = query.Where(e => e.Status == filters.Status);
 
                 if (filters.IsActive.HasValue)
