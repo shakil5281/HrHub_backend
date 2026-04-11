@@ -186,6 +186,7 @@ namespace ERPBackend.API.Controllers
                         "Late" => "L",
                         "On Leave" => "LV",
                         "Off Day" => "OFF",
+                        "Holiday" => "H",
                         _ => item.Status
                     };
 
@@ -199,6 +200,7 @@ namespace ERPBackend.API.Controllers
                     else if (statusShort == "L") statusCell.Style.Font.Color.SetColor(System.Drawing.Color.Orange);
                     else if (statusShort == "LV") statusCell.Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                     else if (statusShort == "OFF") statusCell.Style.Font.Color.SetColor(System.Drawing.Color.Gray);
+                    else if (statusShort == "H") statusCell.Style.Font.Color.SetColor(System.Drawing.Color.Purple);
 
                     worksheet.Cells[currentRow, 10].Value = item.OTHours;
 
@@ -246,6 +248,11 @@ namespace ERPBackend.API.Controllers
             worksheet.Cells[currentRow, 2].Value = "On Leave (LV)";
             worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status == "On Leave");
             worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+            currentRow++;
+
+            worksheet.Cells[currentRow, 2].Value = "Holiday (H)";
+            worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status == "Holiday");
+            worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Purple);
             currentRow++;
 
             using (var range = worksheet.Cells[summaryStartRow + 1, 3, currentRow - 1, 3])
@@ -1494,6 +1501,12 @@ namespace ERPBackend.API.Controllers
                     .AsNoTracking()
                     .ToListAsync();
 
+                // Get holidays
+                var holidays = await _context.Holidays
+                    .Where(h => h.IsActive && h.StartDate <= to && h.EndDate >= from)
+                    .AsNoTracking()
+                    .ToListAsync();
+
                 // Get shift roster (with fallback support: fetch all up to 'to' date)
                 var roster = await _context.EmployeeShiftRosters
                     .Include(r => r.Shift)
@@ -1626,6 +1639,8 @@ foreach (var att in attendances)
                                  ?? employeeRosters.FirstOrDefault(); // roster is already ordered DESC
 
                     var dayName = date.ToString("ddd");
+                    var holiday = holidays.FirstOrDefault(h => date.Date >= h.StartDate.Date && date.Date <= h.EndDate.Date);
+                    bool isHoliday = holiday != null;
 
                     // Determine if weekend (Friday/Saturday or from Roster)
                     bool isWeekend = dayRoster?.IsOffDay ?? (dayName == "Fri"); 
@@ -1753,11 +1768,20 @@ foreach (var att in attendances)
                             totalHours = (attendance.Status == "Present" || attendance.Status == "Late") ? 9 : 0;
                         }
 
+                        string finalStatus = attendance.Status;
+                        string finalRemarks = attendance.Status == "Absent" ? "Uninformed" : "";
+
+                        if (isHoliday && (attendance.Status == "Absent" || attendance.Status == "Off Day"))
+                        {
+                            finalStatus = "Holiday";
+                            finalRemarks = holiday?.Name ?? "Public Holiday";
+                        }
+
                         record = new JobCardDto
                         {
                             Date = date.ToString("dd MMM"),
                             Day = dayName,
-                            Status = attendance.Status,
+                            Status = finalStatus,
                             InTime = attendance.InTime?.ToString("HH:mm") ?? "-",
                             OutTime = attendance.OutTime?.ToString("HH:mm") ?? "-",
                             LateMinutes = lateMinutes,
@@ -1766,18 +1790,38 @@ foreach (var att in attendances)
                             TotalHours = Math.Round(totalHours, 2),
                             Shift = dailyShift,
                             ShiftId = dailyShiftId,
-                            IsOffDay = dailyIsOffDay,
-                            Remarks = attendance.Status == "Absent" ? "Uninformed" : ""
+                            IsOffDay = isHoliday || dailyIsOffDay,
+                            Remarks = finalRemarks
                         };
 
                         // Update counters
-                        if (attendance.Status == "Present" || attendance.Status == "Late") presentDays++;
-                        else if (attendance.Status == "Absent") absentDays++;
-                        else if (attendance.Status == "Off Day" || attendance.IsOffDay) weekendDays++;
-                        else if (attendance.Status == "Holiday") holidayDays++;
+                        if (finalStatus == "Present" || finalStatus == "Late") presentDays++;
+                        else if (finalStatus == "Absent") absentDays++;
+                        else if (finalStatus == "Holiday") holidayDays++;
+                        else if (finalStatus == "Off Day" || finalStatus == "Weekend" || dailyIsOffDay) weekendDays++;
 
                         totalOt += otHours;
                         totalLate += lateMinutes;
+                    }
+                    else if (isHoliday)
+                    {
+                        record = new JobCardDto
+                        {
+                            Date = date.ToString("dd MMM"),
+                            Day = dayName,
+                            Status = "Holiday",
+                            InTime = "-",
+                            OutTime = "-",
+                            LateMinutes = 0,
+                            EarlyMinutes = 0,
+                            OTHours = 0,
+                            TotalHours = 0,
+                            Shift = dailyShift,
+                            ShiftId = dailyShiftId,
+                            IsOffDay = true,
+                            Remarks = holiday?.Name ?? "Public Holiday"
+                        };
+                        holidayDays++;
                     }
                     else if (isWeekend)
                     {

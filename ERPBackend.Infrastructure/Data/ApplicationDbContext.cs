@@ -43,6 +43,7 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<IfterBill> IfterBills { get; set; } = null!;
         public DbSet<TiffinBill> TiffinBills { get; set; } = null!;
         public DbSet<NightBill> NightBills { get; set; } = null!;
+        public DbSet<Holiday> Holidays { get; set; } = null!;
         
 
 

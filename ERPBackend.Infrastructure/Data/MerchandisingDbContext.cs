@@ -22,6 +22,13 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<BOMItem> BOMItems { get; set; } = null!;
         public DbSet<FabricBooking> FabricBookings { get; set; } = null!;
         public DbSet<AccessoriesBooking> AccessoriesBookings { get; set; } = null!;
+        public DbSet<ButtonBooking> ButtonBookings { get; set; } = null!;
+        public DbSet<SnapButtonBooking> SnapButtonBookings { get; set; } = null!;
+        public DbSet<ZipperBooking> ZipperBookings { get; set; } = null!;
+        public DbSet<LabelBooking> LabelBookings { get; set; } = null!;
+        public DbSet<TrimBooking> TrimBookings { get; set; } = null!;
+        public DbSet<ThreadBooking> ThreadBookings { get; set; } = null!;
+        public DbSet<PackingBooking> PackingBookings { get; set; } = null!;
         public DbSet<MerchProductionPlan> MerchProductionPlans { get; set; } = null!;
         public DbSet<Shipment> Shipments { get; set; } = null!;
 
@@ -145,6 +152,48 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(ab => ab.StyleOrder)
                 .WithMany()
                 .HasForeignKey(ab => ab.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ButtonBooking>()
+                .HasOne(bb => bb.StyleOrder)
+                .WithMany()
+                .HasForeignKey(bb => bb.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<SnapButtonBooking>()
+                .HasOne(sbb => sbb.StyleOrder)
+                .WithMany()
+                .HasForeignKey(sbb => sbb.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ZipperBooking>()
+                .HasOne(zb => zb.StyleOrder)
+                .WithMany()
+                .HasForeignKey(zb => zb.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<LabelBooking>()
+                .HasOne(lb => lb.StyleOrder)
+                .WithMany()
+                .HasForeignKey(lb => lb.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<TrimBooking>()
+                .HasOne(tb => tb.StyleOrder)
+                .WithMany()
+                .HasForeignKey(tb => tb.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ThreadBooking>()
+                .HasOne(thb => thb.StyleOrder)
+                .WithMany()
+                .HasForeignKey(thb => thb.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<PackingBooking>()
+                .HasOne(pb => pb.StyleOrder)
+                .WithMany()
+                .HasForeignKey(pb => pb.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<MerchProductionPlan>()

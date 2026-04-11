@@ -342,5 +342,216 @@ namespace ERPBackend.Services.Services
             }
         }
         #endregion
+
+        #region Button Booking
+        public async Task<IEnumerable<ButtonBooking>> GetButtonBookingsByOrderAsync(int orderId)
+        {
+            return await _context.ButtonBookings
+                .Where(bb => bb.OrderId == orderId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<ButtonBooking>> GetAllButtonBookingsAsync(int companyId)
+        {
+            return await _context.ButtonBookings
+                .Include(bb => bb.StyleOrder!)
+                    .ThenInclude(o => o.Style)
+                .Where(bb => bb.StyleOrder != null && bb.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+
+        public async Task<ButtonBooking?> GetButtonBookingByIdAsync(int id)
+        {
+            return await _context.ButtonBookings
+                .Include(bb => bb.StyleOrder)
+                .FirstOrDefaultAsync(bb => bb.Id == id);
+        }
+
+        public async Task<ButtonBooking> CreateButtonBookingAsync(ButtonBooking booking)
+        {
+            _context.ButtonBookings.Add(booking);
+            await _context.SaveChangesAsync();
+            return booking;
+        }
+
+        public async Task UpdateButtonBookingAsync(ButtonBooking booking)
+        {
+            _context.Entry(booking).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteButtonBookingAsync(int id)
+        {
+            var booking = await _context.ButtonBookings.FindAsync(id);
+            if (booking != null)
+            {
+                _context.ButtonBookings.Remove(booking);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        // Snap Button Bookings
+        public async Task<IEnumerable<SnapButtonBooking>> GetAllSnapButtonBookingsAsync(int companyId)
+        {
+            return await _context.SnapButtonBookings
+                .Include(b => b.StyleOrder!)
+                    .ThenInclude(o => o.Style)
+                .Where(b => b.StyleOrder != null && b.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+
+        public async Task<SnapButtonBooking?> GetSnapButtonBookingByIdAsync(int id) => await _context.SnapButtonBookings.Include(b => b.StyleOrder!).FirstOrDefaultAsync(b => b.Id == id);
+        public async Task<SnapButtonBooking> CreateSnapButtonBookingAsync(SnapButtonBooking booking)
+        {
+            _context.SnapButtonBookings.Add(booking);
+            await _context.SaveChangesAsync();
+            return booking;
+        }
+        public async Task UpdateSnapButtonBookingAsync(SnapButtonBooking booking)
+        {
+            _context.SnapButtonBookings.Update(booking);
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeleteSnapButtonBookingAsync(int id)
+        {
+            var booking = await _context.SnapButtonBookings.FindAsync(id);
+            if (booking != null) { _context.SnapButtonBookings.Remove(booking); await _context.SaveChangesAsync(); }
+        }
+
+        // Zipper Bookings
+        public async Task<IEnumerable<ZipperBooking>> GetAllZipperBookingsAsync(int companyId)
+        {
+            return await _context.ZipperBookings
+                .Include(b => b.StyleOrder!)
+                    .ThenInclude(o => o.Style)
+                .Where(b => b.StyleOrder != null && b.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+        public async Task<ZipperBooking?> GetZipperBookingByIdAsync(int id) => await _context.ZipperBookings.Include(b => b.StyleOrder!).FirstOrDefaultAsync(b => b.Id == id);
+        public async Task<ZipperBooking> CreateZipperBookingAsync(ZipperBooking booking)
+        {
+            _context.ZipperBookings.Add(booking);
+            await _context.SaveChangesAsync();
+            return booking;
+        }
+        public async Task UpdateZipperBookingAsync(ZipperBooking booking)
+        {
+            _context.ZipperBookings.Update(booking);
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeleteZipperBookingAsync(int id)
+        {
+            var booking = await _context.ZipperBookings.FindAsync(id);
+            if (booking != null) { _context.ZipperBookings.Remove(booking); await _context.SaveChangesAsync(); }
+        }
+
+        // Label Bookings
+        public async Task<IEnumerable<LabelBooking>> GetAllLabelBookingsAsync(int companyId)
+        {
+            return await _context.LabelBookings
+                .Include(b => b.StyleOrder!)
+                    .ThenInclude(o => o.Style)
+                .Where(b => b.StyleOrder != null && b.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+        public async Task<LabelBooking?> GetLabelBookingByIdAsync(int id) => await _context.LabelBookings.Include(b => b.StyleOrder!).FirstOrDefaultAsync(b => b.Id == id);
+        public async Task<LabelBooking> CreateLabelBookingAsync(LabelBooking booking)
+        {
+            _context.LabelBookings.Add(booking);
+            await _context.SaveChangesAsync();
+            return booking;
+        }
+        public async Task UpdateLabelBookingAsync(LabelBooking booking)
+        {
+            _context.LabelBookings.Update(booking);
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeleteLabelBookingAsync(int id)
+        {
+            var booking = await _context.LabelBookings.FindAsync(id);
+            if (booking != null) { _context.LabelBookings.Remove(booking); await _context.SaveChangesAsync(); }
+        }
+
+        // Trim Bookings
+        public async Task<IEnumerable<TrimBooking>> GetAllTrimBookingsAsync(int companyId)
+        {
+            return await _context.TrimBookings
+                .Include(b => b.StyleOrder!)
+                    .ThenInclude(o => o.Style)
+                .Where(b => b.StyleOrder != null && b.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+        public async Task<TrimBooking?> GetTrimBookingByIdAsync(int id) => await _context.TrimBookings.Include(b => b.StyleOrder!).FirstOrDefaultAsync(b => b.Id == id);
+        public async Task<TrimBooking> CreateTrimBookingAsync(TrimBooking booking)
+        {
+            _context.TrimBookings.Add(booking);
+            await _context.SaveChangesAsync();
+            return booking;
+        }
+        public async Task UpdateTrimBookingAsync(TrimBooking booking)
+        {
+            _context.TrimBookings.Update(booking);
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeleteTrimBookingAsync(int id)
+        {
+            var booking = await _context.TrimBookings.FindAsync(id);
+            if (booking != null) { _context.TrimBookings.Remove(booking); await _context.SaveChangesAsync(); }
+        }
+
+        // Thread Bookings
+        public async Task<IEnumerable<ThreadBooking>> GetAllThreadBookingsAsync(int companyId)
+        {
+            return await _context.ThreadBookings
+                .Include(b => b.StyleOrder!)
+                    .ThenInclude(o => o.Style)
+                .Where(b => b.StyleOrder != null && b.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+        public async Task<ThreadBooking?> GetThreadBookingByIdAsync(int id) => await _context.ThreadBookings.Include(b => b.StyleOrder!).FirstOrDefaultAsync(b => b.Id == id);
+        public async Task<ThreadBooking> CreateThreadBookingAsync(ThreadBooking booking)
+        {
+            _context.ThreadBookings.Add(booking);
+            await _context.SaveChangesAsync();
+            return booking;
+        }
+        public async Task UpdateThreadBookingAsync(ThreadBooking booking)
+        {
+            _context.ThreadBookings.Update(booking);
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeleteThreadBookingAsync(int id)
+        {
+            var booking = await _context.ThreadBookings.FindAsync(id);
+            if (booking != null) { _context.ThreadBookings.Remove(booking); await _context.SaveChangesAsync(); }
+        }
+
+        // Packing Bookings
+        public async Task<IEnumerable<PackingBooking>> GetAllPackingBookingsAsync(int companyId)
+        {
+            return await _context.PackingBookings
+                .Include(b => b.StyleOrder!)
+                    .ThenInclude(o => o.Style)
+                .Where(b => b.StyleOrder != null && b.StyleOrder.CompanyId == companyId)
+                .ToListAsync();
+        }
+        public async Task<PackingBooking?> GetPackingBookingByIdAsync(int id) => await _context.PackingBookings.Include(b => b.StyleOrder!).FirstOrDefaultAsync(b => b.Id == id);
+        public async Task<PackingBooking> CreatePackingBookingAsync(PackingBooking booking)
+        {
+            _context.PackingBookings.Add(booking);
+            await _context.SaveChangesAsync();
+            return booking;
+        }
+        public async Task UpdatePackingBookingAsync(PackingBooking booking)
+        {
+            _context.PackingBookings.Update(booking);
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeletePackingBookingAsync(int id)
+        {
+            var booking = await _context.PackingBookings.FindAsync(id);
+            if (booking != null) { _context.PackingBookings.Remove(booking); await _context.SaveChangesAsync(); }
+        }
+        #endregion
     }
 }

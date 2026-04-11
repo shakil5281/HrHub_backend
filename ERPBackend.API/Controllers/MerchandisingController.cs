@@ -322,5 +322,119 @@ namespace ERPBackend.API.Controllers
             return NoContent();
         }
         #endregion
+
+        #region Button Bookings
+        [HttpGet("orders/{orderId}/button-bookings")]
+        public async Task<ActionResult<IEnumerable<ButtonBooking>>> GetButtonBookings(int orderId)
+        {
+            var bookings = await _merchandisingService.GetButtonBookingsByOrderAsync(orderId);
+            return Ok(bookings);
+        }
+
+        [HttpGet("button-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<ButtonBooking>>> GetAllButtonBookings(int companyId)
+        {
+            var bookings = await _merchandisingService.GetAllButtonBookingsAsync(companyId);
+            return Ok(bookings);
+        }
+
+        [HttpGet("button-bookings/detail/{id}")]
+        public async Task<ActionResult<ButtonBooking>> GetButtonBooking(int id)
+        {
+            var booking = await _merchandisingService.GetButtonBookingByIdAsync(id);
+            if (booking == null) return NotFound();
+            return Ok(booking);
+        }
+
+        [HttpPost("button-bookings")]
+        public async Task<ActionResult<ButtonBooking>> CreateButtonBooking(ButtonBooking booking)
+        {
+            var createdBooking = await _merchandisingService.CreateButtonBookingAsync(booking);
+            return CreatedAtAction(nameof(GetButtonBooking), new { id = createdBooking.Id }, createdBooking);
+        }
+
+        [HttpPut("button-bookings/{id}")]
+        public async Task<IActionResult> UpdateButtonBooking(int id, ButtonBooking booking)
+        {
+            if (id != booking.Id) return BadRequest();
+            await _merchandisingService.UpdateButtonBookingAsync(booking);
+            return NoContent();
+        }
+
+        [HttpDelete("button-bookings/{id}")]
+        public async Task<IActionResult> DeleteButtonBooking(int id) { await _merchandisingService.DeleteButtonBookingAsync(id); return NoContent(); }
+
+        // Snap Button Bookings
+        [HttpGet("snap-button-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<SnapButtonBooking>>> GetSnapButtonBookings(int companyId) => Ok(await _merchandisingService.GetAllSnapButtonBookingsAsync(companyId));
+        [HttpGet("snap-button-bookings/detail/{id}")]
+        public async Task<ActionResult<SnapButtonBooking>> GetSnapButtonBooking(int id) => Ok(await _merchandisingService.GetSnapButtonBookingByIdAsync(id));
+        [HttpPost("snap-button-bookings")]
+        public async Task<ActionResult<SnapButtonBooking>> CreateSnapButtonBooking(SnapButtonBooking booking) => Ok(await _merchandisingService.CreateSnapButtonBookingAsync(booking));
+        [HttpPut("snap-button-bookings/{id}")]
+        public async Task<IActionResult> UpdateSnapButtonBooking(int id, SnapButtonBooking booking) { if (id != booking.Id) return BadRequest(); await _merchandisingService.UpdateSnapButtonBookingAsync(booking); return NoContent(); }
+        [HttpDelete("snap-button-bookings/{id}")]
+        public async Task<IActionResult> DeleteSnapButtonBooking(int id) { await _merchandisingService.DeleteSnapButtonBookingAsync(id); return NoContent(); }
+
+        // Zipper Bookings
+        [HttpGet("zipper-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<ZipperBooking>>> GetZipperBookings(int companyId) => Ok(await _merchandisingService.GetAllZipperBookingsAsync(companyId));
+        [HttpGet("zipper-bookings/detail/{id}")]
+        public async Task<ActionResult<ZipperBooking>> GetZipperBooking(int id) => Ok(await _merchandisingService.GetZipperBookingByIdAsync(id));
+        [HttpPost("zipper-bookings")]
+        public async Task<ActionResult<ZipperBooking>> CreateZipperBooking(ZipperBooking booking) => Ok(await _merchandisingService.CreateZipperBookingAsync(booking));
+        [HttpPut("zipper-bookings/{id}")]
+        public async Task<IActionResult> UpdateZipperBooking(int id, ZipperBooking booking) { if (id != booking.Id) return BadRequest(); await _merchandisingService.UpdateZipperBookingAsync(booking); return NoContent(); }
+        [HttpDelete("zipper-bookings/{id}")]
+        public async Task<IActionResult> DeleteZipperBooking(int id) { await _merchandisingService.DeleteZipperBookingAsync(id); return NoContent(); }
+
+        // Label Bookings
+        [HttpGet("label-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<LabelBooking>>> GetLabelBookings(int companyId) => Ok(await _merchandisingService.GetAllLabelBookingsAsync(companyId));
+        [HttpGet("label-bookings/detail/{id}")]
+        public async Task<ActionResult<LabelBooking>> GetLabelBooking(int id) => Ok(await _merchandisingService.GetLabelBookingByIdAsync(id));
+        [HttpPost("label-bookings")]
+        public async Task<ActionResult<LabelBooking>> CreateLabelBooking(LabelBooking booking) => Ok(await _merchandisingService.CreateLabelBookingAsync(booking));
+        [HttpPut("label-bookings/{id}")]
+        public async Task<IActionResult> UpdateLabelBooking(int id, LabelBooking booking) { if (id != booking.Id) return BadRequest(); await _merchandisingService.UpdateLabelBookingAsync(booking); return NoContent(); }
+        [HttpDelete("label-bookings/{id}")]
+        public async Task<IActionResult> DeleteLabelBooking(int id) { await _merchandisingService.DeleteLabelBookingAsync(id); return NoContent(); }
+
+        // Trim Bookings
+        [HttpGet("trim-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<TrimBooking>>> GetTrimBookings(int companyId) => Ok(await _merchandisingService.GetAllTrimBookingsAsync(companyId));
+        [HttpGet("trim-bookings/detail/{id}")]
+        public async Task<ActionResult<TrimBooking>> GetTrimBooking(int id) => Ok(await _merchandisingService.GetTrimBookingByIdAsync(id));
+        [HttpPost("trim-bookings")]
+        public async Task<ActionResult<TrimBooking>> CreateTrimBooking(TrimBooking booking) => Ok(await _merchandisingService.CreateTrimBookingAsync(booking));
+        [HttpPut("trim-bookings/{id}")]
+        public async Task<IActionResult> UpdateTrimBooking(int id, TrimBooking booking) { if (id != booking.Id) return BadRequest(); await _merchandisingService.UpdateTrimBookingAsync(booking); return NoContent(); }
+        [HttpDelete("trim-bookings/{id}")]
+        public async Task<IActionResult> DeleteTrimBooking(int id) { await _merchandisingService.DeleteTrimBookingAsync(id); return NoContent(); }
+
+        // Thread Bookings
+        [HttpGet("thread-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<ThreadBooking>>> GetThreadBookings(int companyId) => Ok(await _merchandisingService.GetAllThreadBookingsAsync(companyId));
+        [HttpGet("thread-bookings/detail/{id}")]
+        public async Task<ActionResult<ThreadBooking>> GetThreadBooking(int id) => Ok(await _merchandisingService.GetThreadBookingByIdAsync(id));
+        [HttpPost("thread-bookings")]
+        public async Task<ActionResult<ThreadBooking>> CreateThreadBooking(ThreadBooking booking) => Ok(await _merchandisingService.CreateThreadBookingAsync(booking));
+        [HttpPut("thread-bookings/{id}")]
+        public async Task<IActionResult> UpdateThreadBooking(int id, ThreadBooking booking) { if (id != booking.Id) return BadRequest(); await _merchandisingService.UpdateThreadBookingAsync(booking); return NoContent(); }
+        [HttpDelete("thread-bookings/{id}")]
+        public async Task<IActionResult> DeleteThreadBooking(int id) { await _merchandisingService.DeleteThreadBookingAsync(id); return NoContent(); }
+
+        // Packing Bookings
+        [HttpGet("packing-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<PackingBooking>>> GetPackingBookings(int companyId) => Ok(await _merchandisingService.GetAllPackingBookingsAsync(companyId));
+        [HttpGet("packing-bookings/detail/{id}")]
+        public async Task<ActionResult<PackingBooking>> GetPackingBooking(int id) => Ok(await _merchandisingService.GetPackingBookingByIdAsync(id));
+        [HttpPost("packing-bookings")]
+        public async Task<ActionResult<PackingBooking>> CreatePackingBooking(PackingBooking booking) => Ok(await _merchandisingService.CreatePackingBookingAsync(booking));
+        [HttpPut("packing-bookings/{id}")]
+        public async Task<IActionResult> UpdatePackingBooking(int id, PackingBooking booking) { if (id != booking.Id) return BadRequest(); await _merchandisingService.UpdatePackingBookingAsync(booking); return NoContent(); }
+        [HttpDelete("packing-bookings/{id}")]
+        public async Task<IActionResult> DeletePackingBooking(int id) { await _merchandisingService.DeletePackingBookingAsync(id); return NoContent(); }
+        #endregion
     }
 }
