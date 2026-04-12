@@ -51,6 +51,12 @@ namespace ERPBackend.Core.DTOs
         public int H10 { get; set; }
         public int H11 { get; set; }
         public int H12 { get; set; }
+        public int H13 { get; set; }
+        public int H14 { get; set; }
+        public int H15 { get; set; }
+        public int H16 { get; set; }
+        public int H17 { get; set; }
+        public int H18 { get; set; }
         public int TotalCompleted { get; set; }
     }
 
@@ -72,6 +78,12 @@ namespace ERPBackend.Core.DTOs
         public int H10 { get; set; }
         public int H11 { get; set; }
         public int H12 { get; set; }
+        public int H13 { get; set; }
+        public int H14 { get; set; }
+        public int H15 { get; set; }
+        public int H16 { get; set; }
+        public int H17 { get; set; }
+        public int H18 { get; set; }
     }
 
     public class ProductionFilterDto

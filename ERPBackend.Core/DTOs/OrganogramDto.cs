@@ -43,8 +43,12 @@ namespace ERPBackend.Core.DTOs
         public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
         public decimal NightBill { get; set; }
+        public decimal TiffinBill { get; set; }
+        public decimal IfterBill { get; set; }
         public decimal HolidayBill { get; set; }
         public decimal AttendanceBonus { get; set; }
+        public bool IsNightBillEligible { get; set; }
+        public bool IsStaff { get; set; }
         public int? CompanyId { get; set; }
         public string? CompanyName { get; set; }
         public int? DepartmentId { get; set; }
@@ -58,8 +62,12 @@ namespace ERPBackend.Core.DTOs
         [Required] public string NameEn { get; set; } = string.Empty;
         public string? NameBn { get; set; }
         public decimal NightBill { get; set; }
+        public decimal TiffinBill { get; set; }
+        public decimal IfterBill { get; set; }
         public decimal HolidayBill { get; set; }
         public decimal AttendanceBonus { get; set; }
+        public bool IsNightBillEligible { get; set; }
+        public bool IsStaff { get; set; }
         public int? CompanyId { get; set; }
         public int? DepartmentId { get; set; }
         public int SectionId { get; set; }

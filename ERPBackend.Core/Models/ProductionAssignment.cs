@@ -59,8 +59,14 @@ namespace ERPBackend.Core.Models
         public int H10 { get; set; }
         public int H11 { get; set; }
         public int H12 { get; set; }
+        public int H13 { get; set; }
+        public int H14 { get; set; }
+        public int H15 { get; set; }
+        public int H16 { get; set; }
+        public int H17 { get; set; }
+        public int H18 { get; set; }
 
         [NotMapped]
-        public int TotalCompleted => H1 + H2 + H3 + H4 + H5 + H6 + H7 + H8 + H9 + H10 + H11 + H12;
+        public int TotalCompleted => H1 + H2 + H3 + H4 + H5 + H6 + H7 + H8 + H9 + H10 + H11 + H12 + H13 + H14 + H15 + H16 + H17 + H18;
     }
 }

@@ -120,13 +120,17 @@ namespace ERPBackend.API.Controllers
 
             if (record == null)
             {
+                // Check if a predefined target exists for this assignment and date
+                var predefinedTarget = await _context.ProductionTargets
+                    .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.TargetDate.Date == targetDate);
+
                 // Return default values if record doesn't exist yet
                 return Ok(new DailyProductionRecordDto
                 {
                     AssignmentId = assignmentId,
                     Date = targetDate,
-                    DailyTarget = 0,
-                    HourlyTarget = 0
+                    DailyTarget = predefinedTarget?.DailyTarget ?? 0,
+                    HourlyTarget = predefinedTarget?.HourlyTarget ?? 0
                 });
             }
 
@@ -149,6 +153,12 @@ namespace ERPBackend.API.Controllers
                 H10 = record.H10,
                 H11 = record.H11,
                 H12 = record.H12,
+                H13 = record.H13,
+                H14 = record.H14,
+                H15 = record.H15,
+                H16 = record.H16,
+                H17 = record.H17,
+                H18 = record.H18,
                 TotalCompleted = record.TotalCompleted
             });
         }
@@ -184,6 +194,12 @@ namespace ERPBackend.API.Controllers
             record.H10 = dto.H10;
             record.H11 = dto.H11;
             record.H12 = dto.H12;
+            record.H13 = dto.H13;
+            record.H14 = dto.H14;
+            record.H15 = dto.H15;
+            record.H16 = dto.H16;
+            record.H17 = dto.H17;
+            record.H18 = dto.H18;
 
             await _context.SaveChangesAsync();
 
@@ -206,8 +222,28 @@ namespace ERPBackend.API.Controllers
                 H10 = record.H10,
                 H11 = record.H11,
                 H12 = record.H12,
+                H13 = record.H13,
+                H14 = record.H14,
+                H15 = record.H15,
+                H16 = record.H16,
+                H17 = record.H17,
+                H18 = record.H18,
                 TotalCompleted = record.TotalCompleted
             });
+        }
+
+        [HttpDelete("daily-record")]
+        public async Task<IActionResult> DeleteDailyRecord([FromQuery] int assignmentId, [FromQuery] DateTime date)
+        {
+            var targetDate = date.Date;
+            var record = await _context.DailyProductionRecords
+                .FirstOrDefaultAsync(r => r.AssignmentId == assignmentId && r.Date.Date == targetDate);
+
+            if (record == null) return NotFound();
+
+            _context.DailyProductionRecords.Remove(record);
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
 
         [HttpGet("report/monthly")]
@@ -232,9 +268,9 @@ namespace ERPBackend.API.Controllers
                     Year = g.Key.Year,
                     LineName = g.Key.LineName,
                     TotalTarget = g.Sum(r => r.DailyTarget),
-                    TotalCompleted = g.Sum(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12),
+                    TotalCompleted = g.Sum(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18),
                     AvgAchievement = g.Sum(r => r.DailyTarget) > 0 
-                        ? (double)g.Sum(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12) / g.Sum(r => r.DailyTarget) * 100 
+                        ? (double)g.Sum(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18) / g.Sum(r => r.DailyTarget) * 100 
                         : 0,
                     WorkingDays = g.Count(),
                     TopStyle = g.Select(r => r.Assignment?.Production?.StyleNo ?? "")
@@ -336,44 +372,76 @@ namespace ERPBackend.API.Controllers
         private IQueryable<DailyReportItemDto> GetDailyReportQuery(ProductionFilterDto filters)
         {
             var targetDate = (filters.Date ?? DateTime.Today).Date;
-            var query = _context.DailyProductionRecords
-                .Include(r => r.Assignment)
-                    .ThenInclude(a => a!.Production)
-                .Include(r => r.Assignment)
-                    .ThenInclude(a => a!.Line)
-                .Where(r => r.Date.Date == targetDate);
+            
+            // Start from all active assignments
+            var query = _context.ProductionAssignments
+                .Include(a => a.Production)
+                .Include(a => a.Line)
+                .Where(a => a.Status == "Active");
 
             if (filters.LineId.HasValue)
-                query = query.Where(r => r.Assignment!.LineId == filters.LineId.Value);
+                query = query.Where(a => a.LineId == filters.LineId.Value);
 
             if (!string.IsNullOrEmpty(filters.Buyer))
-                query = query.Where(r => r.Assignment!.Production!.Buyer.Contains(filters.Buyer));
+                query = query.Where(a => a.Production!.Buyer.Contains(filters.Buyer));
 
             if (!string.IsNullOrEmpty(filters.StyleNo))
-                query = query.Where(r => r.Assignment!.Production!.StyleNo.Contains(filters.StyleNo));
+                query = query.Where(a => a.Production!.StyleNo.Contains(filters.StyleNo));
 
             if (!string.IsNullOrEmpty(filters.SearchTerm))
             {
                 var term = filters.SearchTerm.ToLower();
-                query = query.Where(r => 
-                    r.Assignment!.Line!.LineName.ToLower().Contains(term) ||
-                    r.Assignment!.Production!.StyleNo.ToLower().Contains(term) ||
-                    r.Assignment!.Production!.Buyer.ToLower().Contains(term));
+                query = query.Where(a => 
+                    a.Line!.LineName.ToLower().Contains(term) ||
+                    a.Production!.StyleNo.ToLower().Contains(term) ||
+                    a.Production!.Buyer.ToLower().Contains(term));
             }
 
-            return query.Select(r => new DailyReportItemDto
+            return query.Select(a => new DailyReportItemDto
             {
-                AssignmentId = r.AssignmentId,
-                LineName = r.Assignment!.Line!.LineName,
-                StyleNo = r.Assignment!.Production!.StyleNo,
-                Buyer = r.Assignment!.Production!.Buyer,
-                DailyTarget = r.DailyTarget,
-                HourlyTarget = r.HourlyTarget,
-                Completed = r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12,
-                Achievement = r.DailyTarget > 0 
-                    ? (double)(r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12) / r.DailyTarget * 100 
-                    : 0
-            });
+                AssignmentId = a.Id,
+                LineName = a.Line!.LineName,
+                StyleNo = a.Production!.StyleNo,
+                Buyer = a.Production!.Buyer,
+                
+                // Fetch target from record, or fallback to predefined target
+                DailyTarget = _context.DailyProductionRecords
+                    .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
+                    .Select(r => (int?)r.DailyTarget)
+                    .FirstOrDefault() ?? _context.ProductionTargets
+                        .Where(t => t.AssignmentId == a.Id && t.TargetDate.Date == targetDate)
+                        .Select(t => (int?)t.DailyTarget)
+                        .FirstOrDefault() ?? 0,
+
+                HourlyTarget = _context.DailyProductionRecords
+                    .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
+                    .Select(r => (int?)r.HourlyTarget)
+                    .FirstOrDefault() ?? _context.ProductionTargets
+                        .Where(t => t.AssignmentId == a.Id && t.TargetDate.Date == targetDate)
+                        .Select(t => (int?)t.HourlyTarget)
+                        .FirstOrDefault() ?? 0,
+
+                Completed = _context.DailyProductionRecords
+                    .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
+                    .Select(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18)
+                    .FirstOrDefault(),
+
+                Achievement = _context.DailyProductionRecords
+                    .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
+                    .Select(r => r.DailyTarget)
+                    .FirstOrDefault() > 0 
+                        ? (double)_context.DailyProductionRecords
+                            .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
+                            .Select(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18)
+                            .FirstOrDefault() / 
+                          _context.DailyProductionRecords
+                            .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
+                            .Select(r => r.DailyTarget)
+                            .FirstOrDefault() * 100 
+                        : 0
+            })
+            // Only show if there's either a target set up or some production has been recorded
+            .Where(r => r.DailyTarget > 0 || r.Completed > 0);
         }
     }
 }

@@ -88,7 +88,7 @@ namespace ERPBackend.API.Controllers
             Company? company, DateTime date, string groupBy)
         {
             // 0. Page Setup
-            worksheet.PrinterSettings.Orientation = eOrientation.Landscape;
+            worksheet.PrinterSettings.Orientation = eOrientation.Portrait;
             worksheet.PrinterSettings.FitToPage = true;
             worksheet.PrinterSettings.FitToWidth = 1;
             worksheet.PrinterSettings.FitToHeight = 0;
@@ -97,16 +97,19 @@ namespace ERPBackend.API.Controllers
             worksheet.PrinterSettings.BottomMargin = 0.5m;
             worksheet.PrinterSettings.LeftMargin = 0.5m;
             worksheet.PrinterSettings.RightMargin = 0.5m;
+            worksheet.View.ShowGridLines = false;
 
             // 1. Header Section
             string companyName = company?.CompanyNameEn ?? "HR HUB";
             string address = company?.AddressEn ?? "Industrial Area, Dhaka, Bangladesh";
 
             worksheet.Cells["A1:J1"].Merge = true;
-            worksheet.Cells["A1"].Value = companyName;
-            worksheet.Cells["A1"].Style.Font.Size = 16;
+            worksheet.Cells["A1"].Value = companyName.ToUpper();
+            worksheet.Cells["A1"].Style.Font.Size = 20;
             worksheet.Cells["A1"].Style.Font.Bold = true;
             worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            worksheet.Cells["A1"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Row(1).Height = 30;
 
             worksheet.Cells["A2:J2"].Merge = true;
             worksheet.Cells["A2"].Value = address;
@@ -140,9 +143,13 @@ namespace ERPBackend.API.Controllers
 
             using (var range = worksheet.Cells[headerRow, 1, headerRow, 10])
             {
+                worksheet.Row(headerRow).Height = 30;
                 range.Style.Font.Bold = true;
                 range.Style.Fill.PatternType = ExcelFillStyle.Solid;
                 range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                range.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                range.Style.WrapText = true;
                 range.Style.Border.Top.Style = ExcelBorderStyle.Thin;
                 range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
                 range.Style.Border.Left.Style = ExcelBorderStyle.Thin;
@@ -170,6 +177,7 @@ namespace ERPBackend.API.Controllers
 
                 foreach (var item in group)
                 {
+                    worksheet.Row(currentRow).Height = 25;
                     worksheet.Cells[currentRow, 1].Value = sl++;
                     worksheet.Cells[currentRow, 2].Value = item.EmployeeId;
                     worksheet.Cells[currentRow, 3].Value = item.EmployeeName;
@@ -192,7 +200,6 @@ namespace ERPBackend.API.Controllers
 
                     var statusCell = worksheet.Cells[currentRow, 9];
                     statusCell.Value = statusShort;
-                    statusCell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                     statusCell.Style.Font.Bold = true;
 
                     if (statusShort == "P") statusCell.Style.Font.Color.SetColor(System.Drawing.Color.Green);
@@ -204,13 +211,20 @@ namespace ERPBackend.API.Controllers
 
                     worksheet.Cells[currentRow, 10].Value = item.OTHours;
 
-                    for (int i = 1; i <= 10; i++)
+                    using (var rowRange = worksheet.Cells[currentRow, 1, currentRow, 10])
                     {
-                        worksheet.Cells[currentRow, i].Style.Border.Top.Style = ExcelBorderStyle.Thin;
-                        worksheet.Cells[currentRow, i].Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
-                        worksheet.Cells[currentRow, i].Style.Border.Left.Style = ExcelBorderStyle.Thin;
-                        worksheet.Cells[currentRow, i].Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                        rowRange.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                        rowRange.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                        rowRange.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                        rowRange.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                        rowRange.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                        rowRange.Style.Border.Right.Style = ExcelBorderStyle.Thin;
                     }
+
+                    // Override alignment for Name, Dept, Desig
+                    worksheet.Cells[currentRow, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                    worksheet.Cells[currentRow, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                    worksheet.Cells[currentRow, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
 
                     currentRow++;
                 }
@@ -220,50 +234,71 @@ namespace ERPBackend.API.Controllers
             currentRow += 2;
             int summaryStartRow = currentRow;
 
+            worksheet.Row(currentRow).Height = 25;
             worksheet.Cells[currentRow, 2].Value = $"Summary Statistics ({groupBy} Wise)";
             worksheet.Cells[currentRow, 2].Style.Font.Bold = true;
             worksheet.Cells[currentRow, 2].Style.Font.UnderLine = true;
+            worksheet.Cells[currentRow, 2].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             currentRow++;
 
+            worksheet.Row(currentRow).Height = 25;
             worksheet.Cells[currentRow, 2].Value = "Total Employee";
             worksheet.Cells[currentRow, 3].Value = data.Count();
+            worksheet.Cells[currentRow, 2].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Cells[currentRow, 3].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             currentRow++;
 
+            worksheet.Row(currentRow).Height = 25;
             worksheet.Cells[currentRow, 2].Value = "Present (P)";
             worksheet.Cells[currentRow, 3].Value =
                 data.Count(x => x.Status.StartsWith("Present") || x.Status == "Late");
             worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Green);
+            worksheet.Cells[currentRow, 2].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Cells[currentRow, 3].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             currentRow++;
 
+            worksheet.Row(currentRow).Height = 25;
             worksheet.Cells[currentRow, 2].Value = "Late (L)";
             worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status == "Late");
             worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Orange);
+            worksheet.Cells[currentRow, 2].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Cells[currentRow, 3].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             currentRow++;
 
+            worksheet.Row(currentRow).Height = 25;
             worksheet.Cells[currentRow, 2].Value = "Absent (A)";
             worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status == "Absent");
             worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Red);
+            worksheet.Cells[currentRow, 2].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Cells[currentRow, 3].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             currentRow++;
 
+            worksheet.Row(currentRow).Height = 25;
             worksheet.Cells[currentRow, 2].Value = "On Leave (LV)";
             worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status == "On Leave");
             worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+            worksheet.Cells[currentRow, 2].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Cells[currentRow, 3].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             currentRow++;
 
+            worksheet.Row(currentRow).Height = 25;
             worksheet.Cells[currentRow, 2].Value = "Holiday (H)";
             worksheet.Cells[currentRow, 3].Value = data.Count(x => x.Status == "Holiday");
             worksheet.Cells[currentRow, 3].Style.Font.Color.SetColor(System.Drawing.Color.Purple);
+            worksheet.Cells[currentRow, 2].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Cells[currentRow, 3].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             currentRow++;
 
             using (var range = worksheet.Cells[summaryStartRow + 1, 3, currentRow - 1, 3])
             {
                 range.Style.Font.Bold = true;
                 range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                range.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             }
 
             worksheet.Cells.AutoFitColumns();
             worksheet.Column(1).Width = 5;
-            worksheet.Column(2).Width = 15;
+            worksheet.Column(2).Width = 10;
             worksheet.Column(3).Width = 25;
             worksheet.Column(9).Width = 8;
         }
@@ -277,80 +312,148 @@ namespace ERPBackend.API.Controllers
                 var data = (await GetDailyReportInternal(filters)).ToList();
                 var date = filters.Date ?? DateTime.Today;
 
+                Company? company = null;
+                if (!string.IsNullOrEmpty(filters.CompanyName))
+                {
+                    company = await _context.Set<Company>()
+                        .FirstOrDefaultAsync(c => c.CompanyNameEn == filters.CompanyName);
+                }
+                company ??= await _context.Set<Company>().FirstOrDefaultAsync();
+
+                string companyName = company?.CompanyNameEn ?? "HR HUB";
+                string address = company?.AddressEn ?? "Industrial Area, Dhaka, Bangladesh";
+
                 var document = Document.Create(container =>
                 {
                     container.Page(page =>
                     {
-                        page.Size(PageSizes.A4.Landscape());
+                        page.Size(PageSizes.A4.Portrait());
                         page.Margin(1, Unit.Centimetre);
                         page.PageColor(Colors.White);
-                        page.DefaultTextStyle(x => x.FontSize(9));
+                        page.DefaultTextStyle(x => x.FontSize(8));
 
-                        page.Header().Row(row =>
+                        page.Header().Column(col =>
                         {
-                            row.RelativeItem().Column(col =>
-                            {
-                                col.Item().Text("Daily Attendance Report").FontSize(16).SemiBold()
-                                    .FontColor(Colors.Blue.Medium);
-                                col.Item().Text($"Date: {date:dd MMMM yyyy}").FontSize(10);
-                            });
+                            col.Item().AlignCenter().Text(companyName.ToUpper()).FontSize(20).Bold();
+                            col.Item().AlignCenter().Text(address).FontSize(10);
+                            col.Item().AlignCenter().PaddingTop(5).Text("Daily Attendance Report").FontSize(12).Bold().Underline();
+                            col.Item().AlignCenter().Text($"Date: {date:dd MMMM yyyy}").FontSize(10);
                         });
 
-                        page.Content().PaddingVertical(10).Table(table =>
-                        {
-                            table.ColumnsDefinition(columns =>
+                        page.Content().PaddingVertical(10).Column(col => {
+                            col.Item().Table(table =>
                             {
-                                columns.ConstantColumn(25); // SL
-                                columns.ConstantColumn(80); // Emp ID
-                                columns.RelativeColumn(); // Name
-                                columns.RelativeColumn(); // Dept
-                                columns.RelativeColumn(); // Desig
-                                columns.ConstantColumn(50); // In
-                                columns.ConstantColumn(50); // Out
-                                columns.ConstantColumn(60); // Status
-                                columns.ConstantColumn(40); // OT
-                            });
-
-                            table.Header(header =>
-                            {
-                                header.Cell().Element(HeaderCellStyle).Text("SL");
-                                header.Cell().Element(HeaderCellStyle).Text("Emp ID");
-                                header.Cell().Element(HeaderCellStyle).Text("Name");
-                                header.Cell().Element(HeaderCellStyle).Text("Dept");
-                                header.Cell().Element(HeaderCellStyle).Text("Desig");
-                                header.Cell().Element(HeaderCellStyle).Text("In");
-                                header.Cell().Element(HeaderCellStyle).Text("Out");
-                                header.Cell().Element(HeaderCellStyle).Text("Status");
-                                header.Cell().Element(HeaderCellStyle).Text("OT");
-
-                                static IContainer HeaderCellStyle(IContainer container)
+                                table.ColumnsDefinition(columns =>
                                 {
-                                    return container.DefaultTextStyle(x => x.SemiBold())
-                                        .PaddingVertical(5)
-                                        .BorderBottom(1)
-                                        .BorderColor(Colors.Black);
+                                    columns.ConstantColumn(25); // SL
+                                    columns.ConstantColumn(60); // Emp ID
+                                    columns.RelativeColumn(); // Name
+                                    columns.RelativeColumn(); // Dept
+                                    columns.RelativeColumn(); // Desig
+                                    columns.ConstantColumn(40); // In
+                                    columns.ConstantColumn(40); // Out
+                                    columns.ConstantColumn(40); // Status
+                                    columns.ConstantColumn(30); // OT
+                                });
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Element(HeaderCellStyle).Text("SL");
+                                    header.Cell().Element(header => header.Element(HeaderCellStyle).AlignLeft()).Text("Emp ID");
+                                    header.Cell().Element(header => header.Element(HeaderCellStyle).AlignLeft()).Text("Name");
+                                    header.Cell().Element(header => header.Element(HeaderCellStyle).AlignLeft()).Text("Dept");
+                                    header.Cell().Element(header => header.Element(HeaderCellStyle).AlignLeft()).Text("Desig");
+                                    header.Cell().Element(HeaderCellStyle).Text("In");
+                                    header.Cell().Element(HeaderCellStyle).Text("Out");
+                                    header.Cell().Element(HeaderCellStyle).Text("St");
+                                    header.Cell().Element(HeaderCellStyle).Text("OT");
+
+                                    static IContainer HeaderCellStyle(IContainer container)
+                                    {
+                                        return container.DefaultTextStyle(x => x.SemiBold())
+                                            .PaddingVertical(8)
+                                            .Background(Colors.Grey.Lighten3)
+                                            .Border(0.5f)
+                                            .BorderColor(Colors.Black)
+                                            .AlignCenter()
+                                            .AlignMiddle();
+                                    }
+                                });
+
+                                int slCount = 1;
+                                foreach (var item in data)
+                                {
+                                    table.Cell().Element(DataCellStyle).Text(slCount++.ToString());
+                                    table.Cell().Element(LeftDataCellStyle).Text(item.EmployeeId);
+                                    table.Cell().Element(LeftDataCellStyle).Text(item.EmployeeName);
+                                    table.Cell().Element(LeftDataCellStyle).Text(item.Department);
+                                    table.Cell().Element(LeftDataCellStyle).Text(item.Designation);
+                                    table.Cell().Element(DataCellStyle).Text(item.InTime?.ToString("HH:mm") ?? "-");
+                                    table.Cell().Element(DataCellStyle).Text(item.OutTime?.ToString("HH:mm") ?? "-");
+                                    
+                                    string statusShort = item.Status switch
+                                    {
+                                        "Present" => "P",
+                                        "Absent" => "A",
+                                        "Late" => "L",
+                                        "On Leave" => "LV",
+                                        "Off Day" => "OFF",
+                                        "Holiday" => "H",
+                                        _ => item.Status
+                                    };
+                                    table.Cell().Element(DataCellStyle).Text(statusShort);
+                                    table.Cell().Element(DataCellStyle).Text(item.OTHours.ToString());
+
+                                    static IContainer DataCellStyle(IContainer container)
+                                    {
+                                        return container.Border(0.5f).BorderColor(Colors.Grey.Lighten2)
+                                            .PaddingVertical(6)
+                                            .AlignCenter()
+                                            .AlignMiddle();
+                                    }
+                                    static IContainer LeftDataCellStyle(IContainer container)
+                                    {
+                                        return container.Border(0.5f).BorderColor(Colors.Grey.Lighten2)
+                                            .PaddingVertical(6)
+                                            .PaddingLeft(2)
+                                            .AlignLeft()
+                                            .AlignMiddle();
+                                    }
                                 }
                             });
 
-                            int slCount = 1;
-                            foreach (var item in data)
+                            // Summary Section
+                            col.Item().PaddingTop(15).Table(summaryTable =>
                             {
-                                table.Cell().Element(DataCellStyle).Text(slCount++.ToString());
-                                table.Cell().Element(DataCellStyle).Text(item.EmployeeId);
-                                table.Cell().Element(DataCellStyle).Text(item.EmployeeName);
-                                table.Cell().Element(DataCellStyle).Text(item.Department);
-                                table.Cell().Element(DataCellStyle).Text(item.Designation);
-                                table.Cell().Element(DataCellStyle).Text(item.InTime?.ToString("HH:mm") ?? "-");
-                                table.Cell().Element(DataCellStyle).Text(item.OutTime?.ToString("HH:mm") ?? "-");
-                                table.Cell().Element(DataCellStyle).Text(item.Status);
-                                table.Cell().Element(DataCellStyle).Text(item.OTHours.ToString());
-
-                                static IContainer DataCellStyle(IContainer container)
+                                summaryTable.ColumnsDefinition(columns =>
                                 {
-                                    return container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                                        .PaddingVertical(3);
+                                    columns.ConstantColumn(120);
+                                    columns.ConstantColumn(50);
+                                });
+
+                                summaryTable.Header(header =>
+                                {
+                                    header.Cell().ColumnSpan(2).PaddingBottom(5).Text("Summary Statistics").Bold().Underline();
+                                });
+
+                                AddSummaryRow(summaryTable, "Total Employee", data.Count.ToString());
+                                AddSummaryRow(summaryTable, "Present (P)", data.Count(x => x.Status.StartsWith("Present") || x.Status == "Late").ToString(), Colors.Green.Medium);
+                                AddSummaryRow(summaryTable, "Late (L)", data.Count(x => x.Status == "Late").ToString(), Colors.Orange.Medium);
+                                AddSummaryRow(summaryTable, "Absent (A)", data.Count(x => x.Status == "Absent").ToString(), Colors.Red.Medium);
+                                AddSummaryRow(summaryTable, "On Leave (LV)", data.Count(x => x.Status == "On Leave").ToString(), Colors.Blue.Medium);
+                                AddSummaryRow(summaryTable, "Holiday (H)", data.Count(x => x.Status == "Holiday").ToString(), Colors.Purple.Medium);
+
+                                static void AddSummaryRow(TableDescriptor table, string label, string value, string? color = null)
+                                {
+                                    table.Cell().Element(SummaryCellStyle).Text(label);
+                                    table.Cell().Element(SummaryCellStyle).Text(value).FontColor(color ?? Colors.Black).Bold();
                                 }
-                            }
+
+                                static IContainer SummaryCellStyle(IContainer container)
+                                {
+                                    return container.Border(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3).PaddingLeft(2).AlignMiddle();
+                                }
+                            });
                         });
 
                         page.Footer().AlignCenter().Text(x =>
@@ -740,7 +843,7 @@ namespace ERPBackend.API.Controllers
                 {
                     // 1. Overall Summary Sheet
                     var summarySheet = package.Workbook.Worksheets.Add("Overall Summary");
-                    AddSummaryHeader(summarySheet, company, "Overall Attendance Summary", date, 6);
+                    AddSummaryHeader(summarySheet, company, "Daily Attendance Summary", date, 6);
 
                     int row = 7;
                     string[] summaryHeaders = { "Metric", "Count" };
@@ -1054,32 +1157,45 @@ namespace ERPBackend.API.Controllers
         private void AddSummaryHeader(ExcelWorksheet worksheet, Company? company, string title, DateTime date,
             int columns)
         {
+            worksheet.View.ShowGridLines = false;
             string companyName = company?.CompanyNameEn ?? "HR HUB";
             string address = company?.AddressEn ?? "Industrial Area, Dhaka, Bangladesh";
-            string colRange = $"A1:{(char)('A' + columns - 1)}";
+            char lastColChar = (char)('A' + columns - 1);
 
-            worksheet.Cells[$"{colRange}1"].Merge = true;
-            worksheet.Cells["A1"].Value = companyName;
-            worksheet.Cells["A1"].Style.Font.Size = 16;
+            // Row 1: Company Name
+            worksheet.Cells[$"A1:{lastColChar}1"].Merge = true;
+            worksheet.Cells["A1"].Value = companyName.ToUpper();
+            worksheet.Cells["A1"].Style.Font.Size = 20;
             worksheet.Cells["A1"].Style.Font.Bold = true;
             worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            worksheet.Cells["A1"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Row(1).Height = 35;
 
-            worksheet.Cells[$"{colRange}2"].Merge = true;
+            // Row 2: Address
+            worksheet.Cells[$"A2:{lastColChar}2"].Merge = true;
             worksheet.Cells["A2"].Value = address;
             worksheet.Cells["A2"].Style.Font.Size = 10;
             worksheet.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            worksheet.Cells["A2"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Row(2).Height = 20;
 
-            worksheet.Cells[$"{colRange}3"].Merge = true;
+            // Row 3: Title
+            worksheet.Cells[$"A3:{lastColChar}3"].Merge = true;
             worksheet.Cells["A3"].Value = title;
-            worksheet.Cells["A3"].Style.Font.Size = 12;
+            worksheet.Cells["A3"].Style.Font.Size = 14;
             worksheet.Cells["A3"].Style.Font.Bold = true;
             worksheet.Cells["A3"].Style.Font.UnderLine = true;
             worksheet.Cells["A3"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            worksheet.Cells["A3"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Row(3).Height = 25;
 
-            worksheet.Cells[$"{colRange}4"].Merge = true;
+            // Row 4: Date
+            worksheet.Cells[$"A4:{lastColChar}4"].Merge = true;
             worksheet.Cells["A4"].Value = $"Date: {date:dd MMMM yyyy}";
             worksheet.Cells["A4"].Style.Font.Size = 10;
             worksheet.Cells["A4"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            worksheet.Cells["A4"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            worksheet.Row(4).Height = 20;
 
             // Page Setup
             worksheet.PrinterSettings.Orientation = OfficeOpenXml.eOrientation.Portrait;
@@ -1091,8 +1207,10 @@ namespace ERPBackend.API.Controllers
         private void AddSummaryRow(ExcelWorksheet sheet, ref int row, string metric, object value,
             System.Drawing.Color? color = null)
         {
+            sheet.Row(row).Height = 25;
             sheet.Cells[row, 1].Value = metric;
             sheet.Cells[row, 2].Value = value;
+            sheet.Cells[row, 1, row, 2].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             if (color.HasValue) sheet.Cells[row, 2].Style.Font.Color.SetColor(color.Value);
             row++;
         }
@@ -1102,17 +1220,21 @@ namespace ERPBackend.API.Controllers
         {
             AddSummaryHeader(sheet, company, title, date, columns);
             int row = 6;
+            sheet.Row(row).Height = 30;
             string[] headers = { "SL", "Name", "Total", "Present", "Absent", "Late", "Leave", "Rate (%)" };
             for (int i = 0; i < headers.Length; i++)
             {
-                sheet.Cells[row, i + 1].Value = headers[i];
-                sheet.Cells[row, i + 1].Style.Font.Bold = true;
-                sheet.Cells[row, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                sheet.Cells[row, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-                sheet.Cells[row, i + 1].Style.Border.Top.Style = ExcelBorderStyle.Thin;
-                sheet.Cells[row, i + 1].Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
-                sheet.Cells[row, i + 1].Style.Border.Left.Style = ExcelBorderStyle.Thin;
-                sheet.Cells[row, i + 1].Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                var cell = sheet.Cells[row, i + 1];
+                cell.Value = headers[i];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                cell.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                cell.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                cell.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                cell.Style.Border.Right.Style = ExcelBorderStyle.Thin;
             }
         }
 
@@ -1122,8 +1244,10 @@ namespace ERPBackend.API.Controllers
             int sl = 1;
             foreach (var item in data)
             {
+                sheet.Row(row).Height = 25;
                 sheet.Cells[row, 1].Value = sl++;
                 sheet.Cells[row, 2].Value = item.Name;
+                sheet.Cells[row, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
                 sheet.Cells[row, 3].Value = item.TotalEmployees;
                 sheet.Cells[row, 4].Value = item.Present;
                 sheet.Cells[row, 5].Value = item.Absent;
@@ -1133,6 +1257,8 @@ namespace ERPBackend.API.Controllers
 
                 for (int i = 1; i <= 8; i++)
                 {
+                    if (i != 2) sheet.Cells[row, i].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    sheet.Cells[row, i].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
                     sheet.Cells[row, i].Style.Border.Top.Style = ExcelBorderStyle.Thin;
                     sheet.Cells[row, i].Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
                     sheet.Cells[row, i].Style.Border.Left.Style = ExcelBorderStyle.Thin;
@@ -1144,7 +1270,7 @@ namespace ERPBackend.API.Controllers
 
             sheet.Cells.AutoFitColumns();
             sheet.Column(1).Width = 5;
-            sheet.Column(2).Width = 30;
+            sheet.Column(2).Width = 35;
         }
 
         // GET: api/attendance/job-card
@@ -2746,11 +2872,13 @@ foreach (var att in attendances)
                         EmployeeId = a.Employee!.EmployeeId,
                         EmployeeName = a.Employee!.FullNameEn,
                         Department = a.Employee!.Department!.NameEn,
+                        Section = a.Employee!.Section!.NameEn,
+                        Line = a.Employee!.Line!.NameEn,
                         Designation = a.Employee!.Designation!.NameEn,
                         Date = a.Date,
                         InTime = a.InTime,
                         OutTime = a.OutTime,
-                        RegularHours = 8, // Can be calculated based on shift
+                        RegularHours = 8,
                         OTHours = a.OTHours,
                         Remarks = a.Remarks
                     })
@@ -2778,25 +2906,56 @@ foreach (var att in attendances)
             {
                 var date = filters.Date ?? DateTime.Today;
                 var query = _context.Attendances
-                    .Include(a => a.Employee)
-                    .ThenInclude(e => e!.Department)
+                    .Include(a => a.Employee).ThenInclude(e => e!.Department)
+                    .Include(a => a.Employee).ThenInclude(e => e!.Section)
+                    .Include(a => a.Employee).ThenInclude(e => e!.Line)
                     .Where(a => a.Date.Date == date.Date)
                     .Where(a => a.OTHours > 0);
 
                 query = ApplyAttendanceFilters(query, filters);
                 var records = await query.ToListAsync();
 
-                int summaryId = 1;
+                int deptId = 1;
                 var departmentSummaries = records
                     .GroupBy(a => a.Employee!.Department)
                     .Select(g => new DailyOTSummaryDto
                     {
-                        Id = summaryId++,
-                        Department = g.Key?.NameEn ?? "N/A",
+                        Id = deptId++,
+                        Name = g.Key?.NameEn ?? "N/A",
                         EmployeeCount = g.Count(),
                         TotalOTHours = g.Sum(a => a.OTHours),
-                        AverageOTPerEmployee = g.Average(a => a.OTHours),
-                        TotalRegularHours = g.Count() * 8m // 8 hours per employee
+                        AverageOTPerEmployee = g.Count() > 0 ? g.Average(a => a.OTHours) : 0,
+                        TotalRegularHours = g.Count() * 8m
+                    })
+                    .OrderByDescending(s => s.TotalOTHours)
+                    .ToList();
+
+                int secId = 1;
+                var sectionSummaries = records
+                    .GroupBy(a => a.Employee!.Section)
+                    .Select(g => new DailyOTSummaryDto
+                    {
+                        Id = secId++,
+                        Name = g.Key?.NameEn ?? "N/A",
+                        EmployeeCount = g.Count(),
+                        TotalOTHours = g.Sum(a => a.OTHours),
+                        AverageOTPerEmployee = g.Count() > 0 ? g.Average(a => a.OTHours) : 0,
+                        TotalRegularHours = g.Count() * 8m
+                    })
+                    .OrderByDescending(s => s.TotalOTHours)
+                    .ToList();
+
+                int lineId = 1;
+                var lineSummaries = records
+                    .GroupBy(a => a.Employee!.Line)
+                    .Select(g => new DailyOTSummaryDto
+                    {
+                        Id = lineId++,
+                        Name = g.Key?.NameEn ?? "N/A",
+                        EmployeeCount = g.Count(),
+                        TotalOTHours = g.Sum(a => a.OTHours),
+                        AverageOTPerEmployee = g.Count() > 0 ? g.Average(a => a.OTHours) : 0,
+                        TotalRegularHours = g.Count() * 8m
                     })
                     .OrderByDescending(s => s.TotalOTHours)
                     .ToList();
@@ -2804,6 +2963,8 @@ foreach (var att in attendances)
                 return Ok(new OTSummaryResponseDto
                 {
                     DepartmentSummaries = departmentSummaries,
+                    SectionSummaries = sectionSummaries,
+                    LineSummaries = lineSummaries,
                     GrandTotalOTHours = departmentSummaries.Sum(s => s.TotalOTHours),
                     TotalEmployees = records.Count,
                     Date = date
@@ -2950,7 +3111,7 @@ foreach (var att in attendances)
                     foreach (var item in summaries)
                     {
                         worksheet.Cells[row, 1].Value = sl++;
-                        worksheet.Cells[row, 2].Value = item.Department;
+                        worksheet.Cells[row, 2].Value = item.Name;
                         worksheet.Cells[row, 3].Value = item.EmployeeCount;
                         worksheet.Cells[row, 4].Value = item.TotalOTHours;
                         

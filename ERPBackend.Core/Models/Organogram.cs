@@ -47,8 +47,12 @@ namespace ERPBackend.Core.Models
         [StringLength(100)] public string? NameBn { get; set; }
 
         [Column(TypeName = "decimal(18,2)")] public decimal NightBill { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal TiffinBill { get; set; }
+        [Column(TypeName = "decimal(18,2)")] public decimal IfterBill { get; set; }
         [Column(TypeName = "decimal(18,2)")] public decimal HolidayBill { get; set; }
         [Column(TypeName = "decimal(18,2)")] public decimal AttendanceBonus { get; set; }
+        public bool IsNightBillEligible { get; set; }
+        public bool IsStaff { get; set; }
 
         public int? CompanyId { get; set; }
 

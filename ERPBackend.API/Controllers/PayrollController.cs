@@ -8,6 +8,11 @@ using System.Globalization;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
+using Color = System.Drawing.Color;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using System.Security.Claims;
 
 namespace ERPBackend.API.Controllers
 {
@@ -226,38 +231,70 @@ namespace ERPBackend.API.Controllers
             [FromQuery] int month,
             [FromQuery] int? companyId)
         {
-            var query = _context.MonthlySalarySheets
-                .Include(s => s.Employee)
-                .ThenInclude(e => e!.Department)
-                .Where(s => s.Year == year && s.Month == month);
-
-            if (companyId.HasValue && companyId > 0)
+            try
             {
-                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+                var query = _context.MonthlySalarySheets
+                    .Include(s => s.Employee).ThenInclude(e => e!.Department)
+                    .Include(s => s.Employee).ThenInclude(e => e!.Section)
+                    .Include(s => s.Employee).ThenInclude(e => e!.Line)
+                    .Include(s => s.Employee).ThenInclude(e => e!.Group)
+                    .Where(s => s.Year == year && s.Month == month);
+
+                if (companyId.HasValue && companyId > 0)
+                    query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+
+                var records = await query.ToListAsync();
+
+                if (!records.Any()) return Ok(new SalarySummaryDto());
+
+                var summary = new SalarySummaryDto
+                {
+                    TotalGrossSalary = Math.Round(records.Sum(s => s.GrossSalary), 0),
+                    TotalOTAmount = Math.Round(records.Sum(s => s.OTAmount), 0),
+                    TotalDeductions = Math.Round(records.Sum(s => s.TotalDeduction), 0),
+                    TotalNetPayable = Math.Round(records.Sum(s => s.NetPayable), 0),
+                    TotalEmployees = records.Count
+                };
+
+                summary.DepartmentSummaries = records
+                    .GroupBy(r => !string.IsNullOrWhiteSpace(r.Employee?.Department?.NameEn) ? r.Employee!.Department!.NameEn : "Office/Other")
+                    .Select(g => MapToSummaryItem(g))
+                    .OrderBy(x => x.Name).ToList();
+
+                summary.SectionSummaries = records
+                    .GroupBy(r => !string.IsNullOrWhiteSpace(r.Employee?.Section?.NameEn) ? r.Employee!.Section!.NameEn : "General Section")
+                    .Select(g => MapToSummaryItem(g))
+                    .OrderBy(x => x.Name).ToList();
+
+                summary.LineSummaries = records
+                    .GroupBy(r => !string.IsNullOrWhiteSpace(r.Employee?.Line?.NameEn) ? r.Employee!.Line!.NameEn : "Line N/A")
+                    .Select(g => MapToSummaryItem(g))
+                    .OrderBy(x => x.Name).ToList();
+
+                summary.GroupSummaries = records
+                    .GroupBy(r => !string.IsNullOrWhiteSpace(r.Employee?.Group?.NameEn) ? r.Employee!.Group!.NameEn : "General Group")
+                    .Select(g => MapToSummaryItem(g))
+                    .OrderBy(x => x.Name).ToList();
+
+                return Ok(summary);
             }
-
-            var records = await query.ToListAsync();
-
-            if (!records.Any()) return Ok(new SalarySummaryDto());
-
-            var summary = new SalarySummaryDto
+            catch (Exception ex)
             {
-                TotalGrossSalary = records.Sum(s => s.GrossSalary),
-                TotalOTAmount = records.Sum(s => s.OTAmount),
-                TotalDeductions = records.Sum(s => s.TotalDeduction),
-                TotalNetPayable = records.Sum(s => s.NetPayable),
-                TotalEmployees = records.Count,
-                DepartmentSummaries = records
-                    .GroupBy(r => r.Employee?.Department?.NameEn ?? "Unknown")
-                    .Select(g => new DepartmentSalarySummaryDto
-                    {
-                        DepartmentName = g.Key,
-                        TotalAmount = g.Sum(x => x.NetPayable),
-                        EmployeeCount = g.Count()
-                    }).ToList()
-            };
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
 
-            return Ok(summary);
+        private SalarySummaryItemDto MapToSummaryItem(IGrouping<string, MonthlySalarySheet> group)
+        {
+            return new SalarySummaryItemDto
+            {
+                Name = group.Key,
+                TotalGrossSalary = Math.Round(group.Sum(x => x.GrossSalary), 0),
+                TotalOTAmount = Math.Round(group.Sum(x => x.OTAmount), 0),
+                TotalDeductions = Math.Round(group.Sum(x => x.TotalDeduction), 0),
+                TotalNetPayable = Math.Round(group.Sum(x => x.NetPayable), 0),
+                EmployeeCount = group.Count()
+            };
         }
 
         [HttpGet("payslip/{id}")]
@@ -972,6 +1009,10 @@ namespace ERPBackend.API.Controllers
 
             var allRecords = await query.ToListAsync();
 
+            var compId = companyId ?? int.Parse(User.FindFirst("CompanyId")?.Value ?? "1");
+            var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId) 
+                          ?? await _context.Companies.FirstOrDefaultAsync();
+
             using var package = new ExcelPackage();
 
             // Define classification logic
@@ -1022,13 +1063,13 @@ namespace ERPBackend.API.Controllers
 
             // 1. Summary Sheet
             var summarySheet = package.Workbook.Worksheets.Add("Summary");
-            CreateSummarySheet(summarySheet, year, month, staffMcash, staffCard, workerMcash, workerCard, new List<MonthlySalarySheet>(), new List<MonthlySalarySheet>());
+            CreateSummarySheet(summarySheet, year, month, staffMcash, staffCard, workerMcash, workerCard, new List<MonthlySalarySheet>(), new List<MonthlySalarySheet>(), company);
 
             // 2-5. Individual Sheets
-            AddDataSheet(package, "Staff - mCash", staffMcash);
-            AddDataSheet(package, "Staff - Card", staffCard);
-            AddDataSheet(package, "Worker - mCash", workerMcash);
-            AddDataSheet(package, "Worker - Card", workerCard);
+            AddDataSheet(package, "Staff - mCash", staffMcash, company, year, month);
+            AddDataSheet(package, "Staff - Card", staffCard, company, year, month);
+            AddDataSheet(package, "Worker - mCash", workerMcash, company, year, month);
+            AddDataSheet(package, "Worker - Card", workerCard, company, year, month);
 
             var stream = new MemoryStream();
             package.SaveAs(stream);
@@ -1411,6 +1452,10 @@ namespace ERPBackend.API.Controllers
                 .ThenBy(r => r.Employee?.EmployeeId ?? "")
                 .ToList();
 
+            var compId = companyId ?? int.Parse(User.FindFirst("CompanyId")?.Value ?? "1");
+            var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId) 
+                          ?? await _context.Companies.FirstOrDefaultAsync();
+
             using var package = new OfficeOpenXml.ExcelPackage();
             var headers = new[]
             {
@@ -1424,59 +1469,127 @@ namespace ERPBackend.API.Controllers
 
             void FillSheet(ExcelWorksheet worksheet, List<MonthlySalarySheet> sourceRecords)
             {
-                worksheet.Cells.Style.Font.Size = 9;
-                worksheet.Cells.Style.WrapText = true;
-                worksheet.Cells.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
-                worksheet.Cells.Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
-                worksheet.Row(1).Height = 40;
-                worksheet.Row(1).Style.Font.Bold = true;
+                worksheet.Cells.Style.Font.Name = "Arial";
+                worksheet.Cells.Style.Font.Size = 10;
+                worksheet.DefaultRowHeight = 30;
+
                 worksheet.PrinterSettings.PaperSize = OfficeOpenXml.ePaperSize.Legal;
                 worksheet.PrinterSettings.Orientation = OfficeOpenXml.eOrientation.Landscape;
                 worksheet.PrinterSettings.FitToPage = true;
                 worksheet.PrinterSettings.FitToWidth = 1;
                 worksheet.PrinterSettings.FitToHeight = 0;
 
+                int colCount = headers.Length;
+
+                // 1. Company Name
+                worksheet.Cells[1, 1, 1, colCount].Merge = true;
+                worksheet.Cells[1, 1].Value = (company?.CompanyNameEn ?? "HR HUB").ToUpper();
+                worksheet.Cells[1, 1].Style.Font.Size = 18;
+                worksheet.Cells[1, 1].Style.Font.Bold = true;
+                worksheet.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Cells[1, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                worksheet.Row(1).Height = 35;
+
+                // 2. Address
+                worksheet.Cells[2, 1, 2, colCount].Merge = true;
+                worksheet.Cells[2, 1].Value = company?.AddressEn ?? "Industrial Area, Dhaka";
+                worksheet.Cells[2, 1].Style.Font.Size = 10;
+                worksheet.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Cells[2, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                worksheet.Row(2).Height = 20;
+
+                // 3. Report Title
+                worksheet.Cells[3, 1, 3, colCount].Merge = true;
+                string reportTitle = (exportType ?? "master").Trim().ToLower() == "salary" ? "SALARY SHEET (CASH/CARD/BKASH)" : "MONTHLY SALARY MASTER SHEET";
+                worksheet.Cells[3, 1].Value = reportTitle;
+                worksheet.Cells[3, 1].Style.Font.Size = 10;
+                worksheet.Cells[3, 1].Style.Font.Bold = true;
+                worksheet.Cells[3, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Cells[3, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                worksheet.Row(3).Height = 20;
+
+                // 4. Period
+                worksheet.Cells[4, 1, 4, colCount].Merge = true;
+                string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+                worksheet.Cells[4, 1].Value = $"Period: {monthName} {year}";
+                worksheet.Cells[4, 1].Style.Font.Size = 11;
+                worksheet.Cells[4, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Cells[4, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                worksheet.Row(4).Height = 20;
+
+                // Table Headers
+                int headerRow = 6;
+                worksheet.Row(5).Height = 2; // Thin separator
+                worksheet.Row(headerRow).Height = 40;
                 for (int i = 0; i < headers.Length; i++)
                 {
-                    var cell = worksheet.Cells[1, i + 1];
+                    var cell = worksheet.Cells[headerRow, i + 1];
                     cell.Value = headers[i];
+                    cell.Style.Font.Bold = true;
                     cell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                     cell.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    cell.Style.Border.BorderAround(OfficeOpenXml.Style.ExcelBorderStyle.Thin);
                     cell.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
-                    if (i == 1) cell.Style.WrapText = false;
+                    cell.Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                    cell.Style.WrapText = true;
                 }
 
-                int row = 2;
+                int row = headerRow + 1;
+
+
                 foreach (var s in sourceRecords)
                 {
                     var emp = s.Employee;
-                    worksheet.Cells[row, 1].Value = row - 1;
-                    var nameCell = worksheet.Cells[row, 2];
-                    nameCell.Value = emp?.FullNameEn;
-                    nameCell.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
-                    nameCell.Style.WrapText = false;
+                    worksheet.Row(row).Height = 24;
+                    
+                    // SL correction: start from 1
+                    worksheet.Cells[row, 1].Value = row - headerRow;
+                    
+                    for (int i = 1; i <= colCount; i++)
+                    {
+                        var cell = worksheet.Cells[row, i];
+                        cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                        cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                        cell.Style.WrapText = true;
+                    }
+
+                    worksheet.Cells[row, 2].Value = emp?.FullNameEn;
+                    worksheet.Cells[row, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                    
                     worksheet.Cells[row, 3].Value = emp?.EmployeeId;
-                    worksheet.Cells[row, 4].Value = $"{emp?.Designation?.NameEn}\n{emp?.JoinDate:dd/MM/yyyy}";
+                    worksheet.Cells[row, 4].Value = $"{emp?.Designation?.NameEn}\r\n{emp?.JoinDate:dd/MM/yyyy}";
+                    
                     worksheet.Cells[row, 5].Value = s.TotalDays;
                     worksheet.Cells[row, 6].Value = s.WeekendDays;
                     worksheet.Cells[row, 7].Value = s.LeaveDays;
                     worksheet.Cells[row, 8].Value = s.AbsentDays;
                     worksheet.Cells[row, 9].Value = s.PresentDays + s.WeekendDays + s.Holidays + s.LeaveDays;
-                    worksheet.Cells[row, 10].Value = emp?.BasicSalary ?? 0;
-                    worksheet.Cells[row, 11].Value = emp?.HouseRent ?? 0;
-                    worksheet.Cells[row, 12].Value = emp?.MedicalAllowance ?? 0;
-                    worksheet.Cells[row, 13].Value = emp?.FoodAllowance ?? 0;
-                    worksheet.Cells[row, 14].Value = emp?.Conveyance ?? 0;
-                    worksheet.Cells[row, 15].Value = s.GrossSalary;
-                    worksheet.Cells[row, 16].Value = s.AbsentDeduction;
-                    worksheet.Cells[row, 17].Value = s.TotalEarning - s.OTAmount;
+                    
+                    // Rounded Amount Columns
+                    worksheet.Cells[row, 10].Value = Math.Round(emp?.BasicSalary ?? 0, 0);
+                    worksheet.Cells[row, 11].Value = Math.Round(emp?.HouseRent ?? 0, 0);
+                    worksheet.Cells[row, 12].Value = Math.Round(emp?.MedicalAllowance ?? 0, 0);
+                    worksheet.Cells[row, 13].Value = Math.Round(emp?.FoodAllowance ?? 0, 0);
+                    worksheet.Cells[row, 14].Value = Math.Round(emp?.Conveyance ?? 0, 0);
+                    worksheet.Cells[row, 15].Value = Math.Round(s.GrossSalary, 0);
+                    worksheet.Cells[row, 16].Value = Math.Round(s.AbsentDeduction, 0);
+                    worksheet.Cells[row, 17].Value = Math.Round(s.TotalEarning - s.OTAmount, 0);
+                    
                     worksheet.Cells[row, 18].Value = s.OTHours;
-                    worksheet.Cells[row, 19].Value = s.OTRate;
-                    worksheet.Cells[row, 20].Value = s.OTAmount;
-                    worksheet.Cells[row, 21].Value = s.AttendanceBonus;
-                    worksheet.Cells[row, 22].Value = s.TotalDeduction;
+                    worksheet.Cells[row, 19].Value = Math.Round(s.OTRate, 0);
+                    worksheet.Cells[row, 20].Value = Math.Round(s.OTAmount, 0);
+                    worksheet.Cells[row, 21].Value = Math.Round(s.AttendanceBonus, 0);
+                    worksheet.Cells[row, 22].Value = Math.Round(s.TotalDeduction, 0);
+                    
                     worksheet.Cells[row, 23].Value = emp?.BankAccountNo;
-                    worksheet.Cells[row, 24].Value = s.NetPayable;
+                    worksheet.Cells[row, 24].Value = Math.Round(s.NetPayable, 0);
+
+                    // Apply Integer Number Format
+                    for (int i = 10; i <= 24; i++)
+                    {
+                        if (i == 18 || i == 23) continue; // Skip OT Hours and Account No
+                        worksheet.Cells[row, i].Style.Numberformat.Format = "#,##0";
+                    }
 
                     for (int i = 1; i <= headers.Length; i++)
                     {
@@ -1485,7 +1598,184 @@ namespace ERPBackend.API.Controllers
                     row++;
                 }
 
-                worksheet.Cells.AutoFitColumns();
+                // Grand Total Row
+                worksheet.Row(row).Height = 30;
+                worksheet.Cells[row, 1, row, 9].Merge = true;
+                worksheet.Cells[row, 1].Value = "GRAND TOTAL";
+                worksheet.Cells[row, 1].Style.Font.Bold = true;
+                worksheet.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Cells[row, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                worksheet.View.ShowGridLines = false;
+                
+                // Sum Amount Columns (10 to 24, excluding non-amount cols)
+                int[] colsToSum = { 10, 11, 12, 13, 14, 15, 16, 17, 20, 21, 22, 24 };
+                foreach (int col in colsToSum)
+                {
+                    char colChar = (char)('A' + col - 1);
+                    var cell = worksheet.Cells[row, col];
+                    cell.Formula = $"SUM({colChar}{headerRow + 1}:{colChar}{row - 1})";
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Numberformat.Format = "#,##0";
+                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                }
+
+                for (int i = 1; i <= headers.Length; i++)
+                {
+                    worksheet.Cells[row, i].Style.Border.BorderAround(OfficeOpenXml.Style.ExcelBorderStyle.Thin);
+                }
+
+                // Standard Column Widths for Sentences to fit nicely
+                worksheet.Column(1).Width = 5;   // SL
+                worksheet.Column(2).Width = 22;  // Name
+                worksheet.Column(3).Width = 10;  // ID
+                worksheet.Column(4).Width = 15;  // Designation
+                worksheet.Column(5).Width = 13;  // Total days of month
+                worksheet.Column(6).Width = 10;  // Weekly leave
+                worksheet.Column(7).Width = 8;   // Leave
+                worksheet.Column(8).Width = 10;  // Total Absent
+                worksheet.Column(9).Width = 13;  // Total working days
+                worksheet.Column(10).Width = 12; // Basic
+                worksheet.Column(11).Width = 10; // Rent
+                worksheet.Column(12).Width = 12; // Medical
+                worksheet.Column(13).Width = 12; // Food
+                worksheet.Column(14).Width = 12; // Travel
+                worksheet.Column(15).Width = 12; // Total Salary
+                worksheet.Column(16).Width = 12; // Absence Deduction
+                worksheet.Column(17).Width = 13; // Wages Payable
+                worksheet.Column(18).Width = 10; // OT Hr
+                worksheet.Column(19).Width = 10; // OT Rate
+                worksheet.Column(20).Width = 10; // OT Pay
+                worksheet.Column(21).Width = 12; // Attendance Bonus
+                worksheet.Column(22).Width = 12; // Deduction
+                worksheet.Column(23).Width = 18; // Account No.
+                worksheet.Column(24).Width = 14; // Total Payable
+            }
+
+            void CreateSalarySummarySheet(ExcelWorksheet ws, int year, int month, List<MonthlySalarySheet> records, Company? company)
+            {
+                ws.Cells.Style.Font.Name = "Arial";
+                ws.Cells.Style.Font.Size = 10;
+                ws.DefaultRowHeight = 24;
+                ws.View.ShowGridLines = false;
+
+                int colCount = 6;
+
+                // 1. Company Name
+                ws.Cells[1, 1, 1, colCount].Merge = true;
+                ws.Cells[1, 1].Value = (company?.CompanyNameEn ?? "HR HUB").ToUpper();
+                ws.Cells[1, 1].Style.Font.Size = 18;
+                ws.Cells[1, 1].Style.Font.Bold = true;
+                ws.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[1, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                ws.Row(1).Height = 35;
+
+                // 2. Address
+                ws.Cells[2, 1, 2, colCount].Merge = true;
+                ws.Cells[2, 1].Value = company?.AddressEn ?? "Industrial Area, Dhaka";
+                ws.Cells[2, 1].Style.Font.Size = 10;
+                ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[2, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                ws.Row(2).Height = 20;
+
+                // 3. Report Name
+                ws.Cells[3, 1, 3, colCount].Merge = true;
+                ws.Cells[3, 1].Value = "MONTHLY SALARY SUMMARY REPORT";
+                ws.Cells[3, 1].Style.Font.Size = 10;
+                ws.Cells[3, 1].Style.Font.Bold = true;
+                ws.Cells[3, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[3, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                ws.Row(3).Height = 20;
+
+                // 4. Period
+                ws.Cells[4, 1, 4, colCount].Merge = true;
+                string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+                ws.Cells[4, 1].Value = $"Period: {monthName} {year}";
+                ws.Cells[4, 1].Style.Font.Size = 11;
+                ws.Cells[4, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[4, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                ws.Row(4).Height = 20;
+
+                ws.Row(5).Height = 2; // Separator
+
+                string[] headers = { "SL", "Line Name", "Total Staff", "Gross Salary", "OT Amount", "Net Payable" };
+                int headerRow = 6;
+                ws.Row(headerRow).Height = 35;
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    var cell = ws.Cells[headerRow, i + 1];
+                    cell.Value = headers[i];
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    cell.Style.WrapText = true;
+                }
+
+                var summaryData = records
+                    .GroupBy(x => x.Employee?.Line?.NameEn ?? "Office/Other")
+                    .Select(g => new { 
+                        LineName = g.Key, 
+                        Count = g.Count(), 
+                        Gross = g.Sum(x => x.GrossSalary),
+                        OT = g.Sum(x => x.OTAmount),
+                        Net = g.Sum(x => x.NetPayable)
+                    })
+                    .OrderBy(x => x.LineName)
+                    .ToList();
+
+                int rowIdx = headerRow + 1;
+                int sl = 1;
+                foreach (var d in summaryData)
+                {
+                    ws.Row(rowIdx).Height = 24;
+                    ws.Cells[rowIdx, 1].Value = sl++;
+                    ws.Cells[rowIdx, 2].Value = d.LineName;
+                    ws.Cells[rowIdx, 3].Value = d.Count;
+                    ws.Cells[rowIdx, 4].Value = Math.Round(d.Gross, 0);
+                    ws.Cells[rowIdx, 5].Value = Math.Round(d.OT, 0);
+                    ws.Cells[rowIdx, 6].Value = Math.Round(d.Net, 0);
+                    
+                    for(int i=1; i<=6; i++) {
+                        var cell = ws.Cells[rowIdx, i];
+                        cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                        cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                        cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                        cell.Style.WrapText = true;
+                    }
+                    
+                    ws.Cells[rowIdx, 4, rowIdx, 6].Style.Numberformat.Format = "#,##0";
+                    rowIdx++;
+                }
+
+                // Grand Total
+                ws.Row(rowIdx).Height = 30;
+                ws.Cells[rowIdx, 1, rowIdx, 2].Merge = true;
+                ws.Cells[rowIdx, 1].Value = "GRAND TOTAL";
+                ws.Cells[rowIdx, 1].Style.Font.Bold = true;
+                ws.Cells[rowIdx, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[rowIdx, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+
+                ws.Cells[rowIdx, 3].Value = summaryData.Sum(x => x.Count);
+                ws.Cells[rowIdx, 4].Value = Math.Round(summaryData.Sum(x => x.Gross), 0);
+                ws.Cells[rowIdx, 5].Value = Math.Round(summaryData.Sum(x => x.OT), 0);
+                ws.Cells[rowIdx, 6].Value = Math.Round(summaryData.Sum(x => x.Net), 0);
+                
+                ws.Cells[rowIdx, 3, rowIdx, 6].Style.Font.Bold = true;
+                ws.Cells[rowIdx, 3, rowIdx, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[rowIdx, 3, rowIdx, 6].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                ws.Cells[rowIdx, 4, rowIdx, 6].Style.Numberformat.Format = "#,##0";
+                
+                for(int i=1; i<=6; i++) ws.Cells[rowIdx, i].Style.Border.BorderAround(OfficeOpenXml.Style.ExcelBorderStyle.Thin);
+
+                ws.Column(1).Width = 8;
+                ws.Column(2).Width = 30;
+                ws.Column(3).Width = 15;
+                ws.Column(4).Width = 20;
+                ws.Column(5).Width = 15;
+                ws.Column(6).Width = 20;
             }
 
             string SanitizeSheetName(string rawName)
@@ -1499,6 +1789,10 @@ namespace ERPBackend.API.Controllers
                 if (cleaned.Length > 31) cleaned = cleaned.Substring(0, 31);
                 return string.IsNullOrWhiteSpace(cleaned) ? "Unknown" : cleaned;
             }
+
+            // 1. Summary Sheet
+            var summarySheet = package.Workbook.Worksheets.Add("Summary");
+            CreateSalarySummarySheet(summarySheet, year, month, sortedRecords, company);
 
             var exportTypeValue = (exportType ?? "master").Trim().ToLowerInvariant();
 
@@ -1620,22 +1914,24 @@ namespace ERPBackend.API.Controllers
             var closeList = nonHoldRecords.Where(s => s.Employee!.Status != "Active" || !s.Employee.IsActive).ToList();
             var activeRecords = nonHoldRecords.Where(s => s.Employee!.Status == "Active" && s.Employee.IsActive).ToList();
 
+            var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == (companyId ?? 1));
+
             var staffMcash = activeRecords.Where(s => IsStaff(s.Employee) && IsmCash(s.Employee)).ToList();
             var staffCard = activeRecords.Where(s => IsStaff(s.Employee) && IsCard(s.Employee)).ToList();
             var workerMcash = activeRecords.Where(s => !IsStaff(s.Employee) && IsmCash(s.Employee)).ToList();
             var workerCard = activeRecords.Where(s => !IsStaff(s.Employee) && IsCard(s.Employee)).ToList();
 
-            // 1. Summary Sheet
+            // 1. Summary Sheet (Classification-wise)
             var summarySheet = package.Workbook.Worksheets.Add("Summary");
-            CreateSummarySheet(summarySheet, year, month, staffMcash, staffCard, workerMcash, workerCard, holdList, closeList);
+            CreateSummarySheet(summarySheet, year, month, staffMcash, staffCard, workerMcash, workerCard, holdList, closeList, company);
 
             // 2-7. Individual Sheets
-            AddDataSheet(package, "Staff - mCash", staffMcash);
-            AddDataSheet(package, "Staff - Card", staffCard);
-            AddDataSheet(package, "Worker - mCash", workerMcash);
-            AddDataSheet(package, "Worker - Card", workerCard);
-            AddDataSheet(package, "Hold List", holdList);
-            AddDataSheet(package, "Close List", closeList);
+            AddDataSheet(package, "Staff - mCash", staffMcash, company, year, month);
+            AddDataSheet(package, "Staff - Card", staffCard, company, year, month);
+            AddDataSheet(package, "Worker - mCash", workerMcash, company, year, month);
+            AddDataSheet(package, "Worker - Card", workerCard, company, year, month);
+            AddDataSheet(package, "Hold List", holdList, company, year, month);
+            AddDataSheet(package, "Close List", closeList, company, year, month);
 
             var stream = new MemoryStream();
             package.SaveAs(stream);
@@ -1646,29 +1942,361 @@ namespace ERPBackend.API.Controllers
                 $"Bank_Payment_{monthName}_{year}.xlsx");
         }
 
+        [HttpGet("bank-payment-line-summary")]
+        public async Task<IActionResult> GetBankPaymentLineSummary(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? companyId)
+        {
+            var query = _context.MonthlySalarySheets
+                .Include(s => s.Employee).ThenInclude(e => e!.Line)
+                .Where(s => s.Year == year && s.Month == month && s.Employee != null && s.Employee.Status == "Active" && s.Employee.IsActive);
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+
+            var records = await query.ToListAsync();
+
+            var summary = records
+                .GroupBy(x => x.Employee?.Line?.NameEn ?? "Office/Other")
+                .Select(g => new { 
+                    LineName = g.Key, 
+                    TotalStaff = g.Count(), 
+                    TotalAmount = Math.Round(g.Sum(x => x.NetPayable), 0)
+                })
+                .OrderBy(x => x.LineName)
+                .ToList();
+
+            return Ok(summary);
+        }
+
+        [HttpGet("export-summary-excel")]
+        public async Task<IActionResult> ExportSummaryExcel(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? companyId)
+        {
+            var query = _context.MonthlySalarySheets
+                .Include(s => s.Employee).ThenInclude(e => e!.Department)
+                .Include(s => s.Employee).ThenInclude(e => e!.Section)
+                .Include(s => s.Employee).ThenInclude(e => e!.Line)
+                .Include(s => s.Employee).ThenInclude(e => e!.Group)
+                .Where(s => s.Year == year && s.Month == month);
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+
+            var records = await query.ToListAsync();
+            var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == (companyId ?? 1));
+
+            using var package = new ExcelPackage();
+            
+            AddSummarySheet(package, "Department", records, r => r.Employee?.Department?.NameEn ?? "Office/Other", company, year, month);
+            AddSummarySheet(package, "Section", records, r => r.Employee?.Section?.NameEn ?? "General Section", company, year, month);
+            AddSummarySheet(package, "Line", records, r => r.Employee?.Line?.NameEn ?? "Line N/A", company, year, month);
+            AddSummarySheet(package, "Group", records, r => r.Employee?.Group?.NameEn ?? "General Group", company, year, month);
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"Salary_Summary_{monthName}_{year}.xlsx");
+        }
+
+        private void AddSummarySheet(ExcelPackage package, string sheetName, List<MonthlySalarySheet> records, Func<MonthlySalarySheet, string> selector, Company? company, int year, int month)
+        {
+            var ws = package.Workbook.Worksheets.Add(sheetName);
+            ws.Cells.Style.Font.Name = "Arial";
+            ws.Cells.Style.Font.Size = 10;
+            ws.DefaultRowHeight = 24;
+            ws.View.ShowGridLines = false;
+
+            int colCount = 6;
+            
+            // 4-row header
+            ws.Cells[1, 1, 1, colCount].Merge = true;
+            ws.Cells[1, 1].Value = (company?.CompanyNameEn ?? "HR HUB").ToUpper();
+            ws.Cells[1, 1].Style.Font.Size = 18;
+            ws.Cells[1, 1].Style.Font.Bold = true;
+            ws.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[1, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(1).Height = 35;
+
+            ws.Cells[2, 1, 2, colCount].Merge = true;
+            ws.Cells[2, 1].Value = company?.AddressEn ?? "Industrial Area, Dhaka";
+            ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[2, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+
+            ws.Cells[3, 1, 3, colCount].Merge = true;
+            ws.Cells[3, 1].Value = $"SALARY SUMMARY REPORT ({sheetName.ToUpper()}-WISE)";
+            ws.Cells[3, 1].Style.Font.Bold = true;
+            ws.Cells[3, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[3, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+
+            ws.Cells[4, 1, 4, colCount].Merge = true;
+            ws.Cells[4, 1].Value = $"Period: {CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)} {year}";
+            ws.Cells[4, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[4, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+
+            ws.Row(5).Height = 2; // Separator
+
+            string[] headers = { "SL", $"{sheetName} Name", "Total Staff", "Gross Salary", "OT Amount", "Net Payable" };
+            int headerRow = 6;
+            ws.Row(headerRow).Height = 30;
+            for (int i = 0; i < headers.Length; i++)
+            {
+                var cell = ws.Cells[headerRow, i + 1];
+                cell.Value = headers[i];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            }
+
+            var grouped = records
+                .GroupBy(selector)
+                .Select(g => new { 
+                    Name = g.Key, 
+                    Count = g.Count(), 
+                    Gross = g.Sum(x => x.GrossSalary),
+                    OT = g.Sum(x => x.OTAmount),
+                    Net = g.Sum(x => x.NetPayable)
+                })
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            int rowIdx = headerRow + 1;
+            int sl = 1;
+            foreach (var g in grouped)
+            {
+                ws.Row(rowIdx).Height = 24;
+                ws.Cells[rowIdx, 1].Value = sl++;
+                ws.Cells[rowIdx, 2].Value = g.Name;
+                ws.Cells[rowIdx, 3].Value = g.Count;
+                ws.Cells[rowIdx, 4].Value = Math.Round(g.Gross, 0);
+                ws.Cells[rowIdx, 5].Value = Math.Round(g.OT, 0);
+                ws.Cells[rowIdx, 6].Value = Math.Round(g.Net, 0);
+                
+                for(int i=1; i<=6; i++) {
+                    ws.Cells[rowIdx, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    ws.Cells[rowIdx, i].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    ws.Cells[rowIdx, i].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                }
+                ws.Cells[rowIdx, 4, rowIdx, 6].Style.Numberformat.Format = "#,##0";
+                rowIdx++;
+            }
+
+            // Grand Total
+            ws.Row(rowIdx).Height = 30;
+            ws.Cells[rowIdx, 1, rowIdx, 2].Merge = true;
+            ws.Cells[rowIdx, 1].Value = "GRAND TOTAL";
+            ws.Cells[rowIdx, 1].Style.Font.Bold = true;
+            ws.Cells[rowIdx, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[rowIdx, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+
+            ws.Cells[rowIdx, 3].Value = grouped.Sum(x => x.Count);
+            ws.Cells[rowIdx, 4].Value = Math.Round(grouped.Sum(x => x.Gross), 0);
+            ws.Cells[rowIdx, 5].Value = Math.Round(grouped.Sum(x => x.OT), 0);
+            ws.Cells[rowIdx, 6].Value = Math.Round(grouped.Sum(x => x.Net), 0);
+            
+            ws.Cells[rowIdx, 3, rowIdx, 6].Style.Font.Bold = true;
+            ws.Cells[rowIdx, 3, rowIdx, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[rowIdx, 3, rowIdx, 6].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Cells[rowIdx, 4, rowIdx, 6].Style.Numberformat.Format = "#,##0";
+            for(int i=1; i<=6; i++) ws.Cells[rowIdx, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+            ws.Column(1).Width = 8;
+            ws.Column(2).Width = 30;
+            ws.Column(3).Width = 15;
+            ws.Column(4).Width = 20;
+            ws.Column(5).Width = 15;
+            ws.Column(6).Width = 20;
+        }
+
+        [HttpGet("export-summary-pdf")]
+        public async Task<IActionResult> ExportSummaryPdf(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? companyId)
+        {
+            var query = _context.MonthlySalarySheets
+                .Include(s => s.Employee).ThenInclude(e => e!.Department)
+                .Include(s => s.Employee).ThenInclude(e => e!.Section)
+                .Include(s => s.Employee).ThenInclude(e => e!.Line)
+                .Include(s => s.Employee).ThenInclude(e => e!.Group)
+                .Where(s => s.Year == year && s.Month == month);
+
+            if (companyId.HasValue && companyId > 0)
+                query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+
+            var records = await query.ToListAsync();
+            var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == (companyId ?? 1));
+            string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+
+            var document = QuestPDF.Fluent.Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(QuestPDF.Helpers.PageSizes.A4);
+                    page.Margin(1, QuestPDF.Infrastructure.Unit.Centimetre);
+                    page.PageColor(QuestPDF.Helpers.Colors.White);
+                    page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
+
+                    page.Header().Column(col =>
+                    {
+                        col.Item().AlignCenter().Text((company?.CompanyNameEn ?? "HR HUB").ToUpper()).FontSize(18).Bold();
+                        col.Item().AlignCenter().Text(company?.AddressEn ?? "Industrial Area, Dhaka").FontSize(9);
+                        col.Item().PaddingTop(5).AlignCenter().Text("SALARY SUMMARY REPORT").FontSize(12).Bold().Underline();
+                        col.Item().AlignCenter().Text($"Period: {monthName} {year}").FontSize(10);
+                    });
+
+                    page.Content().PaddingTop(10).Column(mainCol =>
+                    {
+                        AddPdfSummarySection(mainCol, "Department-Wise", records, r => r.Employee?.Department?.NameEn ?? "Office/Other");
+                        mainCol.Item().PaddingVertical(10);
+                        AddPdfSummarySection(mainCol, "Section-Wise", records, r => r.Employee?.Section?.NameEn ?? "General Section");
+                        mainCol.Item().PaddingVertical(10);
+                        AddPdfSummarySection(mainCol, "Line-Wise", records, r => r.Employee?.Line?.NameEn ?? "Line N/A");
+                        mainCol.Item().PaddingVertical(10);
+                        AddPdfSummarySection(mainCol, "Group-Wise", records, r => r.Employee?.Group?.NameEn ?? "General Group");
+                    });
+
+                    page.Footer().AlignCenter().Text(x =>
+                    {
+                        x.Span("Page ");
+                        x.CurrentPageNumber();
+                        x.Span(" of ");
+                        x.TotalPages();
+                    });
+                });
+            });
+
+            using var stream = new MemoryStream();
+            document.GeneratePdf(stream);
+            stream.Position = 0;
+
+            return File(stream, "application/pdf", $"Salary_Summary_{monthName}_{year}.pdf");
+        }
+
+        private void AddPdfSummarySection(QuestPDF.Fluent.ColumnDescriptor mainCol, string title, List<MonthlySalarySheet> records, Func<MonthlySalarySheet, string> selector)
+        {
+            mainCol.Item().Text(title).Bold().FontSize(11).Underline();
+            mainCol.Item().PaddingTop(2).Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.ConstantColumn(30);  // SL
+                    columns.RelativeColumn();    // Name
+                    columns.ConstantColumn(60);  // Staff
+                    columns.ConstantColumn(80);  // Gross
+                    columns.ConstantColumn(80);  // Net
+                });
+
+                table.Header(header =>
+                {
+                    header.Cell().Border(0.5f).Background(QuestPDF.Helpers.Colors.Grey.Lighten2).AlignCenter().Text("SL");
+                    header.Cell().Border(0.5f).Background(QuestPDF.Helpers.Colors.Grey.Lighten2).AlignCenter().Text("Name");
+                    header.Cell().Border(0.5f).Background(QuestPDF.Helpers.Colors.Grey.Lighten2).AlignCenter().Text("Staff");
+                    header.Cell().Border(0.5f).Background(QuestPDF.Helpers.Colors.Grey.Lighten2).AlignCenter().Text("Gross");
+                    header.Cell().Border(0.5f).Background(QuestPDF.Helpers.Colors.Grey.Lighten2).AlignCenter().Text("Net Payable");
+                });
+
+                var grouped = records
+                    .GroupBy(selector)
+                    .Select(g => new { 
+                        Name = g.Key, 
+                        Count = g.Count(), 
+                        Gross = g.Sum(x => x.GrossSalary),
+                        Net = g.Sum(x => x.NetPayable)
+                    })
+                    .OrderBy(x => x.Name)
+                    .ToList();
+
+                int sl = 1;
+                foreach (var g in grouped)
+                {
+                    table.Cell().Border(0.5f).AlignCenter().Text(sl++.ToString());
+                    table.Cell().Border(0.5f).PaddingLeft(5).AlignLeft().Text(g.Name);
+                    table.Cell().Border(0.5f).AlignCenter().Text(g.Count.ToString());
+                    table.Cell().Border(0.5f).AlignRight().PaddingRight(5).Text(Math.Round(g.Gross, 0).ToString("#,##0"));
+                    table.Cell().Border(0.5f).AlignRight().PaddingRight(5).Text(Math.Round(g.Net, 0).ToString("#,##0"));
+                }
+
+                // Total Row
+                table.Cell().ColumnSpan(2).Border(0.5f).AlignCenter().Text("GRAND TOTAL").Bold();
+                table.Cell().Border(0.5f).AlignCenter().Text(grouped.Sum(x => x.Count).ToString()).Bold();
+                table.Cell().Border(0.5f).AlignRight().PaddingRight(5).Text(Math.Round(grouped.Sum(x => x.Gross), 0).ToString("#,##0")).Bold();
+                table.Cell().Border(0.5f).AlignRight().PaddingRight(5).Text(Math.Round(grouped.Sum(x => x.Net), 0).ToString("#,##0")).Bold();
+            });
+        }
+
         private void CreateSummarySheet(ExcelWorksheet ws, int year, int month, 
             List<MonthlySalarySheet> sMcash, List<MonthlySalarySheet> sCard, 
             List<MonthlySalarySheet> wMcash, List<MonthlySalarySheet> wCard,
-            List<MonthlySalarySheet> hold, List<MonthlySalarySheet> close)
+            List<MonthlySalarySheet> hold, List<MonthlySalarySheet> close,
+            Company? company)
         {
-            ws.Cells["A1:D1"].Merge = true;
-            ws.Cells["A1"].Value = "BANK PAYMENT SUMMARY REPORT";
-            ws.Cells["A1"].Style.Font.Size = 16;
-            ws.Cells["A1"].Style.Font.Bold = true;
-            ws.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells.Style.Font.Name = "Arial";
+            ws.Cells.Style.Font.Size = 10;
+            ws.DefaultRowHeight = 24;
+            ws.View.ShowGridLines = false;
 
-            ws.Cells["A2:D2"].Merge = true;
-            ws.Cells["A2"].Value = $"Period: {CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)} {year}";
-            ws.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            int colCount = 4;
+
+            // 1. Company Name
+            ws.Cells[1, 1, 1, colCount].Merge = true;
+            ws.Cells[1, 1].Value = (company?.CompanyNameEn ?? "HR HUB").ToUpper();
+            ws.Cells[1, 1].Style.Font.Size = 18;
+            ws.Cells[1, 1].Style.Font.Bold = true;
+            ws.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[1, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(1).Height = 35;
+
+            // 2. Address
+            ws.Cells[2, 1, 2, colCount].Merge = true;
+            ws.Cells[2, 1].Value = company?.AddressEn ?? "Industrial Area, Dhaka";
+            ws.Cells[2, 1].Style.Font.Size = 10;
+            ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[2, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(2).Height = 20;
+
+            // 3. Report Name
+            ws.Cells[3, 1, 3, colCount].Merge = true;
+            ws.Cells[3, 1].Value = "BANK PAYMENT SUMMARY REPORT";
+            ws.Cells[3, 1].Style.Font.Size = 10;
+            ws.Cells[3, 1].Style.Font.Bold = true;
+            ws.Cells[3, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[3, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(3).Height = 20;
+
+            // 4. Period
+            ws.Cells[4, 1, 4, colCount].Merge = true;
+            ws.Cells[4, 1].Value = $"Period: {CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)} {year}";
+            ws.Cells[4, 1].Style.Font.Size = 11;
+            ws.Cells[4, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[4, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(4).Height = 20;
+
+            ws.Row(5).Height = 2; // Separator
 
             string[] headers = { "Category", "Sheet Name", "Total Staff", "Total Amount" };
+            int headerRow = 6;
+            ws.Row(headerRow).Height = 35;
             for (int i = 0; i < headers.Length; i++)
             {
-                ws.Cells[4, i + 1].Value = headers[i];
-                ws.Cells[4, i + 1].Style.Font.Bold = true;
-                ws.Cells[4, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                ws.Cells[4, i + 1].Style.Fill.BackgroundColor.SetColor(Color.LightGray);
-                ws.Cells[4, i + 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                var cell = ws.Cells[headerRow, i + 1];
+                cell.Value = headers[i];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                cell.Style.WrapText = true;
             }
 
             var rows = new[]
@@ -1681,76 +2309,164 @@ namespace ERPBackend.API.Controllers
                 new { Cat = "Special", Name = "Close List", Count = close.Count, Amount = close.Sum(x => x.NetPayable) }
             };
 
-            int rowIdx = 5;
+            int rowIdx = headerRow + 1;
             foreach (var r in rows)
             {
+                ws.Row(rowIdx).Height = 24;
                 ws.Cells[rowIdx, 1].Value = r.Cat;
                 ws.Cells[rowIdx, 2].Value = r.Name;
                 ws.Cells[rowIdx, 3].Value = r.Count;
-                ws.Cells[rowIdx, 4].Value = r.Amount;
-                ws.Cells[rowIdx, 4].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[rowIdx, 4].Value = Math.Round(r.Amount, 0);
                 
-                for(int i=1; i<=4; i++) ws.Cells[rowIdx, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                for(int i=1; i<=4; i++) {
+                    var cell = ws.Cells[rowIdx, i];
+                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    cell.Style.WrapText = true;
+                }
+                
+                ws.Cells[rowIdx, 4].Style.Numberformat.Format = "#,##0";
                 rowIdx++;
             }
 
             // Grand Total
+            ws.Row(rowIdx).Height = 30;
             ws.Cells[rowIdx, 1, rowIdx, 2].Merge = true;
             ws.Cells[rowIdx, 1].Value = "GRAND TOTAL";
             ws.Cells[rowIdx, 1].Style.Font.Bold = true;
+            ws.Cells[rowIdx, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[rowIdx, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+
             ws.Cells[rowIdx, 3].Value = rows.Sum(x => x.Count);
-            ws.Cells[rowIdx, 4].Value = rows.Sum(x => x.Amount);
+            ws.Cells[rowIdx, 4].Value = Math.Round(rows.Sum(x => x.Amount), 0);
             ws.Cells[rowIdx, 3, rowIdx, 4].Style.Font.Bold = true;
-            ws.Cells[rowIdx, 4].Style.Numberformat.Format = "#,##0.00";
+            ws.Cells[rowIdx, 3, rowIdx, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[rowIdx, 3, rowIdx, 4].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Cells[rowIdx, 4].Style.Numberformat.Format = "#,##0";
+            
             for(int i=1; i<=4; i++) ws.Cells[rowIdx, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-            ws.Cells.AutoFitColumns();
+            ws.Column(1).Width = 20;
+            ws.Column(2).Width = 30;
+            ws.Column(3).Width = 20;
+            ws.Column(4).Width = 25;
         }
 
-        private void AddDataSheet(ExcelPackage package, string name, List<MonthlySalarySheet> records)
+
+
+        private void AddDataSheet(ExcelPackage package, string name, List<MonthlySalarySheet> records, Company? company, int year, int month)
         {
             var ws = package.Workbook.Worksheets.Add(name);
-            string[] headers = { "SL", "Employee ID", "Name", "Department", "Designation", "Bank Name", "Account Number", "Amount" };
-            
+            ws.Cells.Style.Font.Name = "Arial";
+            ws.Cells.Style.Font.Size = 10;
+            ws.DefaultRowHeight = 24;
+            ws.View.ShowGridLines = false;
+
+            string[] headers = { "SL", "Employee ID", "Name", "Account Number", "Amount" };
+            int colCount = headers.Length;
+
+            // 1. Company Name
+            ws.Cells[1, 1, 1, colCount].Merge = true;
+            ws.Cells[1, 1].Value = (company?.CompanyNameEn ?? "HR HUB").ToUpper();
+            ws.Cells[1, 1].Style.Font.Size = 18;
+            ws.Cells[1, 1].Style.Font.Bold = true;
+            ws.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[1, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(1).Height = 35;
+
+            // 2. Address
+            ws.Cells[2, 1, 2, colCount].Merge = true;
+            ws.Cells[2, 1].Value = company?.AddressEn ?? "Industrial Area, Dhaka";
+            ws.Cells[2, 1].Style.Font.Size = 10;
+            ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[2, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(2).Height = 20;
+
+            // 3. Report Name
+            ws.Cells[3, 1, 3, colCount].Merge = true;
+            ws.Cells[3, 1].Value = $"BANK REQUISITION - {name.ToUpper()}";
+            ws.Cells[3, 1].Style.Font.Size = 10;
+            ws.Cells[3, 1].Style.Font.Bold = true;
+            ws.Cells[3, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[3, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(3).Height = 20;
+
+            // 4. Period
+            ws.Cells[4, 1, 4, colCount].Merge = true;
+            string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+            ws.Cells[4, 1].Value = $"Period: {monthName} {year}";
+            ws.Cells[4, 1].Style.Font.Size = 11;
+            ws.Cells[4, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[4, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            ws.Row(4).Height = 20;
+
+            ws.Row(5).Height = 2; // Separator
+
+            int headerRow = 6;
+            ws.Row(headerRow).Height = 35;
             for (int i = 0; i < headers.Length; i++)
             {
-                ws.Cells[1, i + 1].Value = headers[i];
-                ws.Cells[1, i + 1].Style.Font.Bold = true;
-                ws.Cells[1, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                ws.Cells[1, i + 1].Style.Fill.BackgroundColor.SetColor(Color.FromArgb(51, 122, 183));
-                ws.Cells[1, i + 1].Style.Font.Color.SetColor(Color.White);
+                var cell = ws.Cells[headerRow, i + 1];
+                cell.Value = headers[i];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                cell.Style.WrapText = true;
             }
 
-            int row = 2;
+            int row = headerRow + 1;
             foreach (var s in records)
             {
-                ws.Cells[row, 1].Value = row - 1;
+                ws.Row(row).Height = 24;
+                ws.Cells[row, 1].Value = row - headerRow;
                 ws.Cells[row, 2].Value = s.Employee?.EmployeeId;
                 ws.Cells[row, 3].Value = s.Employee?.FullNameEn;
-                ws.Cells[row, 4].Value = s.Employee?.Department?.NameEn;
-                ws.Cells[row, 5].Value = s.Employee?.Designation?.NameEn;
-                ws.Cells[row, 6].Value = s.Employee?.BankName;
-                ws.Cells[row, 7].Value = s.Employee?.BankAccountNo;
-                ws.Cells[row, 8].Value = s.NetPayable;
-                ws.Cells[row, 8].Style.Numberformat.Format = "#,##0.00";
+                ws.Cells[row, 4].Value = s.Employee?.BankAccountNo;
+                ws.Cells[row, 5].Value = Math.Round(s.NetPayable, 0);
+
+                for(int i=1; i<=colCount; i++) {
+                    var cell = ws.Cells[row, i];
+                    cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    cell.Style.WrapText = true;
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+                    if (i == 3) { // Name column
+                        cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                    }
+                }
                 
-                for(int i=1; i<=8; i++) ws.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                ws.Cells[row, 5].Style.Numberformat.Format = "#,##0";
                 row++;
             }
 
             if (records.Any())
             {
-                ws.Cells[row, 1, row, 7].Merge = true;
-                ws.Cells[row, 1].Value = "Total Amount";
+                ws.Row(row).Height = 30;
+                ws.Cells[row, 1, row, 4].Merge = true;
+                ws.Cells[row, 1].Value = "GRAND TOTAL";
                 ws.Cells[row, 1].Style.Font.Bold = true;
-                ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                ws.Cells[row, 8].Value = records.Sum(x => x.NetPayable);
-                ws.Cells[row, 8].Style.Font.Bold = true;
-                ws.Cells[row, 8].Style.Numberformat.Format = "#,##0.00";
-                ws.Cells[row, 8].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[row, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                
+                ws.Cells[row, 5].Value = Math.Round(records.Sum(x => x.NetPayable), 0);
+                ws.Cells[row, 5].Style.Font.Bold = true;
+                ws.Cells[row, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[row, 5].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                ws.Cells[row, 5].Style.Numberformat.Format = "#,##0";
+                
+                for(int i=1; i<=colCount; i++) ws.Cells[row, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
             }
 
-            ws.Cells.AutoFitColumns();
+            ws.Column(1).Width = 8;
+            ws.Column(2).Width = 15;
+            ws.Column(3).Width = 30;
+            ws.Column(4).Width = 25;
+            ws.Column(5).Width = 20;
         }
 
 
@@ -1886,6 +2602,10 @@ namespace ERPBackend.API.Controllers
 
             var allRecords = await query.ToListAsync();
 
+            var compId = companyId ?? int.Parse(User.FindFirst("CompanyId")?.Value ?? "1");
+            var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId) 
+                          ?? await _context.Companies.FirstOrDefaultAsync();
+
             using var package = new ExcelPackage();
 
             // Define classification logic
@@ -1936,13 +2656,13 @@ namespace ERPBackend.API.Controllers
 
             // 1. Summary Sheet
             var summarySheet = package.Workbook.Worksheets.Add("Summary");
-            CreateSummarySheet(summarySheet, year, month, staffMcash, staffCard, workerMcash, workerCard, new List<MonthlySalarySheet>(), new List<MonthlySalarySheet>());
+            CreateSummarySheet(summarySheet, year, month, staffMcash, staffCard, workerMcash, workerCard, new List<MonthlySalarySheet>(), new List<MonthlySalarySheet>(), company);
 
             // 2-5. Individual Sheets
-            AddDataSheet(package, "Staff - mCash", staffMcash);
-            AddDataSheet(package, "Staff - Card", staffCard);
-            AddDataSheet(package, "Worker - mCash", workerMcash);
-            AddDataSheet(package, "Worker - Card", workerCard);
+            AddDataSheet(package, "Staff - mCash", staffMcash, company, year, month);
+            AddDataSheet(package, "Staff - Card", staffCard, company, year, month);
+            AddDataSheet(package, "Worker - mCash", workerMcash, company, year, month);
+            AddDataSheet(package, "Worker - Card", workerCard, company, year, month);
 
             var stream = new MemoryStream();
             package.SaveAs(stream);

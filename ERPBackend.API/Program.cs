@@ -4,6 +4,7 @@ using ERPBackend.Core.Models;
 using ERPBackend.Core.Entities;
 using ERPBackend.Infrastructure.Data;
 using ERPBackend.Services.Services;
+using ERPBackend.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -76,6 +77,7 @@ builder.Services.AddScoped<IZkTecoService, ZkTecoService>();
 builder.Services.AddScoped<IOrderSheetService, OrderSheetService>();
 builder.Services.AddScoped<IMerchandisingMasterService, MerchandisingMasterService>();
 builder.Services.AddScoped<ICostingService, CostingService>();
+builder.Services.AddScoped<INightBillService, NightBillService>();
 
 // 4. Authentication
 builder.Services.AddAuthentication(options =>

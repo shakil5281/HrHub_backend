@@ -19,6 +19,9 @@ namespace ERPBackend.Core.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
 
+        public DateTime? InTime { get; set; }
+        public DateTime? OutTime { get; set; }
+
         public int? ShiftId { get; set; }
         [ForeignKey(nameof(ShiftId))]
         public virtual Shift? Shift { get; set; }

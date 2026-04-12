@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace ERPBackend.Core.DTOs
 {
     public class MonthlySalarySheetDto
@@ -60,18 +62,52 @@ namespace ERPBackend.Core.DTOs
 
     public class SalarySummaryDto
     {
+        [JsonPropertyName("totalGrossSalary")]
         public decimal TotalGrossSalary { get; set; }
+
+        [JsonPropertyName("totalOTAmount")]
         public decimal TotalOTAmount { get; set; }
+
+        [JsonPropertyName("totalDeductions")]
         public decimal TotalDeductions { get; set; }
+
+        [JsonPropertyName("totalNetPayable")]
         public decimal TotalNetPayable { get; set; }
+
+        [JsonPropertyName("totalEmployees")]
         public int TotalEmployees { get; set; }
-        public List<DepartmentSalarySummaryDto> DepartmentSummaries { get; set; } = new();
+
+        [JsonPropertyName("departmentSummaries")]
+        public List<SalarySummaryItemDto> DepartmentSummaries { get; set; } = new();
+
+        [JsonPropertyName("sectionSummaries")]
+        public List<SalarySummaryItemDto> SectionSummaries { get; set; } = new();
+
+        [JsonPropertyName("lineSummaries")]
+        public List<SalarySummaryItemDto> LineSummaries { get; set; } = new();
+
+        [JsonPropertyName("groupSummaries")]
+        public List<SalarySummaryItemDto> GroupSummaries { get; set; } = new();
     }
 
-    public class DepartmentSalarySummaryDto
+    public class SalarySummaryItemDto
     {
-        public string DepartmentName { get; set; } = string.Empty;
-        public decimal TotalAmount { get; set; }
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("totalGrossSalary")]
+        public decimal TotalGrossSalary { get; set; }
+
+        [JsonPropertyName("totalOTAmount")]
+        public decimal TotalOTAmount { get; set; }
+
+        [JsonPropertyName("totalDeductions")]
+        public decimal TotalDeductions { get; set; }
+
+        [JsonPropertyName("totalNetPayable")]
+        public decimal TotalNetPayable { get; set; }
+
+        [JsonPropertyName("employeeCount")]
         public int EmployeeCount { get; set; }
     }
 

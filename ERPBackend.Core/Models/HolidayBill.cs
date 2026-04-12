@@ -5,7 +5,7 @@ using ERPBackend.Core.Entities;
 
 namespace ERPBackend.Core.Models
 {
-    public class TiffinBill
+    public class HolidayBill
     {
         [Key]
         public int Id { get; set; }
@@ -18,10 +18,6 @@ namespace ERPBackend.Core.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
-
-        public int TiffinCount { get; set; }
-        public DateTime? InTime { get; set; }
-        public DateTime? OutTime { get; set; }
 
         public int? ShiftId { get; set; }
         [ForeignKey(nameof(ShiftId))]

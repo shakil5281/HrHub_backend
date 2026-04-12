@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260412042636_AddBillRatesToDesignation")]
+    partial class AddBillRatesToDesignation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -978,12 +981,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<bool>("IsNightBillEligible")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsStaff")
-                        .HasColumnType("bit");
-
                     b.Property<string>("NameBn")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1219,52 +1216,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasIndex("CompanyId");
 
                     b.ToTable("Holidays");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.HolidayBill", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ShiftId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.HasIndex("ShiftId");
-
-                    b.ToTable("HolidayBills");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.IfterBill", b =>
@@ -1623,12 +1574,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<int>("EmployeeId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("InTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("OutTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<int?>("ShiftId")
                         .HasColumnType("int");
 
@@ -1646,36 +1591,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.HasIndex("ShiftId");
 
                     b.ToTable("NightBills");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.NightBillConfig", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("EligibleTime")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.ToTable("NightBillConfigs");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OTDeduction", b =>
@@ -2046,12 +1961,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<int>("EmployeeId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("InTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("OutTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<int?>("ShiftId")
                         .HasColumnType("int");
 
@@ -2059,9 +1968,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("TiffinCount")
-                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -2567,29 +2473,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Company");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.HolidayBill", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId");
-
-                    b.HasOne("ERPBackend.Core.Entities.Employee", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ERPBackend.Core.Models.Shift", "Shift")
-                        .WithMany()
-                        .HasForeignKey("ShiftId");
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Employee");
-
-                    b.Navigation("Shift");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.IfterBill", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.Company", "Company")
@@ -2714,15 +2597,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("Shift");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.NightBillConfig", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId");
-
-                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.OTDeduction", b =>

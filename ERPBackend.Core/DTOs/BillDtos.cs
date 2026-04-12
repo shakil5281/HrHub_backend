@@ -17,6 +17,9 @@ namespace ERPBackend.Core.DTOs
         public DateTime CreatedAt { get; set; }
         public string? ShiftName { get; set; }
         public string? CompanyName { get; set; }
+        public int TiffinCount { get; set; }
+        public DateTime? InTime { get; set; }
+        public DateTime? OutTime { get; set; }
     }
 
     public class TiffinBillSummaryDto
@@ -46,6 +49,8 @@ namespace ERPBackend.Core.DTOs
         public DateTime CreatedAt { get; set; }
         public string? ShiftName { get; set; }
         public string? CompanyName { get; set; }
+        public DateTime? InTime { get; set; }
+        public DateTime? OutTime { get; set; }
     }
 
     public class NightBillSummaryDto

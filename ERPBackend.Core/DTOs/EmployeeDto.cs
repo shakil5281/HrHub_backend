@@ -249,13 +249,13 @@ namespace ERPBackend.Core.DTOs
         public int ActiveEmployees { get; set; }
         public int OnLeaveEmployees { get; set; }
         public int InactiveEmployees { get; set; }
-        public List<SummaryItemDto> DepartmentSummary { get; set; } = new();
-        public List<SummaryItemDto> DesignationSummary { get; set; } = new();
-        public List<SummaryItemDto> GenderSummary { get; set; } = new();
-        public List<SummaryItemDto> StatusSummary { get; set; } = new();
+        public List<ManpowerSummaryItemDto> DepartmentSummary { get; set; } = new();
+        public List<ManpowerSummaryItemDto> DesignationSummary { get; set; } = new();
+        public List<ManpowerSummaryItemDto> GenderSummary { get; set; } = new();
+        public List<ManpowerSummaryItemDto> StatusSummary { get; set; } = new();
     }
 
-    public class SummaryItemDto
+    public class ManpowerSummaryItemDto
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;

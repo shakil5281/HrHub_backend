@@ -188,6 +188,8 @@ namespace ERPBackend.API.Controllers
                     NameEn = d.NameEn,
                     NameBn = d.NameBn,
                     NightBill = d.NightBill,
+                    TiffinBill = d.TiffinBill,
+                    IfterBill = d.IfterBill,
                     HolidayBill = d.HolidayBill,
                     AttendanceBonus = d.AttendanceBonus,
                     CompanyId = d.CompanyId,
@@ -195,7 +197,9 @@ namespace ERPBackend.API.Controllers
                     DepartmentId = d.DepartmentId,
                     DepartmentName = d.Department != null ? d.Department.NameEn : null,
                     SectionId = d.SectionId,
-                    SectionName = d.Section != null ? d.Section.NameEn : null
+                    SectionName = d.Section != null ? d.Section.NameEn : null,
+                    IsNightBillEligible = d.IsNightBillEligible,
+                    IsStaff = d.IsStaff
                 })
                 .ToListAsync();
         }
@@ -210,11 +214,15 @@ namespace ERPBackend.API.Controllers
                 NameEn = dto.NameEn,
                 NameBn = dto.NameBn,
                 NightBill = dto.NightBill,
+                TiffinBill = dto.TiffinBill,
+                IfterBill = dto.IfterBill,
                 HolidayBill = dto.HolidayBill,
                 AttendanceBonus = dto.AttendanceBonus,
                 CompanyId = dto.CompanyId,
                 DepartmentId = dto.DepartmentId,
-                SectionId = dto.SectionId
+                SectionId = dto.SectionId,
+                IsNightBillEligible = dto.IsNightBillEligible,
+                IsStaff = dto.IsStaff
             };
             _context.Designations.Add(designation);
             await _context.SaveChangesAsync();
@@ -224,11 +232,15 @@ namespace ERPBackend.API.Controllers
                 NameEn = designation.NameEn,
                 NameBn = designation.NameBn,
                 NightBill = designation.NightBill,
+                TiffinBill = designation.TiffinBill,
+                IfterBill = designation.IfterBill,
                 HolidayBill = designation.HolidayBill,
                 AttendanceBonus = designation.AttendanceBonus,
                 CompanyId = designation.CompanyId,
                 DepartmentId = designation.DepartmentId,
-                SectionId = designation.SectionId
+                SectionId = designation.SectionId,
+                IsNightBillEligible = designation.IsNightBillEligible,
+                IsStaff = designation.IsStaff
             });
         }
 
@@ -242,11 +254,15 @@ namespace ERPBackend.API.Controllers
             designation.NameEn = dto.NameEn;
             designation.NameBn = dto.NameBn;
             designation.NightBill = dto.NightBill;
+            designation.TiffinBill = dto.TiffinBill;
+            designation.IfterBill = dto.IfterBill;
             designation.HolidayBill = dto.HolidayBill;
             designation.AttendanceBonus = dto.AttendanceBonus;
             designation.CompanyId = dto.CompanyId;
             designation.DepartmentId = dto.DepartmentId;
             designation.SectionId = dto.SectionId;
+            designation.IsNightBillEligible = dto.IsNightBillEligible;
+            designation.IsStaff = dto.IsStaff;
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -513,13 +529,15 @@ namespace ERPBackend.API.Controllers
             worksheet.Cells[1, 6].Value = "Designation Name (English)";
             worksheet.Cells[1, 7].Value = "Designation Name (Bangla)";
             worksheet.Cells[1, 8].Value = "Night Bill";
-            worksheet.Cells[1, 9].Value = "Holiday Bill";
-            worksheet.Cells[1, 10].Value = "Attendance Bonus";
-            worksheet.Cells[1, 11].Value = "Line Name (English)";
-            worksheet.Cells[1, 12].Value = "Line Name (Bangla)";
+            worksheet.Cells[1, 9].Value = "Tiffin Bill";
+            worksheet.Cells[1, 10].Value = "Ifter Bill";
+            worksheet.Cells[1, 11].Value = "Holiday Bill";
+            worksheet.Cells[1, 12].Value = "Attendance Bonus";
+            worksheet.Cells[1, 13].Value = "Line Name (English)";
+            worksheet.Cells[1, 14].Value = "Line Name (Bangla)";
 
             // Style headers
-            using (var range = worksheet.Cells[1, 1, 1, 12])
+            using (var range = worksheet.Cells[1, 1, 1, 14])
             {
                 range.Style.Font.Bold = true;
                 range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
@@ -537,10 +555,12 @@ namespace ERPBackend.API.Controllers
             worksheet.Cells[2, 6].Value = "HR Manager";
             worksheet.Cells[2, 7].Value = "এইচআর ম্যানেজার";
             worksheet.Cells[2, 8].Value = 100;
-            worksheet.Cells[2, 9].Value = 200;
-            worksheet.Cells[2, 10].Value = 500;
-            worksheet.Cells[2, 11].Value = "Line 1";
-            worksheet.Cells[2, 12].Value = "লাইন ১";
+            worksheet.Cells[2, 9].Value = 50;
+            worksheet.Cells[2, 10].Value = 50;
+            worksheet.Cells[2, 11].Value = 200;
+            worksheet.Cells[2, 12].Value = 500;
+            worksheet.Cells[2, 13].Value = "Line 1";
+            worksheet.Cells[2, 14].Value = "লাইন ১";
 
             worksheet.Cells.AutoFitColumns();
 
@@ -609,11 +629,13 @@ namespace ERPBackend.API.Controllers
                             var desigNameBn = worksheet.Cells[currentRow, 7].Text?.Trim();
 
                             decimal.TryParse(worksheet.Cells[currentRow, 8].Text, out var nightBill);
-                            decimal.TryParse(worksheet.Cells[currentRow, 9].Text, out var holidayBill);
-                            decimal.TryParse(worksheet.Cells[currentRow, 10].Text, out var attendanceBonus);
+                            decimal.TryParse(worksheet.Cells[currentRow, 9].Text, out var tiffinBill);
+                            decimal.TryParse(worksheet.Cells[currentRow, 10].Text, out var ifterBill);
+                            decimal.TryParse(worksheet.Cells[currentRow, 11].Text, out var holidayBill);
+                            decimal.TryParse(worksheet.Cells[currentRow, 12].Text, out var attendanceBonus);
 
-                            var lineNameEn = worksheet.Cells[currentRow, 11].Text?.Trim();
-                            var lineNameBn = worksheet.Cells[currentRow, 12].Text?.Trim();
+                            var lineNameEn = worksheet.Cells[currentRow, 13].Text?.Trim();
+                            var lineNameBn = worksheet.Cells[currentRow, 14].Text?.Trim();
 
                             if (string.IsNullOrEmpty(companyName) || string.IsNullOrEmpty(deptNameEn))
                             {
@@ -692,7 +714,8 @@ namespace ERPBackend.API.Controllers
                                     {
                                         NameEn = desigNameEn, NameBn = desigNameBn, CompanyId = company.Id,
                                         DepartmentId = dept.Id, SectionId = section.Id,
-                                        NightBill = nightBill, HolidayBill = holidayBill,
+                                        NightBill = nightBill, TiffinBill = tiffinBill, IfterBill = ifterBill,
+                                        HolidayBill = holidayBill,
                                         AttendanceBonus = attendanceBonus
                                     };
                                     _context.Designations.Add(desig);
@@ -702,6 +725,8 @@ namespace ERPBackend.API.Controllers
                                 {
                                     desig.NameBn = desigNameBn ?? desig.NameBn;
                                     desig.NightBill = nightBill;
+                                    desig.TiffinBill = tiffinBill;
+                                    desig.IfterBill = ifterBill;
                                     desig.HolidayBill = holidayBill;
                                     desig.AttendanceBonus = attendanceBonus;
                                     result.UpdatedCount++;

@@ -188,7 +188,7 @@ namespace ERPBackend.API.Controllers
 
                 DepartmentSummary = allEmployees
                     .GroupBy(e => e.Department?.NameEn ?? "Unknown")
-                    .Select(g => new SummaryItemDto
+                    .Select(g => new ManpowerSummaryItemDto
                     {
                         Id = g.Key,
                         Name = g.Key,
@@ -200,7 +200,7 @@ namespace ERPBackend.API.Controllers
 
                 DesignationSummary = allEmployees
                     .GroupBy(e => e.Designation?.NameEn ?? "Unknown")
-                    .Select(g => new SummaryItemDto
+                    .Select(g => new ManpowerSummaryItemDto
                     {
                         Id = g.Key,
                         Name = g.Key,
@@ -213,7 +213,7 @@ namespace ERPBackend.API.Controllers
 
                 GenderSummary = allEmployees
                     .GroupBy(e => e.Gender ?? "Not Specified")
-                    .Select(g => new SummaryItemDto
+                    .Select(g => new ManpowerSummaryItemDto
                     {
                         Id = g.Key,
                         Name = g.Key,
@@ -224,7 +224,7 @@ namespace ERPBackend.API.Controllers
 
                 StatusSummary = allEmployees
                     .GroupBy(e => e.Status ?? "Unknown")
-                    .Select(g => new SummaryItemDto
+                    .Select(g => new ManpowerSummaryItemDto
                     {
                         Id = g.Key,
                         Name = g.Key,

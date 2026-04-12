@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260412050027_AddNightBillArchitectRules")]
+    partial class AddNightBillArchitectRules
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1623,12 +1626,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<int>("EmployeeId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("InTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("OutTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<int?>("ShiftId")
                         .HasColumnType("int");
 
@@ -2046,12 +2043,6 @@ namespace ERPBackend.Infrastructure.Migrations
                     b.Property<int>("EmployeeId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("InTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("OutTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<int?>("ShiftId")
                         .HasColumnType("int");
 
@@ -2059,9 +2050,6 @@ namespace ERPBackend.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("TiffinCount")
-                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
