@@ -159,6 +159,7 @@ namespace ERPBackend.API.Controllers
                 H16 = record.H16,
                 H17 = record.H17,
                 H18 = record.H18,
+                H19 = record.H19,
                 TotalCompleted = record.TotalCompleted
             });
         }
@@ -200,6 +201,7 @@ namespace ERPBackend.API.Controllers
             record.H16 = dto.H16;
             record.H17 = dto.H17;
             record.H18 = dto.H18;
+            record.H19 = dto.H19;
 
             await _context.SaveChangesAsync();
 
@@ -228,6 +230,7 @@ namespace ERPBackend.API.Controllers
                 H16 = record.H16,
                 H17 = record.H17,
                 H18 = record.H18,
+                H19 = record.H19,
                 TotalCompleted = record.TotalCompleted
             });
         }
@@ -268,9 +271,9 @@ namespace ERPBackend.API.Controllers
                     Year = g.Key.Year,
                     LineName = g.Key.LineName,
                     TotalTarget = g.Sum(r => r.DailyTarget),
-                    TotalCompleted = g.Sum(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18),
+                    TotalCompleted = g.Sum(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18 + r.H19),
                     AvgAchievement = g.Sum(r => r.DailyTarget) > 0 
-                        ? (double)g.Sum(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18) / g.Sum(r => r.DailyTarget) * 100 
+                        ? (double)g.Sum(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18 + r.H19) / g.Sum(r => r.DailyTarget) * 100 
                         : 0,
                     WorkingDays = g.Count(),
                     TopStyle = g.Select(r => r.Assignment?.Production?.StyleNo ?? "")
@@ -298,6 +301,195 @@ namespace ERPBackend.API.Controllers
         [HttpGet("report/daily/export/excel")]
         public async Task<IActionResult> ExportDailyReportToExcel([FromQuery] ProductionFilterDto filters)
         {
+            return await ExportGroupedReportToExcel(filters);
+        }
+
+        [HttpGet("record/hourly/export/excel")]
+        public async Task<IActionResult> ExportHourlyBreakdownToExcel([FromQuery] ProductionFilterDto filters)
+        {
+            try
+            {
+                var query = GetDailyReportQuery(filters);
+                var data = await query.ToListAsync();
+
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("Hourly Production Breakdown");
+                    var date = filters.Date ?? DateTime.Today;
+
+                    // UI Setup
+                    worksheet.View.ShowGridLines = false;
+                    worksheet.PrinterSettings.PaperSize = ePaperSize.A4;
+                    worksheet.PrinterSettings.Orientation = eOrientation.Landscape;
+                    worksheet.PrinterSettings.FitToPage = true;
+                    worksheet.PrinterSettings.FitToWidth = 1;
+
+                    var borderColor = System.Drawing.Color.Black;
+
+                    // Header
+                    worksheet.Cells["A1:AC1"].Merge = true;
+                    worksheet.Cells["A1"].Value = "Hourly Production Breakdown Report";
+                    worksheet.Cells["A1"].Style.Font.Size = 18;
+                    worksheet.Cells["A1"].Style.Font.Bold = true;
+                    worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells["A1"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    worksheet.Row(1).Height = 35;
+
+                    worksheet.Cells["A2:AC2"].Merge = true;
+                    worksheet.Cells["A2"].Value = $"Date: {date:dd MMMM yyyy}";
+                    worksheet.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells["A2"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    worksheet.Row(2).Height = 25;
+
+                    // Table Headers
+                    int row = 4;
+                    worksheet.Row(row).Height = 35;
+                    string[] headers = { 
+                        "Line", "Buyer", "Style", "Item", "Daily Target", "Hourly Target", "Total Target",
+                        "08-09", "09-10", "10-11", "11-12", "12-01", 
+                        "02-03", "03-04", "04-05", "05-06", "06-07", "07-08",
+                        "08-09", "09-10", "10-11", "11-12", "12-01", "01-02", "02-03",
+                        "Total Production", "Average", "Remarks"
+                    };
+
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        var cell = worksheet.Cells[row, i + 1];
+                        cell.Value = headers[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        cell.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(240, 240, 240));
+                        cell.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                        cell.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                        cell.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                        cell.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                        cell.Style.Border.Top.Color.SetColor(borderColor);
+                        cell.Style.Border.Bottom.Color.SetColor(borderColor);
+                        cell.Style.Border.Left.Color.SetColor(borderColor);
+                        cell.Style.Border.Right.Color.SetColor(borderColor);
+                        cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                        cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                        cell.Style.WrapText = true;
+                    }
+
+                    int startDataRow = row + 1;
+                    row++;
+
+                    foreach (var item in data)
+                    {
+                        worksheet.Row(row).Height = 22;
+                        worksheet.Cells[row, 1].Value = item.LineName;
+                        worksheet.Cells[row, 2].Value = item.Buyer;
+                        worksheet.Cells[row, 3].Value = item.StyleNo;
+                        worksheet.Cells[row, 4].Value = item.Item;
+                        worksheet.Cells[row, 5].Value = (double)item.DailyTarget;
+                        worksheet.Cells[row, 6].Value = (double)item.HourlyTarget;
+                        worksheet.Cells[row, 7].Value = (double)item.TotalAssignedTarget;
+
+                        // Hours H1-H5
+                        worksheet.Cells[row, 8].Value = (double)item.H1;
+                        worksheet.Cells[row, 9].Value = (double)item.H2;
+                        worksheet.Cells[row, 10].Value = (double)item.H3;
+                        worksheet.Cells[row, 11].Value = (double)item.H4;
+                        worksheet.Cells[row, 12].Value = (double)item.H5;
+
+                        // Hours H7-H19 (Skipping H6)
+                        worksheet.Cells[row, 13].Value = (double)item.H7;
+                        worksheet.Cells[row, 14].Value = (double)item.H8;
+                        worksheet.Cells[row, 15].Value = (double)item.H9;
+                        worksheet.Cells[row, 16].Value = (double)item.H10;
+                        worksheet.Cells[row, 17].Value = (double)item.H11;
+                        worksheet.Cells[row, 18].Value = (double)item.H12;
+                        worksheet.Cells[row, 19].Value = (double)item.H13;
+                        worksheet.Cells[row, 20].Value = (double)item.H14;
+                        worksheet.Cells[row, 21].Value = (double)item.H15;
+                        worksheet.Cells[row, 22].Value = (double)item.H16;
+                        worksheet.Cells[row, 23].Value = (double)item.H17;
+                        worksheet.Cells[row, 24].Value = (double)item.H18;
+                        worksheet.Cells[row, 25].Value = (double)item.H19;
+
+                        worksheet.Cells[row, 26].Value = (double)item.Completed;
+                        worksheet.Cells[row, 27].Value = (double)item.Completed / 18.0;
+                        worksheet.Cells[row, 27].Style.Numberformat.Format = "0.0";
+
+                        using (var range = worksheet.Cells[row, 1, row, 28])
+                        {
+                            range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                            range.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                            range.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                            range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                            range.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                            range.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                            range.Style.Border.Top.Color.SetColor(borderColor);
+                            range.Style.Border.Bottom.Color.SetColor(borderColor);
+                            range.Style.Border.Left.Color.SetColor(borderColor);
+                            range.Style.Border.Right.Color.SetColor(borderColor);
+                        }
+                        row++;
+                    }
+
+                    // Total Row
+                    worksheet.Row(row).Height = 35;
+                    worksheet.Cells[row, 1, row, 4].Merge = true;
+                    worksheet.Cells[row, 1].Value = "Total";
+                    worksheet.Cells[row, 1].Style.Font.Bold = true;
+                    worksheet.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells[row, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+
+                    for (int c = 5; c <= 26; c++)
+                    {
+                        var cell = worksheet.Cells[row, c];
+                        string colLetter = GetColumnLetter(c);
+                        cell.Formula = $"SUM({colLetter}{startDataRow}:{colLetter}{row - 1})";
+                        cell.Style.Font.Bold = true;
+                        cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    }
+
+                    using (var range = worksheet.Cells[row, 1, row, 28])
+                    {
+                        range.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(230, 230, 230));
+                        range.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Top.Color.SetColor(borderColor);
+                        range.Style.Border.Bottom.Color.SetColor(borderColor);
+                        range.Style.Border.Left.Color.SetColor(borderColor);
+                        range.Style.Border.Right.Color.SetColor(borderColor);
+                    }
+
+                    worksheet.Cells.AutoFitColumns();
+                    var content = package.GetAsByteArray();
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"HourlyBreakdown_{date:yyyyMMdd}.xlsx");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Export failed", error = ex.Message });
+            }
+        }
+
+        private string GetColumnLetter(int columnNumber)
+        {
+            int dividend = columnNumber;
+            string columnName = String.Empty;
+            int modulo;
+
+            while (dividend > 0)
+            {
+                modulo = (dividend - 1) % 26;
+                columnName = Convert.ToChar(65 + modulo).ToString() + columnName;
+                dividend = (int)((dividend - modulo) / 26);
+            }
+
+            return columnName;
+        }
+
+
+
+        private async Task<IActionResult> ExportGroupedReportToExcel(ProductionFilterDto filters)
+        {
             try
             {
                 var query = GetDailyReportQuery(filters);
@@ -308,56 +500,176 @@ namespace ERPBackend.API.Controllers
                     var worksheet = package.Workbook.Worksheets.Add("Daily Production Report");
                     var date = filters.Date ?? DateTime.Today;
 
+                    // UI Setup
+                    worksheet.View.ShowGridLines = false;
+                    worksheet.PrinterSettings.PaperSize = ePaperSize.A4;
+                    worksheet.PrinterSettings.Orientation = eOrientation.Landscape;
+                    worksheet.PrinterSettings.FitToPage = true;
+                    worksheet.PrinterSettings.FitToWidth = 1;
+
+                    var borderColor = System.Drawing.Color.Black;
+                    var headerColor = System.Drawing.Color.FromArgb(0, 150, 100);
+
                     // Header
-                    worksheet.Cells["A1:F1"].Merge = true;
+                    worksheet.Cells["A1:N1"].Merge = true;
                     worksheet.Cells["A1"].Value = "Daily Production Report";
-                    worksheet.Cells["A1"].Style.Font.Size = 16;
+                    worksheet.Cells["A1"].Style.Font.Size = 18;
                     worksheet.Cells["A1"].Style.Font.Bold = true;
                     worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells["A1"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    worksheet.Row(1).Height = 35;
 
-                    worksheet.Cells["A2:F2"].Merge = true;
+                    worksheet.Cells["A2:N2"].Merge = true;
                     worksheet.Cells["A2"].Value = $"Date: {date:dd MMMM yyyy}";
                     worksheet.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells["A2"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    worksheet.Row(2).Height = 25;
 
                     // Table Headers
                     int row = 4;
-                    worksheet.Cells[row, 1].Value = "Line Name";
-                    worksheet.Cells[row, 2].Value = "Style No";
-                    worksheet.Cells[row, 3].Value = "Buyer";
-                    worksheet.Cells[row, 4].Value = "Daily Target";
-                    worksheet.Cells[row, 5].Value = "Completed";
-                    worksheet.Cells[row, 6].Value = "Achievement %";
+                    worksheet.Row(row).Height = 35;
+                    string[] headers = { "LINE", "P/COD", "BUYER", "ART/NO", "OR/QTY", "ITEM", "DAILY TARGET", "DAILY PRODUCTION", "UNIT PRICE", "TOTAL PRICE", "%", "% Dollar", "Taka", "Remarks" };
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        var cell = worksheet.Cells[row, i + 1];
+                        cell.Value = headers[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Font.Color.SetColor(headerColor);
+                    }
 
-                    using (var range = worksheet.Cells[row, 1, row, 6])
+                    using (var range = worksheet.Cells[row, 1, row, 14])
+                    {
+                        range.Style.WrapText = true;
+                        range.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Top.Color.SetColor(borderColor);
+                        range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Bottom.Color.SetColor(borderColor);
+                        range.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Left.Color.SetColor(borderColor);
+                        range.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Right.Color.SetColor(borderColor);
+                        range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                        range.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    }
+
+                    int startDataRow = row + 1;
+                    row++;
+                    decimal exchangeRate = 120;
+
+                    var groupedData = data.GroupBy(d => d.LineName).OrderBy(g => g.Key).ToList();
+
+                    foreach (var group in groupedData)
+                    {
+                        int groupStartRow = row;
+                        var items = group.ToList();
+                        int totalGroupTarget = items.Sum(i => i.DailyTarget);
+                        double averageAchievement = items.Any() ? items.Average(i => i.Achievement) : 0;
+
+                        for (int i = 0; i < items.Count; i++)
+                        {
+                            var item = items[i];
+                            decimal totalPrice = item.Completed * item.UnitPrice;
+                            worksheet.Row(row).Height = 22;
+
+                            worksheet.Cells[row, 1].Value = item.LineName;
+                            worksheet.Cells[row, 2].Value = item.ProgramCode;
+                            worksheet.Cells[row, 3].Value = item.Buyer;
+                            worksheet.Cells[row, 4].Value = item.StyleNo;
+                            worksheet.Cells[row, 5].Value = item.OrderQty;
+                            worksheet.Cells[row, 6].Value = item.Item;
+                            worksheet.Cells[row, 7].Value = item.DailyTarget;
+                            worksheet.Cells[row, 8].Value = item.Completed;
+                            worksheet.Cells[row, 9].Value = (double)item.UnitPrice;
+                            worksheet.Cells[row, 10].Value = (double)totalPrice;
+                            worksheet.Cells[row, 11].Value = (double)(item.Achievement / 100);
+                            worksheet.Cells[row, 11].Style.Numberformat.Format = "0%";
+                            decimal percentDollar = totalPrice * (decimal)(item.Achievement / 100);
+                            worksheet.Cells[row, 12].Value = (double)percentDollar;
+                            worksheet.Cells[row, 13].Value = (double)(totalPrice * exchangeRate);
+
+                            worksheet.Cells[row, 9, row, 10].Style.Numberformat.Format = "#,##0.00";
+                            worksheet.Cells[row, 12, row, 13].Style.Numberformat.Format = "#,##0.00";
+
+                            using (var range = worksheet.Cells[row, 1, row, 14])
+                            {
+                                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                                range.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                                range.Style.WrapText = true;
+                                range.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                                range.Style.Border.Top.Color.SetColor(borderColor);
+                                range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                                range.Style.Border.Bottom.Color.SetColor(borderColor);
+                                range.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                                range.Style.Border.Left.Color.SetColor(borderColor);
+                                range.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                                range.Style.Border.Right.Color.SetColor(borderColor);
+                            }
+                            row++;
+                        }
+
+                        if (items.Count > 1)
+                        {
+                            worksheet.Cells[groupStartRow, 1, row - 1, 1].Merge = true;
+                            worksheet.Cells[groupStartRow, 7, row - 1, 7].Merge = true;
+                            worksheet.Cells[groupStartRow, 7].Value = totalGroupTarget;
+                            worksheet.Cells[groupStartRow, 11, row - 1, 11].Merge = true;
+                            worksheet.Cells[groupStartRow, 11].Value = averageAchievement / 100;
+                        }
+                    }
+
+                    worksheet.Row(row).Height = 35;
+                    worksheet.Cells[row, 1, row, 4].Merge = true;
+                    worksheet.Cells[row, 1].Value = "Total";
+                    worksheet.Cells[row, 1].Style.Font.Bold = true;
+                    worksheet.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells[row, 1].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+
+                    worksheet.Cells[row, 5].Formula = $"SUM(E{startDataRow}:E{row - 1})";
+                    worksheet.Cells[row, 7].Formula = $"SUM(G{startDataRow}:G{row - 1})";
+                    worksheet.Cells[row, 8].Formula = $"SUM(H{startDataRow}:H{row - 1})";
+                    worksheet.Cells[row, 10].Formula = $"SUM(J{startDataRow}:J{row - 1})";
+                    worksheet.Cells[row, 12].Formula = $"SUM(L{startDataRow}:L{row - 1})";
+                    worksheet.Cells[row, 13].Formula = $"SUM(M{startDataRow}:M{row - 1})";
+
+                    using (var range = worksheet.Cells[row, 1, row, 14])
                     {
                         range.Style.Font.Bold = true;
                         range.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                        range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                        range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(230, 230, 230));
                         range.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Top.Color.SetColor(borderColor);
                         range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Bottom.Color.SetColor(borderColor);
                         range.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Left.Color.SetColor(borderColor);
                         range.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                        range.Style.Border.Right.Color.SetColor(borderColor);
+                        range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                        range.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
                     }
+                    worksheet.Cells[row, 10, row, 13].Style.Numberformat.Format = "#,##0";
 
-                    row++;
-                    foreach (var item in data)
-                    {
-                        worksheet.Cells[row, 1].Value = item.LineName;
-                        worksheet.Cells[row, 2].Value = item.StyleNo;
-                        worksheet.Cells[row, 3].Value = item.Buyer;
-                        worksheet.Cells[row, 4].Value = item.DailyTarget;
-                        worksheet.Cells[row, 5].Value = item.Completed;
-                        worksheet.Cells[row, 6].Value = item.Achievement;
-                        worksheet.Cells[row, 6].Style.Numberformat.Format = "0.0\"%\"";
+                    row += 4;
+                    worksheet.Cells[row, 1, row, 3].Merge = true;
+                    worksheet.Cells[row, 1].Value = "__________________________";
+                    worksheet.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells[row + 1, 1, row + 1, 3].Merge = true;
+                    worksheet.Cells[row + 1, 1].Value = "Production manager";
+                    worksheet.Cells[row + 1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells[row + 1, 1].Style.Font.Bold = true;
 
-                        for (int i = 1; i <= 6; i++)
-                        {
-                            worksheet.Cells[row, i].Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
-                        }
-                        row++;
-                    }
+                    worksheet.Cells[row, 12, row, 14].Merge = true;
+                    worksheet.Cells[row, 12].Value = "__________________________";
+                    worksheet.Cells[row, 12].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells[row + 1, 12, row + 1, 14].Merge = true;
+                    worksheet.Cells[row + 1, 12].Value = "Asst. general manager";
+                    worksheet.Cells[row + 1, 12].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells[row + 1, 12].Style.Font.Bold = true;
 
                     worksheet.Cells.AutoFitColumns();
+                    worksheet.Column(13).Width += 5;
+                    worksheet.Column(8).Width = 15;
+
                     var content = package.GetAsByteArray();
                     return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"DailyProductionReport_{date:yyyyMMdd}.xlsx");
                 }
@@ -367,7 +679,6 @@ namespace ERPBackend.API.Controllers
                 return StatusCode(500, new { message = "Export failed", error = ex.Message });
             }
         }
-
 
         private IQueryable<DailyReportItemDto> GetDailyReportQuery(ProductionFilterDto filters)
         {
@@ -402,6 +713,10 @@ namespace ERPBackend.API.Controllers
                 AssignmentId = a.Id,
                 LineName = a.Line!.LineName,
                 StyleNo = a.Production!.StyleNo,
+                ProgramCode = a.Production!.ProgramCode,
+                OrderQty = a.Production!.OrderQty,
+                Item = a.Production!.Item,
+                UnitPrice = a.Production!.UnitPrice,
                 Buyer = a.Production!.Buyer,
                 
                 // Fetch target from record, or fallback to predefined target
@@ -421,9 +736,11 @@ namespace ERPBackend.API.Controllers
                         .Select(t => (int?)t.HourlyTarget)
                         .FirstOrDefault() ?? 0,
 
+                TotalAssignedTarget = a.TotalTarget,
+
                 Completed = _context.DailyProductionRecords
                     .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
-                    .Select(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18)
+                    .Select(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18 + r.H19)
                     .FirstOrDefault(),
 
                 Achievement = _context.DailyProductionRecords
@@ -432,13 +749,33 @@ namespace ERPBackend.API.Controllers
                     .FirstOrDefault() > 0 
                         ? (double)_context.DailyProductionRecords
                             .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
-                            .Select(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H6 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18)
+                            .Select(r => r.H1 + r.H2 + r.H3 + r.H4 + r.H5 + r.H7 + r.H8 + r.H9 + r.H10 + r.H11 + r.H12 + r.H13 + r.H14 + r.H15 + r.H16 + r.H17 + r.H18 + r.H19)
                             .FirstOrDefault() / 
                           _context.DailyProductionRecords
                             .Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate)
                             .Select(r => r.DailyTarget)
                             .FirstOrDefault() * 100 
-                        : 0
+                        : 0,
+
+                H1 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H1).FirstOrDefault(),
+                H2 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H2).FirstOrDefault(),
+                H3 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H3).FirstOrDefault(),
+                H4 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H4).FirstOrDefault(),
+                H5 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H5).FirstOrDefault(),
+                H6 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H6).FirstOrDefault(),
+                H7 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H7).FirstOrDefault(),
+                H8 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H8).FirstOrDefault(),
+                H9 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H9).FirstOrDefault(),
+                H10 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H10).FirstOrDefault(),
+                H11 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H11).FirstOrDefault(),
+                H12 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H12).FirstOrDefault(),
+                H13 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H13).FirstOrDefault(),
+                H14 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H14).FirstOrDefault(),
+                H15 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H15).FirstOrDefault(),
+                H16 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H16).FirstOrDefault(),
+                H17 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H17).FirstOrDefault(),
+                H18 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H18).FirstOrDefault(),
+                H19 = _context.DailyProductionRecords.Where(r => r.AssignmentId == a.Id && r.Date.Date == targetDate).Select(r => r.H19).FirstOrDefault()
             })
             // Only show if there's either a target set up or some production has been recorded
             .Where(r => r.DailyTarget > 0 || r.Completed > 0);

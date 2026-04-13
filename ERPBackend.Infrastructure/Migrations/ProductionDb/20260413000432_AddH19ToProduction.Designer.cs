@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations.ProductionDb
 {
     [DbContext(typeof(ProductionDbContext))]
-    partial class ProductionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413000432_AddH19ToProduction")]
+    partial class AddH19ToProduction
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -57,6 +57,7 @@ namespace ERPBackend.Core.DTOs
         public int H16 { get; set; }
         public int H17 { get; set; }
         public int H18 { get; set; }
+        public int H19 { get; set; }
         public int TotalCompleted { get; set; }
     }
 
@@ -84,6 +85,7 @@ namespace ERPBackend.Core.DTOs
         public int H16 { get; set; }
         public int H17 { get; set; }
         public int H18 { get; set; }
+        public int H19 { get; set; }
     }
 
     public class ProductionFilterDto
@@ -100,11 +102,37 @@ namespace ERPBackend.Core.DTOs
         public int AssignmentId { get; set; }
         public string LineName { get; set; } = "";
         public string StyleNo { get; set; } = "";
+        public string ProgramCode { get; set; } = "";
+        public int OrderQty { get; set; }
+        public string Item { get; set; } = "";
+        public decimal UnitPrice { get; set; }
         public string Buyer { get; set; } = "";
         public int DailyTarget { get; set; }
         public int HourlyTarget { get; set; }
+        public int TotalAssignedTarget { get; set; }
         public int Completed { get; set; }
         public double Achievement { get; set; }
+        
+        // Hourly data
+        public int H1 { get; set; }
+        public int H2 { get; set; }
+        public int H3 { get; set; }
+        public int H4 { get; set; }
+        public int H5 { get; set; }
+        public int H6 { get; set; }
+        public int H7 { get; set; }
+        public int H8 { get; set; }
+        public int H9 { get; set; }
+        public int H10 { get; set; }
+        public int H11 { get; set; }
+        public int H12 { get; set; }
+        public int H13 { get; set; }
+        public int H14 { get; set; }
+        public int H15 { get; set; }
+        public int H16 { get; set; }
+        public int H17 { get; set; }
+        public int H18 { get; set; }
+        public int H19 { get; set; }
     }
 
     public class MonthlyReportItemDto
