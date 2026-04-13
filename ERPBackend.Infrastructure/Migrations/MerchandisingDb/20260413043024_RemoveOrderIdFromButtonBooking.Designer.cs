@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 {
     [DbContext(typeof(MerchandisingDbContext))]
-    partial class MerchandisingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413043024_RemoveOrderIdFromButtonBooking")]
+    partial class RemoveOrderIdFromButtonBooking
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +24,143 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("ERPBackend.Core.Models.AccessoriesBooking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("AccessoriesBookings");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.AccessoriesConsumption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ConsumptionPerPcs")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("StyleId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("WastagePercentage")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AccessoriesConsumptions");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.BOM", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("BOMs");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.BOMItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BOMId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Consumption")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BOMId");
+
+                    b.ToTable("BOMItems");
+                });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Brand", b =>
                 {
@@ -53,9 +193,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("ButtonColor")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -71,23 +208,14 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("OrderReference")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
+                    b.Property<int?>("ProgramId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<string>("Status")
@@ -104,7 +232,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProgramOrderId");
+                    b.HasIndex("ProgramId");
 
                     b.ToTable("ButtonBookings");
                 });
@@ -166,54 +294,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.ToTable("Buyers");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.CareLabelBooking", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("DeliveryDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Material")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OrderReference")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PrintDetails")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("RequiredQuantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Supplier")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProgramOrderId");
-
-                    b.ToTable("CareLabelBookings");
-                });
-
             modelBuilder.Entity("ERPBackend.Core.Models.Costing", b =>
                 {
                     b.Property<int>("Id")
@@ -226,49 +306,49 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .HasColumnType("int");
 
                     b.Property<decimal>("CMCost")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<int>("CompanyId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("EmbroideryCost")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("FOBPrice")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("FabricCost")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("OverheadCost")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("PackingCost")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("PrintCost")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("ProfitMargin")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<int>("StyleId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("TrimCost")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("WashCost")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.HasKey("Id");
@@ -350,6 +430,40 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.ToTable("DyeingMachines");
                 });
 
+            modelBuilder.Entity("ERPBackend.Core.Models.ExportItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HSCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ExportItems");
+                });
+
             modelBuilder.Entity("ERPBackend.Core.Models.FabricBooking", b =>
                 {
                     b.Property<int>("Id")
@@ -365,14 +479,18 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("IssuedQuantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
                     b.Property<string>("OrderReference")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("RequiredQuantity")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<string>("Status")
@@ -389,7 +507,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProgramOrderId");
+                    b.HasIndex("OrderId");
 
                     b.ToTable("FabricBookings");
                 });
@@ -426,6 +544,57 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasKey("Id");
 
                     b.ToTable("FabricColorPantones");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.FabricConsumption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ComponentName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("ConsumptionPerPcs")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StyleId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalConsumption")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("WastagePercentage")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FabricConsumptions");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.FabricTypeGsm", b =>
@@ -508,6 +677,58 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.ToTable("KnitMachines");
                 });
 
+            modelBuilder.Entity("ERPBackend.Core.Models.LabelBooking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LabelType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Material")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OrderReference")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PrintDetails")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("RequiredQuantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("LabelBookings");
+                });
+
             modelBuilder.Entity("ERPBackend.Core.Models.LocalAgent", b =>
                 {
                     b.Property<int>("Id")
@@ -546,7 +767,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.ToTable("LocalAgents");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.MainLabelBooking", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.MerchProductionPlan", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -554,44 +775,31 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("DeliveryDate")
+                    b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Material")
+                    b.Property<string>("Factory")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("OrderReference")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PrintDetails")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ProgramOrderId")
+                    b.Property<int>("OrderId")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("RequiredQuantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<string>("Status")
+                    b.Property<string>("ProductionLine")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Supplier")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("TargetPerDay")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProgramOrderId");
+                    b.HasIndex("OrderId");
 
-                    b.ToTable("MainLabelBookings");
+                    b.ToTable("MerchProductionPlans");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.MerchandisingDepartment", b =>
@@ -624,7 +832,29 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.ToTable("MerchandisingDepartments");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.PaymentModeTerms", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderColor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("OrderColors");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheet", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -633,163 +863,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("BranchId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Mode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Terms")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PaymentModeTerms");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.PolyBooking", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("DeliveryDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("OrderReference")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PolyType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PrintDetails")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("RequiredQuantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<string>("Size")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Supplier")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProgramOrderId");
-
-                    b.ToTable("PolyBookings");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramArticle", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ItemName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NewArticleNo")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OldArticleNo")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("PackType")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("StyleId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TotalQty")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProgramOrderId");
-
-                    b.HasIndex("StyleId");
-
-                    b.ToTable("ProgramArticles");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramColor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ColorId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ColorName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ProgramArticleId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ColorId");
-
-                    b.HasIndex("ProgramArticleId");
-
-                    b.ToTable("ProgramColors");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramOrder", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BranchId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("BuyerId")
                         .HasColumnType("int");
 
                     b.Property<string>("BuyerName")
@@ -831,15 +904,81 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BuyerId");
-
                     b.HasIndex("CompanyId", "ProgramNumber")
                         .IsUnique();
 
-                    b.ToTable("ProgramOrders");
+                    b.ToTable("OrderSheets");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramSizeBreakdown", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetColor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ColorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ColorName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderSheetItemId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ColorId");
+
+                    b.HasIndex("OrderSheetItemId");
+
+                    b.ToTable("OrderSheetColors");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewArticleNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OldArticleNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderSheetId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PackType")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StyleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalQty")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderSheetId");
+
+                    b.HasIndex("StyleId");
+
+                    b.ToTable("OrderSheetItems");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetSizeBreakdown", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -851,7 +990,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ProgramColorId")
+                    b.Property<int>("OrderSheetColorId")
                         .HasColumnType("int");
 
                     b.Property<int>("RowTotal")
@@ -886,9 +1025,120 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProgramColorId");
+                    b.HasIndex("OrderSheetColorId");
 
-                    b.ToTable("ProgramSizeBreakdowns");
+                    b.ToTable("OrderSheetSizeBreakdowns");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSizeBreakdown", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OrderColorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderColorId");
+
+                    b.ToTable("OrderSizeBreakdowns");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.PackingBooking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OrderReference")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PackingItem")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PrintDetails")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("RequiredQuantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("PackingBookings");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.PaymentModeTerms", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Terms")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PaymentModeTerms");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SampleRequest", b =>
@@ -954,6 +1204,43 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasKey("Id");
 
                     b.ToTable("Seasons");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.Shipment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CartonQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Forwarder")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ShipmentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ShippingMethod")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("Shipments");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ShipmentModeTerms", b =>
@@ -1038,14 +1325,14 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
                     b.Property<string>("OrderReference")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("RequiredQuantity")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<string>("SnapSize")
@@ -1070,7 +1357,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProgramOrderId");
+                    b.HasIndex("OrderId");
 
                     b.ToTable("SnapButtonBookings");
                 });
@@ -1127,6 +1414,101 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasIndex("BuyerId");
 
                     b.ToTable("Styles");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.StyleOrder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BuyerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OrderQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PONumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StyleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuyerId");
+
+                    b.HasIndex("StyleId");
+
+                    b.ToTable("StyleOrders");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.SubContractOrder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OrderNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PartyName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProcessName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Qty")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SubContractOrders");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SupplierInfo", b =>
@@ -1227,14 +1609,14 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
                     b.Property<string>("OrderReference")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("RequiredQuantity")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<string>("Status")
@@ -1255,9 +1637,110 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProgramOrderId");
+                    b.HasIndex("OrderId");
 
                     b.ToTable("ThreadBookings");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.TrimBooking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OrderReference")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("RequiredQuantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Specification")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TrimType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("TrimBookings");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.YarnInventory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Brand")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Composition")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Count")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("StockQty")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("YarnType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("YarnInventories");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ZipperBooking", b =>
@@ -1279,14 +1762,14 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
                     b.Property<string>("OrderReference")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("RequiredQuantity")
-                        .HasPrecision(18, 4)
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<string>("Status")
@@ -1311,9 +1794,42 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProgramOrderId");
+                    b.HasIndex("OrderId");
 
                     b.ToTable("ZipperBookings");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.AccessoriesBooking", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.BOM", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany("BOMs")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.BOMItem", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.BOM", "BOM")
+                        .WithMany("BOMItems")
+                        .HasForeignKey("BOMId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BOM");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Brand", b =>
@@ -1329,22 +1845,10 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
             modelBuilder.Entity("ERPBackend.Core.Models.ButtonBooking", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("Buttons")
-                        .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ProgramOrder");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.CareLabelBooking", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("CareLabels")
-                        .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasOne("ERPBackend.Core.Models.OrderSheet", "ProgramOrder")
+                        .WithMany()
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ProgramOrder");
                 });
@@ -1362,42 +1866,70 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
             modelBuilder.Entity("ERPBackend.Core.Models.FabricBooking", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
                         .WithMany()
-                        .HasForeignKey("ProgramOrderId")
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProgramOrder");
+                    b.Navigation("StyleOrder");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.MainLabelBooking", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.LabelBooking", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("MainLabels")
-                        .HasForeignKey("ProgramOrderId")
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProgramOrder");
+                    b.Navigation("StyleOrder");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.PolyBooking", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.MerchProductionPlan", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("PolyBookings")
-                        .HasForeignKey("ProgramOrderId")
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProgramOrder");
+                    b.Navigation("StyleOrder");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramArticle", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderColor", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("Articles")
-                        .HasForeignKey("ProgramOrderId")
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany("OrderColors")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetColor", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.FabricColorPantone", "Color")
+                        .WithMany()
+                        .HasForeignKey("ColorId");
+
+                    b.HasOne("ERPBackend.Core.Models.OrderSheetItem", "OrderSheetItem")
+                        .WithMany("Colors")
+                        .HasForeignKey("OrderSheetItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Color");
+
+                    b.Navigation("OrderSheetItem");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetItem", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.OrderSheet", "OrderSheet")
+                        .WithMany("Items")
+                        .HasForeignKey("OrderSheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1405,46 +1937,42 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .WithMany()
                         .HasForeignKey("StyleId");
 
-                    b.Navigation("ProgramOrder");
+                    b.Navigation("OrderSheet");
 
                     b.Navigation("Style");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramColor", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetSizeBreakdown", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.FabricColorPantone", "Color")
-                        .WithMany()
-                        .HasForeignKey("ColorId");
-
-                    b.HasOne("ERPBackend.Core.Models.ProgramArticle", "ProgramArticle")
-                        .WithMany("Colors")
-                        .HasForeignKey("ProgramArticleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Color");
-
-                    b.Navigation("ProgramArticle");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramOrder", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.Buyer", "Buyer")
-                        .WithMany()
-                        .HasForeignKey("BuyerId");
-
-                    b.Navigation("Buyer");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramSizeBreakdown", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.ProgramColor", "ProgramColor")
+                    b.HasOne("ERPBackend.Core.Models.OrderSheetColor", "OrderSheetColor")
                         .WithMany("SizeBreakdowns")
-                        .HasForeignKey("ProgramColorId")
+                        .HasForeignKey("OrderSheetColorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProgramColor");
+                    b.Navigation("OrderSheetColor");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSizeBreakdown", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.OrderColor", "OrderColor")
+                        .WithMany("SizeBreakdowns")
+                        .HasForeignKey("OrderColorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OrderColor");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.PackingBooking", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.SampleRequest", b =>
@@ -1458,32 +1986,63 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Navigation("Style");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.SnapButtonBooking", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.Shipment", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
                         .WithMany()
-                        .HasForeignKey("ProgramOrderId")
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProgramOrder");
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.SnapButtonBooking", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Style", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.Brand", "Brand")
                         .WithMany()
-                        .HasForeignKey("BrandId");
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ERPBackend.Core.Models.Buyer", "Buyer")
                         .WithMany()
                         .HasForeignKey("BuyerId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Brand");
 
                     b.Navigation("Buyer");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.StyleOrder", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.Buyer", "Buyer")
+                        .WithMany()
+                        .HasForeignKey("BuyerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERPBackend.Core.Models.Style", "Style")
+                        .WithMany()
+                        .HasForeignKey("StyleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Buyer");
+
+                    b.Navigation("Style");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.TechPack", b =>
@@ -1499,24 +2058,40 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
             modelBuilder.Entity("ERPBackend.Core.Models.ThreadBooking", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("Threads")
-                        .HasForeignKey("ProgramOrderId")
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProgramOrder");
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.TrimBooking", b =>
+                {
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StyleOrder");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ZipperBooking", b =>
                 {
-                    b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("Zippers")
-                        .HasForeignKey("ProgramOrderId")
+                    b.HasOne("ERPBackend.Core.Models.StyleOrder", "StyleOrder")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProgramOrder");
+                    b.Navigation("StyleOrder");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.BOM", b =>
+                {
+                    b.Navigation("BOMItems");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Buyer", b =>
@@ -1524,31 +2099,24 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Navigation("Brands");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramArticle", b =>
-                {
-                    b.Navigation("Colors");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramColor", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderColor", b =>
                 {
                     b.Navigation("SizeBreakdowns");
                 });
 
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramOrder", b =>
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheet", b =>
                 {
-                    b.Navigation("Articles");
+                    b.Navigation("Items");
+                });
 
-                    b.Navigation("Buttons");
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetColor", b =>
+                {
+                    b.Navigation("SizeBreakdowns");
+                });
 
-                    b.Navigation("CareLabels");
-
-                    b.Navigation("MainLabels");
-
-                    b.Navigation("PolyBookings");
-
-                    b.Navigation("Threads");
-
-                    b.Navigation("Zippers");
+            modelBuilder.Entity("ERPBackend.Core.Models.OrderSheetItem", b =>
+                {
+                    b.Navigation("Colors");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Style", b =>
@@ -1558,6 +2126,13 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Navigation("SampleRequests");
 
                     b.Navigation("TechPacks");
+                });
+
+            modelBuilder.Entity("ERPBackend.Core.Models.StyleOrder", b =>
+                {
+                    b.Navigation("BOMs");
+
+                    b.Navigation("OrderColors");
                 });
 #pragma warning restore 612, 618
         }

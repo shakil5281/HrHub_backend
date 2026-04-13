@@ -4,6 +4,7 @@ using ERPBackend.Core.Enums;
 
 namespace ERPBackend.Core.Models
 {
+    // MASTER DATA REMAINS CLEAN
     public class Buyer
     {
         [Key]
@@ -18,7 +19,7 @@ namespace ERPBackend.Core.Models
         public string Phone { get; set; } = string.Empty;
         public string PaymentTerms { get; set; } = string.Empty;
         public string Currency { get; set; } = "USD";
-        public int LeadTime { get; set; } // In days
+        public int LeadTime { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -118,276 +119,72 @@ namespace ERPBackend.Core.Models
         public virtual Style? Style { get; set; }
     }
 
-    public class StyleOrder
+    // ACCESORIES - FULLY MODULAR TABLES LINKED BY PROGRAMORDERID
+    public abstract class BaseProgramAccessory
     {
         [Key]
         public int Id { get; set; }
-        public int CompanyId { get; set; }
-        public int BranchId { get; set; }
-        public int BuyerId { get; set; }
-        public int StyleId { get; set; }
-        [Required, StringLength(100)]
-        public string PONumber { get; set; } = string.Empty;
-        public int OrderQuantity { get; set; }
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal Price { get; set; }
-        public string Currency { get; set; } = "USD";
-        public DateTime DeliveryDate { get; set; }
-        public OrderStatus Status { get; set; } = OrderStatus.Draft;
-
-        public virtual Company? Company { get; set; }
-        public virtual Buyer? Buyer { get; set; }
-        public virtual Style? Style { get; set; }
-        public virtual ICollection<OrderColor> OrderColors { get; set; } = new List<OrderColor>();
-        public virtual ICollection<BOM> BOMs { get; set; } = new List<BOM>();
-    }
-
-    public class OrderColor
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        [Required]
-        public string Color { get; set; } = string.Empty;
-
-        public virtual StyleOrder? StyleOrder { get; set; }
-        public virtual ICollection<OrderSizeBreakdown> SizeBreakdowns { get; set; } = new List<OrderSizeBreakdown>();
-    }
-
-    public class OrderSizeBreakdown
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderColorId { get; set; }
-        [Required]
-        public string Size { get; set; } = string.Empty;
-        public int Quantity { get; set; }
-
-        public virtual OrderColor? OrderColor { get; set; }
-    }
-
-    public class BOM
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
-        public virtual ICollection<BOMItem> BOMItems { get; set; } = new List<BOMItem>();
-    }
-
-    public class BOMItem
-    {
-        [Key]
-        public int Id { get; set; }
-        public int BOMId { get; set; }
-        [Required]
-        public string ItemName { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal Consumption { get; set; }
-        public string Unit { get; set; } = "Pcs";
-        public string Supplier { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal Price { get; set; }
-
-        public virtual BOM? BOM { get; set; }
-    }
-
-    public class FabricBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
+        public int ProgramOrderId { get; set; }
         public string? OrderReference { get; set; }
+        public string Unit { get; set; } = "Pcs";
+        public string Status { get; set; } = "Pending";
+        public string Supplier { get; set; } = string.Empty;
+        public DateTime DeliveryDate { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal RequiredQuantity { get; set; }
+
+        [ForeignKey("ProgramOrderId")]
+        public virtual ProgramOrder? ProgramOrder { get; set; }
+    }
+
+    public class FabricBooking : BaseProgramAccessory {
         public string FabricType { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal RequiredQuantity { get; set; }
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal IssuedQuantity { get; set; }
-        public string Unit { get; set; } = "Yds"; // Yds, Mtrs, Kg
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
+        public FabricBooking() { Unit = "Yds"; }
     }
 
-    public class AccessoriesBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string ItemName { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal Quantity { get; set; }
-        public string Unit { get; set; } = "Pcs";
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
-    }
-
-    public class ButtonBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string? OrderReference { get; set; }
-        public string ButtonType { get; set; } = string.Empty; // Plastic, Metal, etc.
-        public string ButtonSize { get; set; } = string.Empty; // 18L, 24L, etc.
+    public class ButtonBooking : BaseProgramAccessory {
+        public string? ItemName { get; set; }
+        public string? ArticleNo { get; set; }
+        public string? GarmentColor { get; set; }
+        public int? ProgramSizeBreakdownId { get; set; }
+        public string ButtonType { get; set; } = string.Empty;
+        public string ButtonSize { get; set; } = string.Empty;
         public string ButtonColor { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal RequiredQuantity { get; set; }
-        public string Unit { get; set; } = "Pcs";
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
     }
 
-    public class SnapButtonBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string? OrderReference { get; set; }
-        public string SnapType { get; set; } = string.Empty; // Alloy, Brass, etc.
-        public string SnapSize { get; set; } = string.Empty; 
-        public string Color { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal RequiredQuantity { get; set; }
-        public string Unit { get; set; } = "Pcs";
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
-    }
-
-    public class ZipperBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string? OrderReference { get; set; }
-        public string ZipperType { get; set; } = string.Empty; // Nylon, Metal, Vislon
-        public string ZipperSize { get; set; } = string.Empty; // #3, #5, #8
+    public class ZipperBooking : BaseProgramAccessory {
+        public string ZipperType { get; set; } = string.Empty;
+        public string ZipperSize { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
         public string Length { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal RequiredQuantity { get; set; }
-        public string Unit { get; set; } = "Pcs";
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
     }
 
-    public class LabelBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string? OrderReference { get; set; }
-        public string LabelType { get; set; } = string.Empty; // Main, Care, Side, Size
-        public string Material { get; set; } = string.Empty; // Satin, Woven, Heat Transfer
+    public class MainLabelBooking : BaseProgramAccessory {
+        public string Material { get; set; } = string.Empty;
         public string PrintDetails { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal RequiredQuantity { get; set; }
-        public string Unit { get; set; } = "Pcs";
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
     }
 
-    public class TrimBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string? OrderReference { get; set; }
-        public string TrimType { get; set; } = string.Empty; // Elastic, Drawcord, Tape, Rib
-        public string Specification { get; set; } = string.Empty; // Width, Thickness
-        public string Color { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal RequiredQuantity { get; set; }
-        public string Unit { get; set; } = "Yds"; // Yds, Mtrs, Kg
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
+    public class CareLabelBooking : BaseProgramAccessory {
+        public string Material { get; set; } = string.Empty;
+        public string PrintDetails { get; set; } = string.Empty;
     }
 
-    public class ThreadBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string? OrderReference { get; set; }
-        public string ThreadType { get; set; } = string.Empty; // 40/2, 20/2, etc.
-        public string ColorCode { get; set; } = string.Empty;
-        public string Brand { get; set; } = string.Empty; // Coats, A&E
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal RequiredQuantity { get; set; }
-        public string Unit { get; set; } = "Cones";
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
-    }
-
-    public class PackingBooking
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string? OrderReference { get; set; }
-        public string PackingItem { get; set; } = string.Empty; // Poly, Tag, Tissue Paper, Box
+    public class PolyBooking : BaseProgramAccessory {
+        public string PolyType { get; set; } = string.Empty; // Single, Blister, etc.
         public string Size { get; set; } = string.Empty;
         public string PrintDetails { get; set; } = string.Empty;
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal RequiredQuantity { get; set; }
-        public string Unit { get; set; } = "Pcs";
-        public string Status { get; set; } = "Pending";
-        public string Supplier { get; set; } = string.Empty;
-        public DateTime DeliveryDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
     }
 
-    public class MerchProductionPlan
-    {
-        [Key]
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public string Factory { get; set; } = string.Empty;
-        public string ProductionLine { get; set; } = string.Empty;
-        public int TargetPerDay { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-
-        public virtual StyleOrder? StyleOrder { get; set; }
+    public class ThreadBooking : BaseProgramAccessory {
+        public string ThreadType { get; set; } = string.Empty;
+        public string ColorCode { get; set; } = string.Empty;
+        public string Brand { get; set; } = string.Empty;
+        public ThreadBooking() { Unit = "Cones"; }
     }
 
-    public class Shipment
-    {
-        [Key]
-        public int Id { get; set; }
-        public int CompanyId { get; set; }
-        public int BranchId { get; set; }
-        public int OrderId { get; set; }
-        public DateTime ShipmentDate { get; set; }
-        public int CartonQuantity { get; set; }
-        public ShipmentMethod ShippingMethod { get; set; } = ShipmentMethod.Sea;
-        public string Forwarder { get; set; } = string.Empty;
-
-        public virtual StyleOrder? StyleOrder { get; set; }
+    public class SnapButtonBooking : BaseProgramAccessory {
+        public string SnapType { get; set; } = string.Empty;
+        public string SnapSize { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
     }
 }

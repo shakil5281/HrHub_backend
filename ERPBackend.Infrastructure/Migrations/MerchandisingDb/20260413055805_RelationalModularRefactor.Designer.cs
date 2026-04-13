@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 {
     [DbContext(typeof(MerchandisingDbContext))]
-    partial class MerchandisingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413055805_RelationalModularRefactor")]
+    partial class RelationalModularRefactor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,9 +56,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("ButtonColor")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -71,19 +71,10 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("OrderReference")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
@@ -789,9 +780,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<int>("BranchId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("BuyerId")
-                        .HasColumnType("int");
-
                     b.Property<string>("BuyerName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -831,8 +819,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BuyerId");
-
                     b.HasIndex("CompanyId", "ProgramNumber")
                         .IsUnique();
 
@@ -846,6 +832,13 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ButtonColor")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("ButtonQty")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("BuyerPackingNumber")
                         .IsRequired()
@@ -1425,15 +1418,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Navigation("Color");
 
                     b.Navigation("ProgramArticle");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramOrder", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.Buyer", "Buyer")
-                        .WithMany()
-                        .HasForeignKey("BuyerId");
-
-                    b.Navigation("Buyer");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ProgramSizeBreakdown", b =>

@@ -8,24 +8,19 @@ namespace ERPBackend.Core.Interfaces
 {
     public interface IOrderSheetService
     {
-        Task<IEnumerable<OrderSheetDto>> GetAllAsync(int companyId);
-        Task<OrderSheet?> GetByIdAsync(int id);
-        Task<OrderSheetDto?> GetDtoByIdAsync(int id);
-        Task<OrderSheet> CreateAsync(OrderSheet orderSheet);
-        Task UpdateAsync(OrderSheet orderSheet);
+        Task<IEnumerable<ProgramOrderDto>> GetAllAsync(int companyId);
+        Task<ProgramOrder?> GetByIdAsync(int id);
+        Task<ProgramOrderDto?> GetDtoByIdAsync(int id);
+        Task<ProgramOrder> CreateAsync(ProgramOrder programOrder);
+        Task UpdateAsync(ProgramOrder programOrder);
         Task DeleteAsync(int id);
         
-        // Pack Calculation
-        int CalculatePackQuantity(int packA, int packB, bool isCombined);
-        
-        // Size Matrix / Summary logic can be internal or helper
-        OrderSummaryDto GetOrderSummary(int orderSheetId);
+        ProgramSummaryDto GetOrderSummary(int programId);
 
-        // Import Excel
         Task<MultiSheetOrderImportDto> ParseExcelAsync(Stream fileStream);
         Task<int> ImportOrderSheetsAsync(MultiSheetOrderImportDto importData, int companyId, int branchId);
         Task<byte[]> DownloadTemplateAsync();
         Task<byte[]> ExportOrderSheetAsync(int id);
-        Task<GlobalOrderSummaryDto> GetGlobalSummaryAsync(int companyId);
+        Task<GlobalProgramSummaryDto> GetGlobalSummaryAsync(int companyId);
     }
 }

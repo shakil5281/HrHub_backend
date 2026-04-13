@@ -4,7 +4,7 @@ using ERPBackend.Core.Enums;
 
 namespace ERPBackend.Core.Models
 {
-    public class OrderSheet
+    public class ProgramOrder
     {
         [Key]
         public int Id { get; set; }
@@ -14,9 +14,11 @@ namespace ERPBackend.Core.Models
         [Required, StringLength(100)]
         public string ProgramNumber { get; set; } = string.Empty;
         
-        // public int BuyerId { get; set; }
         [Required, StringLength(200)]
         public string BuyerName { get; set; } = string.Empty;
+        
+        public int? BuyerId { get; set; }
+        public virtual Buyer? Buyer { get; set; }
         
         [StringLength(200)]
         public string CustomerName { get; set; } = string.Empty;
@@ -27,19 +29,26 @@ namespace ERPBackend.Core.Models
         
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
 
-        // Header specific fields
         public string FactoryName { get; set; } = string.Empty;
         public string FactoryAddress { get; set; } = string.Empty;
         
-        // public virtual Buyer? Buyer { get; set; }
-        public virtual ICollection<OrderSheetItem> Items { get; set; } = new List<OrderSheetItem>();
+        // Navigation Properties for Articles
+        public virtual ICollection<ProgramArticle> Articles { get; set; } = new List<ProgramArticle>();
+        
+        // Navigation Properties for Accessories (Relational by ProgramId)
+        public virtual ICollection<ButtonBooking> Buttons { get; set; } = new List<ButtonBooking>();
+        public virtual ICollection<ZipperBooking> Zippers { get; set; } = new List<ZipperBooking>();
+        public virtual ICollection<MainLabelBooking> MainLabels { get; set; } = new List<MainLabelBooking>();
+        public virtual ICollection<CareLabelBooking> CareLabels { get; set; } = new List<CareLabelBooking>();
+        public virtual ICollection<ThreadBooking> Threads { get; set; } = new List<ThreadBooking>();
+        public virtual ICollection<PolyBooking> PolyBookings { get; set; } = new List<PolyBooking>();
     }
 
-    public class OrderSheetItem
+    public class ProgramArticle
     {
         [Key]
         public int Id { get; set; }
-        public int OrderSheetId { get; set; }
+        public int ProgramOrderId { get; set; }
         
         public int? StyleId { get; set; }
         public string OldArticleNo { get; set; } = string.Empty;
@@ -48,35 +57,35 @@ namespace ERPBackend.Core.Models
         public PackType PackType { get; set; }
         
         [Required]
-        public string ItemName { get; set; } = string.Empty; // Example: L/S POLO
+        public string ItemName { get; set; } = string.Empty;
         
         public int TotalQty { get; set; }
         
-        public virtual OrderSheet? OrderSheet { get; set; }
+        public virtual ProgramOrder? ProgramOrder { get; set; }
         public virtual Style? Style { get; set; }
-        public virtual ICollection<OrderSheetColor> Colors { get; set; } = new List<OrderSheetColor>();
+        public virtual ICollection<ProgramColor> Colors { get; set; } = new List<ProgramColor>();
     }
 
-    public class OrderSheetColor
+    public class ProgramColor
     {
         [Key]
         public int Id { get; set; }
-        public int OrderSheetItemId { get; set; }
+        public int ProgramArticleId { get; set; }
         
         public int? ColorId { get; set; }
         [Required]
         public string ColorName { get; set; } = string.Empty;
         
-        public virtual OrderSheetItem? OrderSheetItem { get; set; }
+        public virtual ProgramArticle? ProgramArticle { get; set; }
         public virtual FabricColorPantone? Color { get; set; }
-        public virtual ICollection<OrderSheetSizeBreakdown> SizeBreakdowns { get; set; } = new List<OrderSheetSizeBreakdown>();
+        public virtual ICollection<ProgramSizeBreakdown> SizeBreakdowns { get; set; } = new List<ProgramSizeBreakdown>();
     }
 
-    public class OrderSheetSizeBreakdown
+    public class ProgramSizeBreakdown
     {
         [Key]
         public int Id { get; set; }
-        public int OrderSheetColorId { get; set; }
+        public int ProgramColorId { get; set; }
 
         public int SizeM { get; set; }
         public int SizeL { get; set; }
@@ -91,7 +100,12 @@ namespace ERPBackend.Core.Models
         public int RowTotal { get; set; }
         
         public string BuyerPackingNumber { get; set; } = string.Empty;
+        
+        public virtual ProgramColor? ProgramColor { get; set; }
 
-        public virtual OrderSheetColor? OrderSheetColor { get; set; }
+        [NotMapped]
+        public string? ButtonColor { get; set; }
+        [NotMapped]
+        public decimal? ButtonQty { get; set; }
     }
 }

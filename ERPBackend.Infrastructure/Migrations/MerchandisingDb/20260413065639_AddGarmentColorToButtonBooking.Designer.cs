@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 {
     [DbContext(typeof(MerchandisingDbContext))]
-    partial class MerchandisingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413065639_AddGarmentColorToButtonBooking")]
+    partial class AddGarmentColorToButtonBooking
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -789,9 +792,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<int>("BranchId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("BuyerId")
-                        .HasColumnType("int");
-
                     b.Property<string>("BuyerName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -830,8 +830,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BuyerId");
 
                     b.HasIndex("CompanyId", "ProgramNumber")
                         .IsUnique();
@@ -1425,15 +1423,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Navigation("Color");
 
                     b.Navigation("ProgramArticle");
-                });
-
-            modelBuilder.Entity("ERPBackend.Core.Models.ProgramOrder", b =>
-                {
-                    b.HasOne("ERPBackend.Core.Models.Buyer", "Buyer")
-                        .WithMany()
-                        .HasForeignKey("BuyerId");
-
-                    b.Navigation("Buyer");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ProgramSizeBreakdown", b =>

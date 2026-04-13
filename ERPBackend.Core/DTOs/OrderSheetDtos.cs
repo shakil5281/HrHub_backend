@@ -1,47 +1,44 @@
-using ERPBackend.Core.Enums;
-
 namespace ERPBackend.Core.DTOs
 {
-    public class OrderSheetDto
+    public class ProgramOrderDto
     {
         public int Id { get; set; }
         public int CompanyId { get; set; }
         public int BranchId { get; set; }
         public string ProgramNumber { get; set; } = string.Empty;
-        public int BuyerId { get; set; }
         public string BuyerName { get; set; } = string.Empty;
+        public int? BuyerId { get; set; }
         public string CustomerName { get; set; } = string.Empty;
         public string FabricDescription { get; set; } = string.Empty;
         public string ProgramName { get; set; } = string.Empty;
         public DateTime OrderDate { get; set; }
         public string FactoryName { get; set; } = string.Empty;
         public string FactoryAddress { get; set; } = string.Empty;
-        
-        public List<OrderSheetItemDto> Items { get; set; } = new();
+        public List<ProgramArticleDto> Articles { get; set; } = new List<ProgramArticleDto>();
     }
 
-    public class OrderSheetItemDto
+    public class ProgramArticleDto
     {
         public int Id { get; set; }
-        public int StyleId { get; set; }
+        public int? StyleId { get; set; }
         public string OldArticleNo { get; set; } = string.Empty;
         public string NewArticleNo { get; set; } = string.Empty;
-        public PackType PackType { get; set; }
+        public int PackType { get; set; }
         public string ItemName { get; set; } = string.Empty;
         public int TotalQty { get; set; }
-        
-        public List<OrderSheetColorDto> Colors { get; set; } = new();
+        public string StyleNumber { get; set; } = string.Empty;
+        public List<ProgramColorDto> Colors { get; set; } = new List<ProgramColorDto>();
     }
 
-    public class OrderSheetColorDto
+    public class ProgramColorDto
     {
         public int Id { get; set; }
-        public int ColorId { get; set; }
+        public int? ColorId { get; set; }
         public string ColorName { get; set; } = string.Empty;
-        public List<OrderSheetSizeBreakdownDto> SizeBreakdowns { get; set; } = new();
+        public List<ProgramSizeBreakdownDto> SizeBreakdowns { get; set; } = new List<ProgramSizeBreakdownDto>();
     }
 
-    public class OrderSheetSizeBreakdownDto
+    public class ProgramSizeBreakdownDto
     {
         public int Id { get; set; }
         public int SizeM { get; set; }
@@ -55,87 +52,35 @@ namespace ERPBackend.Core.DTOs
         public int Size6XL { get; set; }
         public int RowTotal { get; set; }
         public string BuyerPackingNumber { get; set; } = string.Empty;
-    }
-
-    public class OrderSummaryDto
-    {
-        public int TotalOrderQuantity { get; set; }
-        public int TotalColors { get; set; }
-        public Dictionary<string, int> TotalPerSize { get; set; } = new();
-    }
-
-    public class GlobalOrderSummaryDto
-    {
-        public int TotalPieces { get; set; }
-        public int TotalPrograms { get; set; }
-        public int TotalBuyers { get; set; }
-        public List<BuyerDistributionDto> BuyerDistribution { get; set; } = new();
-        public List<SizeDistributionDto> SizeDistribution { get; set; } = new();
-        public List<ProgramSummaryDto> RecentPrograms { get; set; } = new();
-    }
-
-    public class BuyerDistributionDto
-    {
-        public string BuyerName { get; set; } = string.Empty;
-        public int TotalQty { get; set; }
-        public double Percentage { get; set; }
-    }
-
-    public class SizeDistributionDto
-    {
-        public string SizeName { get; set; } = string.Empty;
-        public int TotalQty { get; set; }
+        public string? ButtonColor { get; set; }
+        public decimal? ButtonQty { get; set; }
     }
 
     public class ProgramSummaryDto
     {
-        public int Id { get; set; }
-        public string ProgramNumber { get; set; } = string.Empty;
-        public string BuyerName { get; set; } = string.Empty;
-        public int TotalQty { get; set; }
-        public DateTime OrderDate { get; set; }
+        public int TotalOrderQuantity { get; set; }
+        public int TotalColors { get; set; }
+        public Dictionary<string, int> TotalPerSize { get; set; } = new Dictionary<string, int>();
     }
 
-    public class MultiSheetOrderImportDto
+    public class GlobalProgramSummaryDto
     {
-        public List<StyleImportDto> Styles { get; set; } = new();
-        public List<ColorImportDto> Colors { get; set; } = new();
-        public List<OrderSheetImportDto> Orders { get; set; } = new();
+        public int TotalPrograms { get; set; }
+        public int TotalQuantity { get; set; }
+        public decimal TotalValue { get; set; }
     }
 
-    public class StyleImportDto
+    public class OrderImportRowDto
     {
-        public string StyleNumber { get; set; } = string.Empty;
-        public string BuyerName { get; set; } = string.Empty;
-        public string ProductType { get; set; } = string.Empty;
-        public string Season { get; set; } = string.Empty;
-        public string FabricType { get; set; } = string.Empty;
-        public string GSM { get; set; } = string.Empty;
-        public string SizeRange { get; set; } = string.Empty;
-        public int RowIndex { get; set; }
-    }
-
-    public class ColorImportDto
-    {
-        public string ColorName { get; set; } = string.Empty;
-        public string PantoneCode { get; set; } = string.Empty;
-        public int RowIndex { get; set; }
-    }
-
-    public class OrderSheetImportDto
-    {
-        public string ProgramNumber { get; set; } = string.Empty;
-        public string BuyerName { get; set; } = string.Empty;
-        public string CustomerName { get; set; } = string.Empty;
-        public DateTime OrderDate { get; set; }
-        public string FabricDescription { get; set; } = string.Empty;
-        public string ProgramName { get; set; } = string.Empty;
-        public string FactoryName { get; set; } = string.Empty;
-        public string OldArticleNo { get; set; } = string.Empty;
-        public string NewArticleNo { get; set; } = string.Empty; // This links to StyleNumber
-        public string PackType { get; set; } = string.Empty; // "PackA", "PackB", "PackAB"
-        public string ItemName { get; set; } = string.Empty;
-        public string Color { get; set; } = string.Empty; // This links to ColorName
+        public string? ProgramNumber { get; set; }
+        public string? ProgramName { get; set; } // Mapped from Season
+        public string? BuyerName { get; set; }
+        public string? CustomerName { get; set; }
+        public string? ItemName { get; set; }
+        public string? NewArticleNo { get; set; } // Mapped from Article No
+        public string? StyleNo { get; set; }
+        public string? Fabric { get; set; }
+        public string? Color { get; set; } // Mapped from Color Name
         public int SizeM { get; set; }
         public int SizeL { get; set; }
         public int SizeXL { get; set; }
@@ -145,11 +90,15 @@ namespace ERPBackend.Core.DTOs
         public int Size4XL { get; set; }
         public int Size5XL { get; set; }
         public int Size6XL { get; set; }
-        public string BuyerPackingNumber { get; set; } = string.Empty;
-        
-        // Validation helpers
+        public string? PackRef { get; set; }
         public bool IsValid { get; set; } = true;
-        public string ErrorMessage { get; set; } = string.Empty;
-        public int RowIndex { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+
+    public class MultiSheetOrderImportDto
+    {
+        public List<dynamic>? Styles { get; set; }
+        public List<dynamic>? Colors { get; set; }
+        public List<OrderImportRowDto>? Orders { get; set; }
     }
 }
