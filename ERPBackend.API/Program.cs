@@ -78,6 +78,7 @@ builder.Services.AddScoped<IOrderSheetService, OrderSheetService>();
 builder.Services.AddScoped<IMerchandisingMasterService, MerchandisingMasterService>();
 builder.Services.AddScoped<ICostingService, CostingService>();
 builder.Services.AddScoped<INightBillService, NightBillService>();
+builder.Services.AddScoped<IAccessoryMatrixService, AccessoryMatrixService>();
 
 // 4. Authentication
 builder.Services.AddAuthentication(options =>
@@ -198,25 +199,24 @@ try
     {
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         
-        /*
         // Ensure at least one company exists
         if (!context.Companies.Any())
         {
             context.Companies.Add(new Company
             {
-                CompanyNameEn = "Default Company",
-                CompanyNameBn = "ডিফল্ট কোম্পানি",
-                AddressEn = "Default Address",
-                AddressBn = "ডিফল্ট ঠিকানা",
-                PhoneNumber = "0123456789",
+                CompanyNameEn = "Ekushe Fashions Ltd",
+                CompanyNameBn = "একুশে ফ্যাশনস লিমিটেড",
+                AddressEn = "Masterbari, Gazipur, Bangladesh",
+                AddressBn = "মাস্টারবাড়ী, গাজীপুর, বাংলাদেশ",
+                PhoneNumber = "01711-353535",
                 RegistrationNo = "REG-1001",
-                Email = "info@hrhub.com",
-                Industry = "Textile",
-                Status = "Active"
+                Email = "ekusheit@mridhagroup-bd.com",
+                Industry = "Garments",
+                Status = "Active",
+                CreatedAt = DateTime.UtcNow
             });
             await context.SaveChangesAsync();
         }
-        */
 
         // Seed Leave Types
         if (!context.LeaveTypes.Any())
@@ -230,6 +230,21 @@ try
             };
             context.LeaveTypes.AddRange(leaveTypes);
             await context.SaveChangesAsync();
+        }
+
+        // Seed Default Colors for Merchandising
+        var merchContext = scope.ServiceProvider.GetRequiredService<MerchandisingDbContext>();
+        if (!merchContext.FabricColorPantones.Any())
+        {
+            var colors = new List<FabricColorPantone>
+            {
+                new FabricColorPantone { ColorName = "DTM", PantoneCode = "DTM", CompanyId = 1, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new FabricColorPantone { ColorName = "BLACK", PantoneCode = "19-4008 TCX", CompanyId = 1, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new FabricColorPantone { ColorName = "WHITE", PantoneCode = "11-0601 TCX", CompanyId = 1, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new FabricColorPantone { ColorName = "NAVY", PantoneCode = "19-4023 TCX", CompanyId = 1, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow }
+            };
+            merchContext.FabricColorPantones.AddRange(colors);
+            await merchContext.SaveChangesAsync();
         }
 
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();

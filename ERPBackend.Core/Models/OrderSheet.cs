@@ -38,10 +38,12 @@ namespace ERPBackend.Core.Models
         // Navigation Properties for Accessories (Relational by ProgramId)
         public virtual ICollection<ButtonBooking> Buttons { get; set; } = new List<ButtonBooking>();
         public virtual ICollection<ZipperBooking> Zippers { get; set; } = new List<ZipperBooking>();
+        public virtual ICollection<SnapButtonBooking> SnapButtons { get; set; } = new List<SnapButtonBooking>();
         public virtual ICollection<MainLabelBooking> MainLabels { get; set; } = new List<MainLabelBooking>();
         public virtual ICollection<CareLabelBooking> CareLabels { get; set; } = new List<CareLabelBooking>();
         public virtual ICollection<ThreadBooking> Threads { get; set; } = new List<ThreadBooking>();
         public virtual ICollection<PolyBooking> PolyBookings { get; set; } = new List<PolyBooking>();
+        public virtual ICollection<FabricBooking> FabricBookings { get; set; } = new List<FabricBooking>();
     }
 
     public class ProgramArticle
@@ -106,6 +108,40 @@ namespace ERPBackend.Core.Models
         [NotMapped]
         public string? ButtonColor { get; set; }
         [NotMapped]
+        public int? ButtonColorId { get; set; }
+        [NotMapped]
         public decimal? ButtonQty { get; set; }
+        [NotMapped]
+        public string? ButtonType { get; set; }
+        [NotMapped]
+        public string? ButtonSize { get; set; }
+        [NotMapped]
+        public string? Unit { get; set; }
+        [NotMapped]
+        public string? Status { get; set; }
+
+        public virtual ICollection<ProgramAccessoryRequirement> AccessoryRequirements { get; set; } = new List<ProgramAccessoryRequirement>();
+    }
+
+    public class ProgramAccessoryRequirement
+    {
+        [Key]
+        public int Id { get; set; }
+        public int ProgramOrderId { get; set; }
+        public int ProgramSizeBreakdownId { get; set; }
+        
+        [MaxLength(50)]
+        public string AccessoryType { get; set; } = string.Empty; // "Zipper", "Thread", "Poly"
+        
+        public int? MasterColorId { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal? RequiredQuantity { get; set; }
+        public string? Specification { get; set; }
+
+        [ForeignKey("ProgramSizeBreakdownId")]
+        public virtual ProgramSizeBreakdown? ProgramSizeBreakdown { get; set; }
+
+        [ForeignKey("MasterColorId")]
+        public virtual FabricColorPantone? MasterColor { get; set; }
     }
 }

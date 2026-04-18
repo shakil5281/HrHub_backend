@@ -27,6 +27,10 @@ namespace ERPBackend.Core.Interfaces
         Task UpdateBrandAsync(Brand brand);
         Task DeleteBrandAsync(int id);
 
+        // Tech Packs
+        Task<IEnumerable<TechPack>> GetAllTechPacksAsync(int companyId);
+        Task<TechPack> CreateTechPackAsync(TechPack techPack);
+
         // Fabric Booking
         Task<IEnumerable<FabricBooking>> GetFabricBookingsByProgramAsync(int programId);
         Task<IEnumerable<FabricBooking>> GetAllFabricBookingsAsync(int companyId);

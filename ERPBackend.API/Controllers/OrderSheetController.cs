@@ -36,6 +36,7 @@ namespace ERPBackend.API.Controllers
             }
         }
 
+        [AllowAnonymous]
         [HttpGet("detail/{id}")]
         public async Task<ActionResult<ProgramOrderDto>> GetById(int id)
         {
@@ -51,17 +52,28 @@ namespace ERPBackend.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
+        [AllowAnonymous]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, ProgramOrder programOrder)
         {
             try 
             {
-                if (id != programOrder.Id) return BadRequest(new { message = "ID mismatch" });
+                Console.WriteLine($"[API] Updating Order ID: {id}, Body ID: {programOrder?.Id}");
+                if (programOrder == null) return BadRequest(new { message = "Body is null" });
+                
+                if (id != programOrder.Id) 
+                {
+                    Console.WriteLine($"[API] ID Mismatch: URL={id}, Body={programOrder.Id}");
+                    return BadRequest(new { message = "ID mismatch" });
+                }
+                
                 await _orderSheetService.UpdateAsync(programOrder);
                 return NoContent();
             }
             catch (System.Exception ex)
             {
+                Console.WriteLine($"[API] Update Error: {ex.Message}");
+                if (ex.InnerException != null) Console.WriteLine($"[API] Inner Error: {ex.InnerException.Message}");
                 return StatusCode(500, new { message = "Error updating program", error = ex.Message });
             }
         }

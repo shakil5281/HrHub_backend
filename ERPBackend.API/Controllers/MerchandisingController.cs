@@ -60,6 +60,25 @@ namespace ERPBackend.API.Controllers
         public async Task<IActionResult> DeleteBrand(int id) { await _merchandisingService.DeleteBrandAsync(id); return Ok(); }
         #endregion
 
+        #region Tech Packs
+        [HttpGet("tech-packs/{companyId}")]
+        public async Task<ActionResult<IEnumerable<TechPack>>> GetAllTechPacks(int companyId) => Ok(await _merchandisingService.GetAllTechPacksAsync(companyId));
+
+        [HttpPost("tech-packs")]
+        public async Task<ActionResult<TechPack>> CreateTechPack(TechPack techPack) => Ok(await _merchandisingService.CreateTechPackAsync(techPack));
+        #endregion
+
+        #region Fabric Bookings
+        [HttpGet("fabric-bookings/program/{programId}")]
+        public async Task<ActionResult<IEnumerable<FabricBooking>>> GetFabricBookingsByProgram(int programId) => Ok(await _merchandisingService.GetFabricBookingsByProgramAsync(programId));
+
+        [HttpGet("fabric-bookings/{companyId}")]
+        public async Task<ActionResult<IEnumerable<FabricBooking>>> GetAllFabricBookings(int companyId) => Ok(await _merchandisingService.GetAllFabricBookingsAsync(companyId));
+
+        [HttpPost("fabric-bookings")]
+        public async Task<ActionResult<FabricBooking>> CreateFabricBooking(FabricBooking booking) => Ok(await _merchandisingService.CreateFabricBookingAsync(booking));
+        #endregion
+
         #region Buttons
         [HttpGet("button-bookings/program/{programId}")]
         public async Task<ActionResult<IEnumerable<ButtonBooking>>> GetButtonBookingsByProgram(int programId) => Ok(await _merchandisingService.GetButtonBookingsByProgramAsync(programId));

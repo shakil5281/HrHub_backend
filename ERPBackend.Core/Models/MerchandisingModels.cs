@@ -125,7 +125,13 @@ namespace ERPBackend.Core.Models
         [Key]
         public int Id { get; set; }
         public int ProgramOrderId { get; set; }
-        public string? OrderReference { get; set; }
+        public int? ProgramSizeBreakdownId { get; set; } // Link to child
+        
+        // Metadata for reconciliation (Denormalized for performance/UI)
+        public string? ItemName { get; set; }
+        public string? ArticleNo { get; set; }
+        public string? GarmentColor { get; set; }
+
         public string Unit { get; set; } = "Pcs";
         public string Status { get; set; } = "Pending";
         public string Supplier { get; set; } = string.Empty;
@@ -135,6 +141,9 @@ namespace ERPBackend.Core.Models
 
         [ForeignKey("ProgramOrderId")]
         public virtual ProgramOrder? ProgramOrder { get; set; }
+        
+        [ForeignKey("ProgramSizeBreakdownId")]
+        public virtual ProgramSizeBreakdown? ProgramSizeBreakdown { get; set; }
     }
 
     public class FabricBooking : BaseProgramAccessory {
@@ -143,13 +152,13 @@ namespace ERPBackend.Core.Models
     }
 
     public class ButtonBooking : BaseProgramAccessory {
-        public string? ItemName { get; set; }
-        public string? ArticleNo { get; set; }
-        public string? GarmentColor { get; set; }
-        public int? ProgramSizeBreakdownId { get; set; }
         public string ButtonType { get; set; } = string.Empty;
         public string ButtonSize { get; set; } = string.Empty;
         public string ButtonColor { get; set; } = string.Empty;
+        public int? ButtonColorId { get; set; }
+        
+        [ForeignKey("ButtonColorId")]
+        public virtual FabricColorPantone? ButtonColorMaster { get; set; }
     }
 
     public class ZipperBooking : BaseProgramAccessory {

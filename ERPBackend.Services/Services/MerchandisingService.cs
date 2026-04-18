@@ -35,6 +35,10 @@ namespace ERPBackend.Services.Services
         public async Task UpdateBrandAsync(Brand brand) { _context.Entry(brand).State = EntityState.Modified; await _context.SaveChangesAsync(); }
         public async Task DeleteBrandAsync(int id) { var b = await _context.Brands.FindAsync(id); if (b != null) { _context.Brands.Remove(b); await _context.SaveChangesAsync(); } }
 
+        // Tech Pack Management
+        public async Task<IEnumerable<TechPack>> GetAllTechPacksAsync(int companyId) => await _context.TechPacks.Include(t => t.Style).Where(t => t.Style!.CompanyId == companyId).ToListAsync();
+        public async Task<TechPack> CreateTechPackAsync(TechPack techPack) { _context.TechPacks.Add(techPack); await _context.SaveChangesAsync(); return techPack; }
+
         // MODERN RELATIONAL BOOKINGS (Linked to ProgramOrder)
         public async Task<IEnumerable<FabricBooking>> GetFabricBookingsByProgramAsync(int programId) => await _context.FabricBookings.Where(b => b.ProgramOrderId == programId).ToListAsync();
         public async Task<IEnumerable<FabricBooking>> GetAllFabricBookingsAsync(int companyId) => await _context.FabricBookings.Include(b => b.ProgramOrder).Where(b => b.ProgramOrder!.CompanyId == companyId).ToListAsync();

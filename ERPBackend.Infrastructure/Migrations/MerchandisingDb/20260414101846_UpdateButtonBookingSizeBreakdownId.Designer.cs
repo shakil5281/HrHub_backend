@@ -4,6 +4,7 @@ using ERPBackend.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 {
     [DbContext(typeof(MerchandisingDbContext))]
-    partial class MerchandisingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260414101846_UpdateButtonBookingSizeBreakdownId")]
+    partial class UpdateButtonBookingSizeBreakdownId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -178,17 +181,8 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Material")
                         .IsRequired()
@@ -199,9 +193,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
@@ -223,8 +214,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasKey("Id");
 
                     b.HasIndex("ProgramOrderId");
-
-                    b.HasIndex("ProgramSizeBreakdownId");
 
                     b.ToTable("CareLabelBookings");
                 });
@@ -373,9 +362,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
 
@@ -383,16 +369,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
@@ -414,8 +391,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasKey("Id");
 
                     b.HasIndex("ProgramOrderId");
-
-                    b.HasIndex("ProgramSizeBreakdownId");
 
                     b.ToTable("FabricBookings");
                 });
@@ -580,17 +555,8 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Material")
                         .IsRequired()
@@ -601,9 +567,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
@@ -625,8 +588,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasKey("Id");
 
                     b.HasIndex("ProgramOrderId");
-
-                    b.HasIndex("ProgramSizeBreakdownId");
 
                     b.ToTable("MainLabelBookings");
                 });
@@ -703,17 +664,8 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PolyType")
                         .IsRequired()
@@ -724,9 +676,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
@@ -752,8 +701,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasKey("Id");
 
                     b.HasIndex("ProgramOrderId");
-
-                    b.HasIndex("ProgramSizeBreakdownId");
 
                     b.ToTable("PolyBookings");
                 });
@@ -1117,9 +1064,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Color")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1127,16 +1071,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
@@ -1166,8 +1101,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasKey("Id");
 
                     b.HasIndex("ProgramOrderId");
-
-                    b.HasIndex("ProgramSizeBreakdownId");
 
                     b.ToTable("SnapButtonBookings");
                 });
@@ -1313,9 +1246,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Brand")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1327,16 +1257,7 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
@@ -1363,8 +1284,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("ProgramOrderId");
 
-                    b.HasIndex("ProgramSizeBreakdownId");
-
                     b.ToTable("ThreadBookings");
                 });
 
@@ -1376,9 +1295,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArticleNo")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Color")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1386,20 +1302,11 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.Property<DateTime>("DeliveryDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("GarmentColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Length")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ProgramOrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProgramSizeBreakdownId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequiredQuantity")
@@ -1430,8 +1337,6 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.HasIndex("ProgramOrderId");
 
-                    b.HasIndex("ProgramSizeBreakdownId");
-
                     b.ToTable("ZipperBookings");
                 });
 
@@ -1455,13 +1360,12 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
                         .WithMany("Buttons")
                         .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("ERPBackend.Core.Models.ProgramSizeBreakdown", "ProgramSizeBreakdown")
                         .WithMany()
-                        .HasForeignKey("ProgramSizeBreakdownId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("ProgramSizeBreakdownId");
 
                     b.Navigation("ButtonColorMaster");
 
@@ -1475,17 +1379,10 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
                         .WithMany("CareLabels")
                         .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ERPBackend.Core.Models.ProgramSizeBreakdown", "ProgramSizeBreakdown")
-                        .WithMany()
-                        .HasForeignKey("ProgramSizeBreakdownId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("ProgramOrder");
-
-                    b.Navigation("ProgramSizeBreakdown");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Costing", b =>
@@ -1502,18 +1399,12 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
             modelBuilder.Entity("ERPBackend.Core.Models.FabricBooking", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("FabricBookings")
+                        .WithMany()
                         .HasForeignKey("ProgramOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ERPBackend.Core.Models.ProgramSizeBreakdown", "ProgramSizeBreakdown")
-                        .WithMany()
-                        .HasForeignKey("ProgramSizeBreakdownId");
-
                     b.Navigation("ProgramOrder");
-
-                    b.Navigation("ProgramSizeBreakdown");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.MainLabelBooking", b =>
@@ -1521,17 +1412,10 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
                         .WithMany("MainLabels")
                         .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ERPBackend.Core.Models.ProgramSizeBreakdown", "ProgramSizeBreakdown")
-                        .WithMany()
-                        .HasForeignKey("ProgramSizeBreakdownId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("ProgramOrder");
-
-                    b.Navigation("ProgramSizeBreakdown");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.PolyBooking", b =>
@@ -1539,17 +1423,10 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
                         .WithMany("PolyBookings")
                         .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ERPBackend.Core.Models.ProgramSizeBreakdown", "ProgramSizeBreakdown")
-                        .WithMany()
-                        .HasForeignKey("ProgramSizeBreakdownId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("ProgramOrder");
-
-                    b.Navigation("ProgramSizeBreakdown");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ProgramAccessoryRequirement", b =>
@@ -1637,19 +1514,12 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
             modelBuilder.Entity("ERPBackend.Core.Models.SnapButtonBooking", b =>
                 {
                     b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
-                        .WithMany("SnapButtons")
+                        .WithMany()
                         .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ERPBackend.Core.Models.ProgramSizeBreakdown", "ProgramSizeBreakdown")
-                        .WithMany()
-                        .HasForeignKey("ProgramSizeBreakdownId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("ProgramOrder");
-
-                    b.Navigation("ProgramSizeBreakdown");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Style", b =>
@@ -1685,17 +1555,10 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
                         .WithMany("Threads")
                         .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ERPBackend.Core.Models.ProgramSizeBreakdown", "ProgramSizeBreakdown")
-                        .WithMany()
-                        .HasForeignKey("ProgramSizeBreakdownId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("ProgramOrder");
-
-                    b.Navigation("ProgramSizeBreakdown");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.ZipperBooking", b =>
@@ -1703,17 +1566,10 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
                     b.HasOne("ERPBackend.Core.Models.ProgramOrder", "ProgramOrder")
                         .WithMany("Zippers")
                         .HasForeignKey("ProgramOrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ERPBackend.Core.Models.ProgramSizeBreakdown", "ProgramSizeBreakdown")
-                        .WithMany()
-                        .HasForeignKey("ProgramSizeBreakdownId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("ProgramOrder");
-
-                    b.Navigation("ProgramSizeBreakdown");
                 });
 
             modelBuilder.Entity("ERPBackend.Core.Models.Buyer", b =>
@@ -1739,13 +1595,9 @@ namespace ERPBackend.Infrastructure.Migrations.MerchandisingDb
 
                     b.Navigation("CareLabels");
 
-                    b.Navigation("FabricBookings");
-
                     b.Navigation("MainLabels");
 
                     b.Navigation("PolyBookings");
-
-                    b.Navigation("SnapButtons");
 
                     b.Navigation("Threads");
 

@@ -30,6 +30,7 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<CareLabelBooking> CareLabelBookings { get; set; } = null!;
         public DbSet<PolyBooking> PolyBookings { get; set; } = null!;
         public DbSet<ThreadBooking> ThreadBookings { get; set; } = null!;
+        public DbSet<ProgramAccessoryRequirement> ProgramAccessoryRequirements { get; set; } = null!;
 
         // Master Setup
         public DbSet<Season> Seasons { get; set; } = null!;
@@ -72,6 +73,99 @@ namespace ERPBackend.Infrastructure.Data
                 .WithMany(c => c.SizeBreakdowns)
                 .HasForeignKey(sb => sb.ProgramColorId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Accessories relationship with ProgramSizeBreakdown and ProgramOrder
+            // Using Restrict or NoAction to avoid circular cascade paths in SQL Server
+            builder.Entity<ButtonBooking>(entity =>
+            {
+                entity.HasOne(b => b.ProgramOrder)
+                    .WithMany(o => o.Buttons)
+                    .HasForeignKey(b => b.ProgramOrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(b => b.ProgramSizeBreakdown)
+                    .WithMany()
+                    .HasForeignKey(b => b.ProgramSizeBreakdownId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<ZipperBooking>(entity =>
+            {
+                entity.HasOne(b => b.ProgramOrder)
+                    .WithMany(o => o.Zippers)
+                    .HasForeignKey(b => b.ProgramOrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(b => b.ProgramSizeBreakdown)
+                    .WithMany()
+                    .HasForeignKey(b => b.ProgramSizeBreakdownId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<SnapButtonBooking>(entity =>
+            {
+                entity.HasOne(b => b.ProgramOrder)
+                    .WithMany(o => o.SnapButtons)
+                    .HasForeignKey(b => b.ProgramOrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(b => b.ProgramSizeBreakdown)
+                    .WithMany()
+                    .HasForeignKey(b => b.ProgramSizeBreakdownId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<MainLabelBooking>(entity =>
+            {
+                entity.HasOne(b => b.ProgramOrder)
+                    .WithMany(o => o.MainLabels)
+                    .HasForeignKey(b => b.ProgramOrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(b => b.ProgramSizeBreakdown)
+                    .WithMany()
+                    .HasForeignKey(b => b.ProgramSizeBreakdownId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<CareLabelBooking>(entity =>
+            {
+                entity.HasOne(b => b.ProgramOrder)
+                    .WithMany(o => o.CareLabels)
+                    .HasForeignKey(b => b.ProgramOrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(b => b.ProgramSizeBreakdown)
+                    .WithMany()
+                    .HasForeignKey(b => b.ProgramSizeBreakdownId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<PolyBooking>(entity =>
+            {
+                entity.HasOne(b => b.ProgramOrder)
+                    .WithMany(o => o.PolyBookings)
+                    .HasForeignKey(b => b.ProgramOrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(b => b.ProgramSizeBreakdown)
+                    .WithMany()
+                    .HasForeignKey(b => b.ProgramSizeBreakdownId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<ThreadBooking>(entity =>
+            {
+                entity.HasOne(b => b.ProgramOrder)
+                    .WithMany(o => o.Threads)
+                    .HasForeignKey(b => b.ProgramOrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(b => b.ProgramSizeBreakdown)
+                    .WithMany()
+                    .HasForeignKey(b => b.ProgramSizeBreakdownId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
 
             builder.Entity<ProgramOrder>()
                 .HasIndex(o => new { o.CompanyId, o.ProgramNumber })

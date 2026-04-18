@@ -14,6 +14,7 @@ namespace ERPBackend.Core.DTOs
         public DateTime OrderDate { get; set; }
         public string FactoryName { get; set; } = string.Empty;
         public string FactoryAddress { get; set; } = string.Empty;
+        public int TotalQty { get; set; }
         public List<ProgramArticleDto> Articles { get; set; } = new List<ProgramArticleDto>();
     }
 
@@ -53,7 +54,25 @@ namespace ERPBackend.Core.DTOs
         public int RowTotal { get; set; }
         public string BuyerPackingNumber { get; set; } = string.Empty;
         public string? ButtonColor { get; set; }
+        public int? ButtonColorId { get; set; }
         public decimal? ButtonQty { get; set; }
+        public string? ButtonType { get; set; }
+        public string? ButtonSize { get; set; }
+        public string? Unit { get; set; }
+        public string? Status { get; set; }
+
+        public List<AccessoryRequirementDto> AccessoryRequirements { get; set; } = new List<AccessoryRequirementDto>();
+    }
+
+    public class AccessoryRequirementDto
+    {
+        public int Id { get; set; }
+        public int ProgramSizeBreakdownId { get; set; }
+        public string AccessoryType { get; set; } = string.Empty;
+        public int? MasterColorId { get; set; }
+        public string? MasterColorName { get; set; }
+        public decimal? RequiredQuantity { get; set; }
+        public string? Specification { get; set; }
     }
 
     public class ProgramSummaryDto
@@ -65,9 +84,25 @@ namespace ERPBackend.Core.DTOs
 
     public class GlobalProgramSummaryDto
     {
+        public int TotalPieces { get; set; }
         public int TotalPrograms { get; set; }
-        public int TotalQuantity { get; set; }
-        public decimal TotalValue { get; set; }
+        public int TotalBuyers { get; set; }
+        public List<BuyerDistributionDto> BuyerDistribution { get; set; } = new List<BuyerDistributionDto>();
+        public List<SizeDistributionDto> SizeDistribution { get; set; } = new List<SizeDistributionDto>();
+        public List<ProgramOrderDto> RecentPrograms { get; set; } = new List<ProgramOrderDto>();
+    }
+
+    public class BuyerDistributionDto
+    {
+        public string BuyerName { get; set; } = string.Empty;
+        public int TotalQty { get; set; }
+        public double Percentage { get; set; }
+    }
+
+    public class SizeDistributionDto
+    {
+        public string SizeName { get; set; } = string.Empty;
+        public int TotalQty { get; set; }
     }
 
     public class OrderImportRowDto
@@ -100,5 +135,20 @@ namespace ERPBackend.Core.DTOs
         public List<dynamic>? Styles { get; set; }
         public List<dynamic>? Colors { get; set; }
         public List<OrderImportRowDto>? Orders { get; set; }
+    }
+
+    public class AccessoryOrderSummaryDto
+    {
+        public int OrderId { get; set; }
+        public string ProgramNumber { get; set; } = string.Empty;
+        public List<AccessoryTypeSummaryDto> Accessories { get; set; } = new List<AccessoryTypeSummaryDto>();
+    }
+
+    public class AccessoryTypeSummaryDto
+    {
+        public string AccessoryType { get; set; } = string.Empty;
+        public decimal TotalRequiredQuantity { get; set; }
+        public int MappedColors { get; set; }
+        public int TotalSizeBreakdowns { get; set; }
     }
 }
