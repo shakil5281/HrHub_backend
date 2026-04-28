@@ -75,7 +75,7 @@ namespace ERPBackend.API.Controllers
         }
 
         [HttpPost("colors/import/{companyId}/{branchId}")]
-        public async Task<IActionResult> ImportColors([FromForm] IFormFile file, [FromRoute] int companyId, [FromRoute] int branchId)
+        public async Task<IActionResult> ImportColors(IFormFile file, [FromRoute] int companyId, [FromRoute] int branchId)
         {
             if (file == null || file.Length == 0) return BadRequest("No file uploaded");
             
