@@ -512,263 +512,176 @@ namespace ERPBackend.API.Controllers
             return NoContent();
         }
 
-        // --- Excel Import/Export ---
+        // --- Excel Export Template ---
         [HttpGet("export-template")]
         [AllowAnonymous]
         public IActionResult ExportTemplate()
         {
             using var package = new OfficeOpenXml.ExcelPackage();
-            var worksheet = package.Workbook.Worksheets.Add("Organogram Data");
-
-            // Headers
-            worksheet.Cells[1, 1].Value = "Company Name";
-            worksheet.Cells[1, 2].Value = "Department Name (English)";
-            worksheet.Cells[1, 3].Value = "Department Name (Bangla)";
-            worksheet.Cells[1, 4].Value = "Section Name (English)";
-            worksheet.Cells[1, 5].Value = "Section Name (Bangla)";
-            worksheet.Cells[1, 6].Value = "Designation Name (English)";
-            worksheet.Cells[1, 7].Value = "Designation Name (Bangla)";
-            worksheet.Cells[1, 8].Value = "Night Bill";
-            worksheet.Cells[1, 9].Value = "Tiffin Bill";
-            worksheet.Cells[1, 10].Value = "Ifter Bill";
-            worksheet.Cells[1, 11].Value = "Holiday Bill";
-            worksheet.Cells[1, 12].Value = "Attendance Bonus";
-            worksheet.Cells[1, 13].Value = "Line Name (English)";
-            worksheet.Cells[1, 14].Value = "Line Name (Bangla)";
-
-            // Style headers
-            using (var range = worksheet.Cells[1, 1, 1, 14])
-            {
-                range.Style.Font.Bold = true;
-                range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(0, 102, 204));
-                range.Style.Font.Color.SetColor(System.Drawing.Color.White);
-                range.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+            var ws = package.Workbook.Worksheets.Add("Organogram Data");
+            string[] headers = {
+                "Company Name","Department Name (English)","Department Name (Bangla)",
+                "Section Name (English)","Section Name (Bangla)",
+                "Designation Name (English)","Designation Name (Bangla)",
+                "Night Bill","Tiffin Bill","Ifter Bill","Holiday Bill","Attendance Bonus",
+                "Line Name (English)","Line Name (Bangla)"
+            };
+            for (int i = 0; i < headers.Length; i++) ws.Cells[1, i+1].Value = headers[i];
+            using (var hdr = ws.Cells[1,1,1,14]) {
+                hdr.Style.Font.Bold = true;
+                hdr.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                hdr.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(16,133,69));
+                hdr.Style.Font.Color.SetColor(System.Drawing.Color.White);
+                hdr.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
             }
-
-            // Sample data
-            worksheet.Cells[2, 1].Value = "Example Corp";
-            worksheet.Cells[2, 2].Value = "Human Resources";
-            worksheet.Cells[2, 3].Value = "মানব সম্পদ";
-            worksheet.Cells[2, 4].Value = "Recruitment";
-            worksheet.Cells[2, 5].Value = "নিয়োগ";
-            worksheet.Cells[2, 6].Value = "HR Manager";
-            worksheet.Cells[2, 7].Value = "এইচআর ম্যানেজার";
-            worksheet.Cells[2, 8].Value = 100;
-            worksheet.Cells[2, 9].Value = 50;
-            worksheet.Cells[2, 10].Value = 50;
-            worksheet.Cells[2, 11].Value = 200;
-            worksheet.Cells[2, 12].Value = 500;
-            worksheet.Cells[2, 13].Value = "Line 1";
-            worksheet.Cells[2, 14].Value = "লাইন ১";
-
-            worksheet.Cells.AutoFitColumns();
-
+            object?[][] rows = {
+                new object?[]{"Ekushe Fashions Ltd","Production","\u09aa\u09cd\u09b0\u09cb\u09a1\u09be\u0995\u09b6\u09a8","Sewing","\u09b8\u09c1\u0987","General Operator","\u09b8\u09be\u09a7\u09be\u09b0\u09a3 \u0985\u09aa\u09be\u09b0\u09c7\u099f\u09b0",0,0,0,0,725,"Line - 1","\u09b2\u09be\u0987\u09a8 - \u09e7"},
+                new object?[]{"","","","","","Helper","\u09b9\u09c7\u09b2\u09cd\u09aa\u09be\u09b0",0,0,0,0,725,"Line - 2","\u09b2\u09be\u0987\u09a8 - \u09e8"},
+                new object?[]{"","","","","","Supervisor","\u09b8\u09c1\u09aa\u09be\u09b0\u09ad\u09be\u0987\u099c\u09be\u09b0",200,200,0,0,300,"Line - 3","\u09b2\u09be\u0987\u09a8 - \u09e9"},
+                new object?[]{"","","","Finishing","\u09ab\u09bf\u09a8\u09bf\u09b6\u09bf\u0982","Packingman","\u09aa\u09cd\u09af\u09be\u0995\u09bf\u0982\u09ae\u09cd\u09af\u09be\u09a8",0,0,0,0,725,"Finishing","\u09ab\u09bf\u09a8\u09bf\u09b6\u09bf\u0982"},
+            };
+            for (int r = 0; r < rows.Length; r++)
+                for (int c = 0; c < rows[r].Length; c++)
+                    ws.Cells[r+2, c+1].Value = rows[r][c];
+            ws.Cells.AutoFitColumns();
             var stream = new MemoryStream();
             package.SaveAs(stream);
             stream.Position = 0;
-
-            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "Organogram_Template.xlsx");
+            return File(stream,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","Organogram_Template.xlsx");
         }
 
+        // --- Excel Bulk Import ---
+        // Rules:
+        //   Company/Dept/Section: persist from previous row when blank
+        //   Section  : upsert by (NameEn + DepartmentId + CompanyId)
+        //   Designation: upsert by (NameEn + SectionId) - optional per row
+        //   Line       : upsert by (NameEn + SectionId) - optional per row
+        //   Both Designation and Line are independent and can appear on same row
         [HttpPost("import")]
-        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," +
-                           UserRoles.ItOfficer)]
+        [Authorize(Roles = UserRoles.SuperAdmin + "," + UserRoles.Admin + "," + UserRoles.HrManager + "," + UserRoles.ItOfficer)]
         public async Task<ActionResult<OrganogramImportResultDto>> ImportFromExcel(IFormFile file)
         {
             if (file == null || file.Length == 0)
                 return BadRequest("Please upload a valid Excel file.");
-
             var result = new OrganogramImportResultDto();
-
             try
             {
                 using var stream = new MemoryStream();
                 await file.CopyToAsync(stream);
                 stream.Position = 0;
-
                 using var package = new OfficeOpenXml.ExcelPackage(stream);
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-
-                if (worksheet == null)
-                {
-                    result.Errors.Add(new ImportErrorDto
-                        { RowNumber = 0, Field = "File", Message = "No worksheet found in the Excel file." });
-                    return BadRequest(result);
-                }
-
-                var rowCount = worksheet.Dimension?.Rows ?? 0;
-                if (rowCount <= 1)
-                {
-                    result.Errors.Add(new ImportErrorDto
-                        { RowNumber = 0, Field = "File", Message = "No data rows found." });
-                    return BadRequest(result);
-                }
-
+                var ws = package.Workbook.Worksheets.FirstOrDefault();
+                if (ws == null) { result.Errors.Add(new ImportErrorDto{RowNumber=0,Field="File",Message="No worksheet found."}); return BadRequest(result); }
+                int rowCount = ws.Dimension?.Rows ?? 0;
+                if (rowCount <= 1) { result.Errors.Add(new ImportErrorDto{RowNumber=0,Field="File",Message="No data rows found."}); return BadRequest(result); }
                 result.TotalRows = rowCount - 1;
-
-                // Pre-fetch all companies to reduce DB calls
-                var companies = await _context.Companies.ToListAsync();
+                var companies = await _context.Companies.AsNoTracking().ToListAsync();
+                Company? lastCompany = null;
+                Department? lastDept = null;
+                Section? lastSection = null;
                 var strategy = _context.Database.CreateExecutionStrategy();
-
-                for (int row = 2; row <= rowCount; row++)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    var currentRow = row; // Local capture for lambda
-                    await strategy.ExecuteAsync(async () =>
+                    using var tx = await _context.Database.BeginTransactionAsync();
+                    try
                     {
-                        using var transaction = await _context.Database.BeginTransactionAsync();
-                        try
+                        for (int row = 2; row <= rowCount; row++)
                         {
-                            var companyName = worksheet.Cells[currentRow, 1].Text?.Trim();
-                            var deptNameEn = worksheet.Cells[currentRow, 2].Text?.Trim();
-                            var deptNameBn = worksheet.Cells[currentRow, 3].Text?.Trim();
-                            var sectNameEn = worksheet.Cells[currentRow, 4].Text?.Trim();
-                            var sectNameBn = worksheet.Cells[currentRow, 5].Text?.Trim();
-                            var desigNameEn = worksheet.Cells[currentRow, 6].Text?.Trim();
-                            var desigNameBn = worksheet.Cells[currentRow, 7].Text?.Trim();
+                            string C(int col) => ws.Cells[row, col].Text?.Trim() ?? "";
+                            var companyName = C(1); var deptNameEn = C(2); var deptNameBn = C(3);
+                            var sectNameEn  = C(4); var sectNameBn = C(5);
+                            var desigNameEn = C(6); var desigNameBn = C(7);
+                            decimal.TryParse(C(8), out var nightBill);
+                            decimal.TryParse(C(9), out var tiffinBill);
+                            decimal.TryParse(C(10), out var ifterBill);
+                            decimal.TryParse(C(11), out var holidayBill);
+                            decimal.TryParse(C(12), out var attendanceBonus);
+                            var lineNameEn = C(13); var lineNameBn = C(14);
 
-                            decimal.TryParse(worksheet.Cells[currentRow, 8].Text, out var nightBill);
-                            decimal.TryParse(worksheet.Cells[currentRow, 9].Text, out var tiffinBill);
-                            decimal.TryParse(worksheet.Cells[currentRow, 10].Text, out var ifterBill);
-                            decimal.TryParse(worksheet.Cells[currentRow, 11].Text, out var holidayBill);
-                            decimal.TryParse(worksheet.Cells[currentRow, 12].Text, out var attendanceBonus);
+                            if (string.IsNullOrEmpty(companyName) && string.IsNullOrEmpty(deptNameEn) &&
+                                string.IsNullOrEmpty(sectNameEn)  && string.IsNullOrEmpty(desigNameEn) &&
+                                string.IsNullOrEmpty(lineNameEn)) { result.TotalRows--; continue; }
 
-                            var lineNameEn = worksheet.Cells[currentRow, 13].Text?.Trim();
-                            var lineNameBn = worksheet.Cells[currentRow, 14].Text?.Trim();
-
-                            if (string.IsNullOrEmpty(companyName) || string.IsNullOrEmpty(deptNameEn))
-                            {
-                                result.Errors.Add(new ImportErrorDto
-                                {
-                                    RowNumber = currentRow, Field = "Validation",
-                                    Message = "Company and Department English names are required."
-                                });
-                                result.ErrorCount++;
-                                return; // Skip this row
+                            // Company
+                            if (!string.IsNullOrEmpty(companyName)) {
+                                var found = companies.FirstOrDefault(c => c.CompanyNameEn.Equals(companyName, StringComparison.OrdinalIgnoreCase));
+                                if (found == null) { result.Warnings.Add(new ImportWarningDto{RowNumber=row,Message=$"Company '{companyName}' not found."}); result.WarningCount++; continue; }
+                                if (lastCompany == null || lastCompany.Id != found.Id) { lastDept = null; lastSection = null; }
+                                lastCompany = found;
                             }
+                            if (lastCompany == null) { result.Warnings.Add(new ImportWarningDto{RowNumber=row,Message="No company context."}); result.WarningCount++; continue; }
+                            var co = lastCompany;
 
-                            var company = companies.FirstOrDefault(c =>
-                                c.CompanyNameEn.Equals(companyName, StringComparison.OrdinalIgnoreCase));
-                            if (company == null)
-                            {
-                                result.Warnings.Add(new ImportWarningDto
-                                {
-                                    RowNumber = currentRow, Message = $"Company '{companyName}' not found. Row skipped."
-                                });
-                                result.WarningCount++;
-                                return; // Skip this row
+                            // Department
+                            if (!string.IsNullOrEmpty(deptNameEn)) {
+                                var d = await _context.Departments.FirstOrDefaultAsync(x => x.NameEn == deptNameEn && x.CompanyId == co.Id);
+                                if (d == null) { d = new Department{NameEn=deptNameEn,NameBn=deptNameBn,CompanyId=co.Id}; _context.Departments.Add(d); await _context.SaveChangesAsync(); result.CreatedCount++; }
+                                else if (!string.IsNullOrEmpty(deptNameBn) && d.NameBn != deptNameBn) { d.NameBn = deptNameBn; result.UpdatedCount++; }
+                                if (lastDept == null || lastDept.Id != d.Id) lastSection = null;
+                                lastDept = d;
                             }
+                            if (lastDept == null) { result.Warnings.Add(new ImportWarningDto{RowNumber=row,Message="No department context."}); result.WarningCount++; continue; }
+                            var dept = lastDept;
 
-                            // 1. Department
-                            var dept = await _context.Departments
-                                .Include(d => d.Sections)
-                                .FirstOrDefaultAsync(d => d.NameEn == deptNameEn && d.CompanyId == company.Id);
-
-                            if (dept == null)
-                            {
-                                dept = new Department
-                                    { NameEn = deptNameEn, NameBn = deptNameBn, CompanyId = company.Id };
-                                _context.Departments.Add(dept);
-                                await _context.SaveChangesAsync();
-                                result.CreatedCount++;
+                            // Section
+                            if (!string.IsNullOrEmpty(sectNameEn)) {
+                                var s = await _context.Sections.FirstOrDefaultAsync(x => x.NameEn == sectNameEn && x.DepartmentId == dept.Id && x.CompanyId == co.Id);
+                                if (s == null) { s = new Section{NameEn=sectNameEn,NameBn=sectNameBn,CompanyId=co.Id,DepartmentId=dept.Id}; _context.Sections.Add(s); await _context.SaveChangesAsync(); result.CreatedCount++; }
+                                else { bool ch=false; if (!string.IsNullOrEmpty(sectNameBn) && s.NameBn!=sectNameBn){s.NameBn=sectNameBn;ch=true;} if(s.DepartmentId!=dept.Id){s.DepartmentId=dept.Id;ch=true;} if(ch)result.UpdatedCount++; }
+                                lastSection = s;
                             }
-                            else if (!string.IsNullOrEmpty(deptNameBn) && dept.NameBn != deptNameBn)
-                            {
-                                dept.NameBn = deptNameBn;
-                                result.UpdatedCount++;
-                            }
+                            if (lastSection == null) { result.Warnings.Add(new ImportWarningDto{RowNumber=row,Message="No section context."}); result.WarningCount++; continue; }
+                            var sect = lastSection;
+                            bool worked = false;
 
-                            // 2. Section
-                            Section? section = null;
-                            if (!string.IsNullOrEmpty(sectNameEn))
-                            {
-                                section = await _context.Sections.FirstOrDefaultAsync(s =>
-                                    s.NameEn == sectNameEn && s.DepartmentId == dept.Id);
-                                if (section == null)
-                                {
-                                    section = new Section
-                                    {
-                                        NameEn = sectNameEn, NameBn = sectNameBn, CompanyId = company.Id,
-                                        DepartmentId = dept.Id
-                                    };
-                                    _context.Sections.Add(section);
-                                    await _context.SaveChangesAsync();
+                            // Designation (upsert by NameEn + SectionId)
+                            if (!string.IsNullOrEmpty(desigNameEn)) {
+                                var desig = await _context.Designations.FirstOrDefaultAsync(x => x.NameEn == desigNameEn && x.SectionId == sect.Id);
+                                if (desig == null) {
+                                    _context.Designations.Add(new Designation{NameEn=desigNameEn,NameBn=desigNameBn,CompanyId=co.Id,DepartmentId=dept.Id,SectionId=sect.Id,NightBill=nightBill,TiffinBill=tiffinBill,IfterBill=ifterBill,HolidayBill=holidayBill,AttendanceBonus=attendanceBonus});
                                     result.CreatedCount++;
+                                } else {
+                                    bool ch=false;
+                                    if(!string.IsNullOrEmpty(desigNameBn)&&desig.NameBn!=desigNameBn){desig.NameBn=desigNameBn;ch=true;}
+                                    if(desig.NightBill!=nightBill){desig.NightBill=nightBill;ch=true;}
+                                    if(desig.TiffinBill!=tiffinBill){desig.TiffinBill=tiffinBill;ch=true;}
+                                    if(desig.IfterBill!=ifterBill){desig.IfterBill=ifterBill;ch=true;}
+                                    if(desig.HolidayBill!=holidayBill){desig.HolidayBill=holidayBill;ch=true;}
+                                    if(desig.AttendanceBonus!=attendanceBonus){desig.AttendanceBonus=attendanceBonus;ch=true;}
+                                    if(desig.DepartmentId!=dept.Id){desig.DepartmentId=dept.Id;ch=true;}
+                                    if(ch)result.UpdatedCount++;
                                 }
-                                else if (!string.IsNullOrEmpty(sectNameBn) && section.NameBn != sectNameBn)
-                                {
-                                    section.NameBn = sectNameBn;
-                                    result.UpdatedCount++;
-                                }
+                                worked = true;
                             }
 
-                            // 3. Designation
-                            if (section != null && !string.IsNullOrEmpty(desigNameEn))
-                            {
-                                var desig = await _context.Designations.FirstOrDefaultAsync(d =>
-                                    d.NameEn == desigNameEn && d.SectionId == section.Id);
-                                if (desig == null)
-                                {
-                                    desig = new Designation
-                                    {
-                                        NameEn = desigNameEn, NameBn = desigNameBn, CompanyId = company.Id,
-                                        DepartmentId = dept.Id, SectionId = section.Id,
-                                        NightBill = nightBill, TiffinBill = tiffinBill, IfterBill = ifterBill,
-                                        HolidayBill = holidayBill,
-                                        AttendanceBonus = attendanceBonus
-                                    };
-                                    _context.Designations.Add(desig);
+                            // Line (upsert by NameEn + SectionId)
+                            if (!string.IsNullOrEmpty(lineNameEn)) {
+                                var line = await _context.Lines.FirstOrDefaultAsync(x => x.NameEn == lineNameEn && x.SectionId == sect.Id);
+                                if (line == null) {
+                                    _context.Lines.Add(new Line{NameEn=lineNameEn,NameBn=lineNameBn,CompanyId=co.Id,DepartmentId=dept.Id,SectionId=sect.Id});
                                     result.CreatedCount++;
+                                } else {
+                                    bool ch=false;
+                                    if(!string.IsNullOrEmpty(lineNameBn)&&line.NameBn!=lineNameBn){line.NameBn=lineNameBn;ch=true;}
+                                    if(line.DepartmentId!=dept.Id){line.DepartmentId=dept.Id;ch=true;}
+                                    if(line.SectionId!=sect.Id){line.SectionId=sect.Id;ch=true;}
+                                    if(ch)result.UpdatedCount++;
                                 }
-                                else
-                                {
-                                    desig.NameBn = desigNameBn ?? desig.NameBn;
-                                    desig.NightBill = nightBill;
-                                    desig.TiffinBill = tiffinBill;
-                                    desig.IfterBill = ifterBill;
-                                    desig.HolidayBill = holidayBill;
-                                    desig.AttendanceBonus = attendanceBonus;
-                                    result.UpdatedCount++;
-                                }
-                            }
-
-                            // 4. Line
-                            if (section != null && !string.IsNullOrEmpty(lineNameEn))
-                            {
-                                var line = await _context.Lines.FirstOrDefaultAsync(l =>
-                                    l.NameEn == lineNameEn && l.SectionId == section.Id);
-                                if (line == null)
-                                {
-                                    line = new Line
-                                    {
-                                        NameEn = lineNameEn, NameBn = lineNameBn, CompanyId = company.Id,
-                                        DepartmentId = dept.Id, SectionId = section.Id
-                                    };
-                                    _context.Lines.Add(line);
-                                    result.CreatedCount++;
-                                }
-                                else if (!string.IsNullOrEmpty(lineNameBn) && line.NameBn != lineNameBn)
-                                {
-                                    line.NameBn = lineNameBn;
-                                    result.UpdatedCount++;
-                                }
+                                worked = true;
                             }
 
                             await _context.SaveChangesAsync();
-                            await transaction.CommitAsync();
-                            result.SuccessCount++;
+                            if (worked) result.SuccessCount++;
                         }
-                        catch (Exception ex)
-                        {
-                            await transaction.RollbackAsync();
-                            result.Errors.Add(new ImportErrorDto
-                                { RowNumber = currentRow, Field = "Transaction", Message = ex.Message });
-                            result.ErrorCount++;
-                        }
-                    });
-                }
-
+                        await tx.CommitAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        await tx.RollbackAsync();
+                        result.Errors.Add(new ImportErrorDto{RowNumber=0,Field="Transaction",Message=ex.InnerException?.Message??ex.Message});
+                        result.ErrorCount = 1;
+                    }
+                });
                 return Ok(result);
             }
             catch (Exception ex)

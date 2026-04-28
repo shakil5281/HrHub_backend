@@ -140,7 +140,7 @@ namespace ERPBackend.Services.Services
                             .ToListAsync();
 
                         var existingLogsSet = new HashSet<string>(
-                            existingLogsLookup.Select(l => $"{l.EmployeeCard}|{l.LogTime:O}")
+                            existingLogsLookup.Select(l => $"{l.EmployeeCard}|{l.LogTime:yyyy-MM-dd HH:mm:ss}")
                         );
 
                         foreach (var log in tempLogs)
@@ -149,7 +149,7 @@ namespace ERPBackend.Services.Services
                             {
                                 if (validEmployees.TryGetValue(badgeNumber, out var empInfo))
                                 {
-                                    string key = $"{empInfo.Id}|{log.CheckTime:O}";
+                                    string key = $"{empInfo.Id}|{log.CheckTime:yyyy-MM-dd HH:mm:ss}";
                                     if (!existingLogsSet.Contains(key))
                                     {
                                         logsToInsert.Add(new AttendanceLog

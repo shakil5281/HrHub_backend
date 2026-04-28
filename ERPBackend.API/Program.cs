@@ -200,9 +200,10 @@ try
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         
         // Ensure at least one company exists
-        if (!context.Companies.Any())
+        var seededCompany = await context.Companies.FirstOrDefaultAsync();
+        if (seededCompany == null)
         {
-            context.Companies.Add(new Company
+            seededCompany = new Company
             {
                 CompanyNameEn = "Ekushe Fashions Ltd",
                 CompanyNameBn = "একুশে ফ্যাশনস লিমিটেড",
@@ -214,9 +215,11 @@ try
                 Industry = "Garments",
                 Status = "Active",
                 CreatedAt = DateTime.UtcNow
-            });
+            };
+            context.Companies.Add(seededCompany);
             await context.SaveChangesAsync();
         }
+        var companyId = seededCompany.Id;
 
         // Seed Leave Types
         if (!context.LeaveTypes.Any())
@@ -238,10 +241,10 @@ try
         {
             var colors = new List<FabricColorPantone>
             {
-                new FabricColorPantone { ColorName = "DTM", PantoneCode = "DTM", CompanyId = 1, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
-                new FabricColorPantone { ColorName = "BLACK", PantoneCode = "19-4008 TCX", CompanyId = 1, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
-                new FabricColorPantone { ColorName = "WHITE", PantoneCode = "11-0601 TCX", CompanyId = 1, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
-                new FabricColorPantone { ColorName = "NAVY", PantoneCode = "19-4023 TCX", CompanyId = 1, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow }
+                new FabricColorPantone { ColorName = "DTM", PantoneCode = "DTM", CompanyId = companyId, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new FabricColorPantone { ColorName = "BLACK", PantoneCode = "19-4008 TCX", CompanyId = companyId, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new FabricColorPantone { ColorName = "WHITE", PantoneCode = "11-0601 TCX", CompanyId = companyId, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new FabricColorPantone { ColorName = "NAVY", PantoneCode = "19-4023 TCX", CompanyId = companyId, BranchId = 1, IsActive = true, CreatedAt = DateTime.UtcNow }
             };
             merchContext.FabricColorPantones.AddRange(colors);
             await merchContext.SaveChangesAsync();
@@ -279,6 +282,13 @@ try
                 EmailConfirmed = true,
                 IsActive = true
             };
+            
+            // Assign company to user
+            if (seededCompany != null)
+            {
+                user.AssignedCompanies.Add(seededCompany);
+            }
+
             var result = await userManager.CreateAsync(user, "Admin@123");
             if (result.Succeeded)
             {
@@ -290,6 +300,17 @@ try
             if (!await userManager.IsInRoleAsync(adminUser, "SuperAdmin"))
             {
                 await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
+            }
+
+            // Ensure company is assigned if missing
+            var userWithCompanies = await userManager.Users
+                .Include(u => u.AssignedCompanies)
+                .FirstOrDefaultAsync(u => u.Id == adminUser.Id);
+
+            if (userWithCompanies != null && seededCompany != null && !userWithCompanies.AssignedCompanies.Any(c => c.Id == seededCompany.Id))
+            {
+                userWithCompanies.AssignedCompanies.Add(seededCompany);
+                await userManager.UpdateAsync(userWithCompanies);
             }
         }
     }
