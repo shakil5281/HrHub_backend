@@ -79,5 +79,17 @@ namespace ERPBackend.API.Controllers
             if (result == null) return NotFound("User not found");
             return Ok(result);
         }
+
+        [Authorize]
+        [HttpPut("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto model)
+        {
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username)) return Unauthorized();
+
+            var result = await _authService.ChangePasswordAsync(username, model);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
     }
 }

@@ -79,6 +79,7 @@ builder.Services.AddScoped<IMerchandisingMasterService, MerchandisingMasterServi
 builder.Services.AddScoped<ICostingService, CostingService>();
 builder.Services.AddScoped<INightBillService, NightBillService>();
 builder.Services.AddScoped<IAccessoryMatrixService, AccessoryMatrixService>();
+builder.Services.AddScoped<IIDCardService, IDCardService>();
 
 // 4. Authentication
 builder.Services.AddAuthentication(options =>
@@ -248,6 +249,59 @@ try
             };
             merchContext.FabricColorPantones.AddRange(colors);
             await merchContext.SaveChangesAsync();
+        }
+
+        // Seed Sample Employees
+        if (!context.Employees.Any())
+        {
+            // First create a default department and designation if they don't exist
+            var dept = await context.Departments.FirstOrDefaultAsync() ?? new Department { NameEn = "Engineering", NameBn = "প্রকৌশল", CompanyId = companyId };
+            if (dept.Id == 0) { context.Departments.Add(dept); await context.SaveChangesAsync(); }
+
+            var desig = await context.Designations.FirstOrDefaultAsync() ?? new Designation { NameEn = "Software Engineer", NameBn = "সফটওয়্যার প্রকৌশলী" };
+            if (desig.Id == 0) { context.Designations.Add(desig); await context.SaveChangesAsync(); }
+
+            var employees = new List<Employee>
+            {
+                new Employee 
+                { 
+                    EmployeeId = "EMP001", 
+                    FullNameEn = "John Doe", 
+                    Status = "Active", 
+                    DepartmentId = dept.Id, 
+                    DesignationId = desig.Id, 
+                    CompanyId = companyId,
+                    JoinDate = DateTime.Now.AddYears(-1),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Employee 
+                { 
+                    EmployeeId = "EMP002", 
+                    FullNameEn = "Jane Smith", 
+                    Status = "Active", 
+                    DepartmentId = dept.Id, 
+                    DesignationId = desig.Id, 
+                    CompanyId = companyId,
+                    JoinDate = DateTime.Now.AddMonths(-6),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Employee 
+                { 
+                    EmployeeId = "EMP003", 
+                    FullNameEn = "Robert Brown", 
+                    Status = "Active", 
+                    DepartmentId = dept.Id, 
+                    DesignationId = desig.Id, 
+                    CompanyId = companyId,
+                    JoinDate = DateTime.Now.AddMonths(-3),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+            context.Employees.AddRange(employees);
+            await context.SaveChangesAsync();
         }
 
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();

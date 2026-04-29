@@ -49,6 +49,9 @@ namespace ERPBackend.Core.DTOs
         public string Username { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
+        public string? Country { get; set; }
+        public string? City { get; set; }
         public IList<string> Roles { get; set; } = new List<string>();
         public bool IsActive { get; set; }
         public List<int> AssignedCompanyIds { get; set; } = new();
@@ -83,6 +86,9 @@ namespace ERPBackend.Core.DTOs
     {
         public string FullName { get; set; } = string.Empty;
         [EmailAddress] public string Email { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
+        public string? Country { get; set; }
+        public string? City { get; set; }
     }
 
     public class UpdateRoleDto
@@ -98,5 +104,12 @@ namespace ERPBackend.Core.DTOs
     public class UserStatusDto
     {
         public bool IsActive { get; set; }
+    }
+
+    public class ChangePasswordDto
+    {
+        [Required] public string CurrentPassword { get; set; } = string.Empty;
+        [Required] public string NewPassword { get; set; } = string.Empty;
+        [Required] [Compare("NewPassword")] public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

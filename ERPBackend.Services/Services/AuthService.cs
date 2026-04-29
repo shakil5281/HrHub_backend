@@ -354,6 +354,9 @@ namespace ERPBackend.Services.Services
             if (user == null) return new AuthResponseDto { Success = false, Message = "User not found" };
 
             user.FullName = model.FullName;
+            user.PhoneNumber = model.PhoneNumber;
+            user.Country = model.Country;
+            user.City = model.City;
 
             // Optional: Update Email if provided and different
             if (!string.IsNullOrEmpty(model.Email) && user.Email != model.Email)
@@ -387,6 +390,9 @@ namespace ERPBackend.Services.Services
                 Username = user.UserName ?? string.Empty,
                 Email = user.Email ?? string.Empty,
                 FullName = user.FullName ?? string.Empty,
+                PhoneNumber = user.PhoneNumber,
+                Country = user.Country,
+                City = user.City,
                 IsActive = user.IsActive,
                 Roles = roles,
                 AssignedCompanyIds = user.AssignedCompanies.Select(c => c.Id).ToList()
@@ -427,6 +433,23 @@ namespace ERPBackend.Services.Services
                 };
 
             return new AuthResponseDto { Success = false, Message = "Failed to update user status" };
+        }
+
+        public async Task<AuthResponseDto> ChangePasswordAsync(string username, ChangePasswordDto model)
+        {
+            var user = await _userManager.FindByNameAsync(username);
+            if (user == null) return new AuthResponseDto { Success = false, Message = "User not found" };
+
+            var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+
+            if (result.Succeeded)
+                return new AuthResponseDto { Success = true, Message = "Password changed successfully" };
+
+            return new AuthResponseDto
+            {
+                Success = false,
+                Message = "Failed to change password: " + string.Join(", ", result.Errors.Select(e => e.Description))
+            };
         }
 
         private JwtSecurityToken GetToken(List<Claim> authClaims)

@@ -25,5 +25,6 @@ namespace ERPBackend.Core.Interfaces
         Task<UserDto?> GetProfileAsync(string username);
         Task<AuthResponseDto> ResetPasswordAsync(string userId, string newPassword);
         Task<AuthResponseDto> ToggleUserActiveStatusAsync(string userId, bool isActive);
+        Task<AuthResponseDto> ChangePasswordAsync(string username, ChangePasswordDto model);
     }
 }
