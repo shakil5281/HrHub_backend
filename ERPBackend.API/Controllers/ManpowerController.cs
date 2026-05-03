@@ -45,6 +45,7 @@ namespace ERPBackend.API.Controllers
                 .Include(e => e.Shift)
                 .Include(e => e.Group)
                 .Include(e => e.Floor)
+                .Include(e => e.Company)
                 .Where(e => e.IsActive)
                 .AsQueryable();
 
@@ -124,6 +125,8 @@ namespace ERPBackend.API.Controllers
                     Email = e.Email,
                     PhoneNumber = e.PhoneNumber,
                     ProfileImageUrl = e.ProfileImageUrl,
+                    CompanyId = e.CompanyId ?? 0,
+                    CompanyName = e.Company != null ? e.Company.CompanyNameEn : (e.CompanyName ?? "Default Company"),
                     IsActive = e.IsActive,
                     CreatedAt = e.CreatedAt
                 })

@@ -308,18 +308,28 @@ namespace ERPBackend.Services.Services
                 attendance.ShiftId   = shift.Id;
                 string status        = "Absent";
 
-                // 4. In/Out Time Logic (First/Last Punch)
+                // 4. In/Out Time Logic (Improved for multiple early punches)
                 if (empLogs.Any())
                 {
-                    var firstLog = empLogs.First();
-                    var lastLog  = empLogs.Count > 1 ? empLogs.Last() : null;
-
-                    attendance.InTime  = firstLog.LogTime;
-                    attendance.OutTime = lastLog?.LogTime;
-
-                    // Normalization for calculations: If punch is before Official In, use Official In.
                     DateTime officialInDateTime = date.Date.Add(inTs);
-                    DateTime effectiveInForMath = firstLog.LogTime < officialInDateTime ? officialInDateTime : firstLog.LogTime;
+                    DateTime officialOutDateTime = date.Date.Add(outTs);
+                    if (officialOutDateTime < officialInDateTime) officialOutDateTime = officialOutDateTime.AddDays(1);
+
+                    var firstLog = empLogs.First();
+                    // OutTime must be after the official Office InTime and distinct from InTime
+                    var lastLog = empLogs.LastOrDefault(l => l.LogTime > officialInDateTime && l != firstLog);
+
+                    if (firstLog.LogTime >= officialOutDateTime)
+                    {
+                        // If the first punch is already after Office Out Time, it's an OutTime
+                        attendance.InTime = null;
+                        attendance.OutTime = empLogs.Last().LogTime;
+                    }
+                    else
+                    {
+                        attendance.InTime = firstLog.LogTime;
+                        attendance.OutTime = lastLog?.LogTime;
+                    }
 
                     status = "Present";
                     if (!string.IsNullOrEmpty(shift.LateInTime) && TimeSpan.TryParse(shift.LateInTime, out var lateTs))
@@ -327,21 +337,59 @@ namespace ERPBackend.Services.Services
                         if (firstLog.LogTime > date.Date.Add(lateTs)) status = "Late";
                     }
 
-                    // 5. Overtime (Worker Group Only, Rounded 45min+)
+                    // 5. Overtime Calculation
                     if (lastLog != null)
                     {
                         double lunchHrs = (double)shift.LunchHour;
+                        bool isWeekendOrOffDay = roster?.IsOffDay == true || IsWeekend(date, shift.Weekends);
 
-                        // Overtime: Worker Group Only, Rounded 45min+
-                        if (emp.Group?.NameEn?.ToLower() == "worker" && emp.IsOtEnabled)
+                        // --- NEW: Weekend/Off-Day OT Calculation ---
+                        if (isWeekendOrOffDay && emp.IsOtEnabled)
                         {
-                            DateTime officialOutDateTime = date.Date.Add(outTs);
-                            if (officialOutDateTime < officialInDateTime) officialOutDateTime = officialOutDateTime.AddDays(1);
-
+                            double totalMins = (lastLog.LogTime - firstLog.LogTime).TotalMinutes;
+                            if (lunchHrs > 0) totalMins -= (lunchHrs * 60);
+                            
+                            int finalOt = (int)(totalMins / 60);
+                            if (totalMins % 60 >= 45) finalOt += 1;
+                            attendance.OTHours = Math.Max(0, finalOt);
+                        }
+                        // --- ORIGINAL: Standard OT Calculation (Restored & Synchronized with Job Card) ---
+                        else if (emp.IsOtEnabled)
+                        {
                             if (lastLog.LogTime > officialOutDateTime)
                             {
                                 double otMins = (lastLog.LogTime - officialOutDateTime).TotalMinutes;
-                                if (lunchHrs > 0) otMins -= (lunchHrs * 60);
+
+                                // Deduct Special Break if applicable (Matching Job Card logic)
+                                if (shift.HasSpecialBreak && !string.IsNullOrEmpty(shift.SpecialBreakDates))
+                                {
+                                    var todayStr = date.Date.ToString("yyyy-MM-dd");
+                                    if (shift.SpecialBreakDates.Split(',').Any(d => d.Trim() == todayStr))
+                                    {
+                                        if (TimeSpan.TryParse(shift.SpecialBreakStart, out var sbStart) &&
+                                            TimeSpan.TryParse(shift.SpecialBreakEnd, out var sbEnd))
+                                        {
+                                            var sbStartDateTime = date.Date.Add(sbStart);
+                                            var sbEndDateTime = date.Date.Add(sbEnd);
+
+                                            if (officialOutDateTime.Date > date.Date)
+                                            {
+                                                sbStartDateTime = sbStartDateTime.AddDays(1);
+                                                sbEndDateTime = sbEndDateTime.AddDays(1);
+                                            }
+
+                                            var intersectStart = officialOutDateTime > sbStartDateTime ? officialOutDateTime : sbStartDateTime;
+                                            var intersectEnd = lastLog.LogTime < sbEndDateTime ? lastLog.LogTime : sbEndDateTime;
+
+                                            if (intersectEnd > intersectStart)
+                                            {
+                                                otMins -= (intersectEnd - intersectStart).TotalMinutes;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (otMins < 0) otMins = 0;
 
                                 int finalOt = (int)(otMins / 60);
                                 if (otMins % 60 >= 45) finalOt += 1;
@@ -359,7 +407,7 @@ namespace ERPBackend.Services.Services
                 }
 
                 attendance.Status   = status;
-                attendance.IsOffDay = status == "Off Day";
+                attendance.IsOffDay = roster?.IsOffDay == true || IsWeekend(date, shift.Weekends); // Mark as off-day for UI highlighting regardless of presence
 
                 if (attendance.Id == 0)
                 {

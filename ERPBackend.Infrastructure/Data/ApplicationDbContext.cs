@@ -46,6 +46,7 @@ namespace ERPBackend.Infrastructure.Data
         public DbSet<Holiday> Holidays { get; set; } = null!;
         public DbSet<HolidayBill> HolidayBills { get; set; } = null!;
         public DbSet<NightBillConfig> NightBillConfigs { get; set; } = null!;
+        public DbSet<EmployeePunishment> EmployeePunishments { get; set; } = null!;
         
 
 
@@ -161,6 +162,12 @@ namespace ERPBackend.Infrastructure.Data
                 .HasOne(o => o.Employee)
                 .WithMany()
                 .HasForeignKey(o => o.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<EmployeePunishment>()
+                .HasOne(p => p.Employee)
+                .WithMany()
+                .HasForeignKey(p => p.EmployeeId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<MonthlySalarySheet>()

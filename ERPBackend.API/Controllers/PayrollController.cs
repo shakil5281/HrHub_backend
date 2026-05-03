@@ -1418,6 +1418,10 @@ namespace ERPBackend.API.Controllers
             [FromQuery] int month,
             [FromQuery] int? companyId,
             [FromQuery] int? departmentId,
+            [FromQuery] int? sectionId,
+            [FromQuery] int? designationId,
+            [FromQuery] int? lineId,
+            [FromQuery] string? status,
             [FromQuery] string? searchTerm,
             [FromQuery] string? exportType = "master")
         {
@@ -1438,6 +1442,26 @@ namespace ERPBackend.API.Controllers
             if (departmentId.HasValue)
             {
                 query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
+            }
+
+            if (sectionId.HasValue)
+            {
+                query = query.Where(s => s.Employee!.SectionId == sectionId.Value);
+            }
+
+            if (designationId.HasValue)
+            {
+                query = query.Where(s => s.Employee!.DesignationId == designationId.Value);
+            }
+
+            if (lineId.HasValue)
+            {
+                query = query.Where(s => s.Employee!.LineId == lineId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(status) && status != "All")
+            {
+                query = query.Where(s => s.Employee!.Status == status);
             }
 
             if (!string.IsNullOrEmpty(searchTerm))
@@ -1835,6 +1859,192 @@ namespace ERPBackend.API.Controllers
             var filePrefix = exportTypeValue == "salary" ? "Salary_Sheet_By_Line" : "Master_Salary_Sheet";
             return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"{filePrefix}_{monthName}_{year}.xlsx");
+        }
+
+        [HttpGet("export-payslips-excel")]
+        public async Task<IActionResult> ExportPayslipsExcel(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? companyId,
+            [FromQuery] int? departmentId,
+            [FromQuery] int? sectionId,
+            [FromQuery] int? designationId,
+            [FromQuery] int? lineId,
+            [FromQuery] string? status,
+            [FromQuery] string? searchTerm)
+        {
+            try 
+            {
+                var query = _context.MonthlySalarySheets
+                    .Include(s => s.Employee)
+                    .ThenInclude(e => e!.Department)
+                    .Include(s => s.Employee)
+                    .ThenInclude(e => e!.Designation)
+                    .Include(s => s.Employee)
+                    .ThenInclude(e => e!.Line)
+                    .Include(s => s.Company)
+                    .Include(s => s.Employee)
+                    .ThenInclude(e => e!.Company)
+                    .Where(s => s.Year == year && s.Month == month);
+
+                if (companyId.HasValue && companyId > 0)
+                    query = query.Where(s => s.Employee!.CompanyId == companyId.Value || s.CompanyId == companyId.Value);
+
+                if (departmentId.HasValue)
+                    query = query.Where(s => s.Employee!.DepartmentId == departmentId.Value);
+
+                if (sectionId.HasValue)
+                    query = query.Where(s => s.Employee!.SectionId == sectionId.Value);
+
+                if (designationId.HasValue)
+                    query = query.Where(s => s.Employee!.DesignationId == designationId.Value);
+
+                if (lineId.HasValue)
+                    query = query.Where(s => s.Employee!.LineId == lineId.Value);
+
+                if (!string.IsNullOrEmpty(status) && status != "All")
+                    query = query.Where(s => s.Employee!.Status == status);
+
+                if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    query = query.Where(s =>
+                        s.Employee!.FullNameEn.Contains(searchTerm) || s.Employee.EmployeeId.Contains(searchTerm));
+                }
+
+                var records = await query.ToListAsync();
+                if (records == null || !records.Any())
+                {
+                    return BadRequest("No records found to export for the selected filters.");
+                }
+
+                var sortedRecords = records
+                    .OrderBy(r => r.Employee?.Line?.NameEn ?? "Unknown")
+                    .ThenBy(r => r.Employee?.EmployeeId ?? "")
+                    .ToList();
+
+                var compId = companyId ?? int.Parse(User.FindFirst("CompanyId")?.Value ?? "1");
+                var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == compId) 
+                              ?? await _context.Companies.FirstOrDefaultAsync();
+
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                using var package = new ExcelPackage();
+                var ws = package.Workbook.Worksheets.Add("Payslips");
+                ws.Cells.Style.Font.Name = "Arial";
+                ws.Cells.Style.Font.Size = 9; // Slightly smaller to fit better
+                
+                // Printer Settings for A4
+                ws.PrinterSettings.PaperSize = ePaperSize.A4;
+                ws.PrinterSettings.Orientation = eOrientation.Portrait;
+                ws.PrinterSettings.FitToPage = true;
+                ws.PrinterSettings.FitToWidth = 1;
+                ws.PrinterSettings.FitToHeight = 0;
+                ws.PrinterSettings.TopMargin = 0.5M / 2.54M; // 0.5 cm
+                ws.PrinterSettings.BottomMargin = 0.5M / 2.54M;
+                ws.PrinterSettings.LeftMargin = 0.5M / 2.54M;
+                ws.PrinterSettings.RightMargin = 0.5M / 2.54M;
+
+                int currentRow = 1;
+                int employeesPerPage = 4;
+
+                for (int i = 0; i < sortedRecords.Count; i++)
+                {
+                    var s = sortedRecords[i];
+                    var emp = s.Employee;
+                    
+                    int pageIndex = i % employeesPerPage;
+                    int startCol = (pageIndex % 2 == 0) ? 1 : 8;
+                    int startRow = currentRow + (pageIndex >= 2 ? 28 : 0);
+
+                    for (int copy = 0; copy < 2; copy++)
+                    {
+                        int slipStartRow = startRow + (copy * 13);
+                        string copyType = copy == 0 ? "OFFICE COPY" : "EMPLOYEE COPY";
+
+                        // Slip Header
+                        ws.Cells[slipStartRow, startCol, slipStartRow, startCol + 5].Merge = true;
+                        ws.Cells[slipStartRow, startCol].Value = (company?.CompanyNameEn ?? "HR HUB").ToUpper();
+                        ws.Cells[slipStartRow, startCol].Style.Font.Bold = true;
+                        ws.Cells[slipStartRow, startCol].Style.Font.Size = 10;
+                        ws.Cells[slipStartRow, startCol].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                        ws.Cells[slipStartRow + 1, startCol, slipStartRow + 1, startCol + 5].Merge = true;
+                        ws.Cells[slipStartRow + 1, startCol].Value = $"PAYSLIP - {copyType} ({CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month).ToUpper()} {year})";
+                        ws.Cells[slipStartRow + 1, startCol].Style.Font.Size = 8;
+                        ws.Cells[slipStartRow + 1, startCol].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                        // Employee Info (Compact)
+                        ws.Cells[slipStartRow + 3, startCol].Value = "Name:";
+                        ws.Cells[slipStartRow + 3, startCol + 1, slipStartRow + 3, startCol + 3].Merge = true;
+                        ws.Cells[slipStartRow + 3, startCol + 1].Value = emp?.FullNameEn;
+                        ws.Cells[slipStartRow + 3, startCol + 4].Value = "ID:";
+                        ws.Cells[slipStartRow + 3, startCol + 5].Value = emp?.EmployeeId;
+
+                        ws.Cells[slipStartRow + 4, startCol].Value = "Desig:";
+                        ws.Cells[slipStartRow + 4, startCol + 1, slipStartRow + 4, startCol + 3].Merge = true;
+                        ws.Cells[slipStartRow + 4, startCol + 1].Value = emp?.Designation?.NameEn;
+                        ws.Cells[slipStartRow + 4, startCol + 4].Value = "Dept:";
+                        ws.Cells[slipStartRow + 4, startCol + 5].Value = emp?.Department?.NameEn;
+
+                        // Financials
+                        ws.Cells[slipStartRow + 6, startCol].Value = "Earnings";
+                        ws.Cells[slipStartRow + 6, startCol].Style.Font.Bold = true;
+                        ws.Cells[slipStartRow + 6, startCol + 3].Value = "Deductions";
+                        ws.Cells[slipStartRow + 6, startCol + 3].Style.Font.Bold = true;
+
+                        ws.Cells[slipStartRow + 7, startCol].Value = "Basic";
+                        ws.Cells[slipStartRow + 7, startCol + 2].Value = Math.Round(s.BasicSalary, 0);
+                        ws.Cells[slipStartRow + 7, startCol + 3].Value = "Absence";
+                        ws.Cells[slipStartRow + 7, startCol + 5].Value = Math.Round(s.AbsentDeduction, 0);
+
+                        ws.Cells[slipStartRow + 8, startCol].Value = "Allow.";
+                        ws.Cells[slipStartRow + 8, startCol + 2].Value = Math.Round(s.GrossSalary - s.BasicSalary, 0);
+                        ws.Cells[slipStartRow + 8, startCol + 3].Value = "Others";
+                        ws.Cells[slipStartRow + 8, startCol + 5].Value = Math.Round(s.TotalDeduction - s.AbsentDeduction, 0);
+
+                        ws.Cells[slipStartRow + 9, startCol].Value = "OT Pay";
+                        ws.Cells[slipStartRow + 9, startCol + 2].Value = Math.Round(s.OTAmount, 0);
+
+                        // Summary
+                        ws.Cells[slipStartRow + 11, startCol, slipStartRow + 11, startCol + 2].Merge = true;
+                        ws.Cells[slipStartRow + 11, startCol].Value = "NET PAYABLE:";
+                        ws.Cells[slipStartRow + 11, startCol].Style.Font.Bold = true;
+                        ws.Cells[slipStartRow + 11, startCol + 3, slipStartRow + 11, startCol + 5].Merge = true;
+                        ws.Cells[slipStartRow + 11, startCol + 3].Value = Math.Round(s.NetPayable, 0);
+                        ws.Cells[slipStartRow + 11, startCol + 3].Style.Font.Bold = true;
+                        ws.Cells[slipStartRow + 11, startCol + 3].Style.Numberformat.Format = "#,##0";
+
+                        // Borders
+                        using (var range = ws.Cells[slipStartRow, startCol, slipStartRow + 12, startCol + 5])
+                        {
+                            range.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                        }
+                    }
+
+                    if (i % 4 == 3)
+                    {
+                        ws.Row(currentRow + 55).PageBreak = true;
+                        currentRow += 56;
+                    }
+                }
+
+                // Tight Column Widths for A4 Portrait
+                ws.Column(1).Width = 10; ws.Column(2).Width = 10; ws.Column(3).Width = 8;
+                ws.Column(4).Width = 10; ws.Column(5).Width = 10; ws.Column(6).Width = 8;
+                ws.Column(7).Width = 3;  // Spacer
+                ws.Column(8).Width = 10; ws.Column(9).Width = 10; ws.Column(10).Width = 8;
+                ws.Column(11).Width = 10; ws.Column(12).Width = 10; ws.Column(13).Width = 8;
+
+                var stream = new MemoryStream();
+                package.SaveAs(stream);
+                stream.Position = 0;
+
+                string monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+                return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Payslips_{monthName}_{year}.xlsx");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error during payslip export: {ex.Message}");
+            }
         }
 
         [HttpGet("export-bank-sheet")]

@@ -1800,20 +1800,33 @@ foreach (var att in attendances)
                         decimal totalHours = 0;
                         decimal otHours = attendance.OTHours;
 
-                        if (employee.IsOtEnabled && attendance.InTime.HasValue && attendance.OutTime.HasValue)
+                        var currentShiftObj = attendance.Shift ?? dayRoster?.Shift ?? employee.Shift;
+                        bool isWeekendOrOffDay = dailyIsOffDay || isHoliday;
+
+                        // --- NEW: Weekend/Off-Day OT Calculation ---
+                        if (isWeekendOrOffDay && employee.IsOtEnabled && attendance.InTime.HasValue && attendance.OutTime.HasValue)
+                        {
+                            var duration = attendance.OutTime.Value - attendance.InTime.Value;
+                            double totalMinutes = duration.TotalMinutes;
+                            double lunchHrs = (double)(currentShiftObj?.LunchHour ?? 0);
+                            if (lunchHrs > 0) totalMinutes -= (lunchHrs * 60);
+
+                            int fullHours = (int)(totalMinutes / 60);
+                            int remainingMinutes = (int)(totalMinutes % 60);
+                            otHours = (remainingMinutes >= 45) ? fullHours + 1 : fullHours;
+                            totalHours = otHours;
+                        }
+                        // --- ORIGINAL: Standard OT Calculation (Restored) ---
+                        else if (employee.IsOtEnabled && attendance.InTime.HasValue && attendance.OutTime.HasValue)
                         {
                             var duration = attendance.OutTime.Value - attendance.InTime.Value;
                             totalHours = (decimal)duration.TotalHours;
-
-                            // Recalculate OT using shift times and Special Break
-                            var currentShiftObj = attendance.Shift ?? dayRoster?.Shift ?? employee.Shift;
 
                             if (currentShiftObj != null && !string.IsNullOrEmpty(currentShiftObj.OutTime) &&
                                 TimeSpan.TryParse(currentShiftObj.OutTime, out var shiftOutTimeValue))
                             {
                                 var officeOutDateTime = date.Date.Add(shiftOutTimeValue);
 
-                                // Handle overnight shift: If Office Out < Actual In, Office Out is next day
                                 if (currentShiftObj.ActualInTime != null &&
                                     TimeSpan.TryParse(currentShiftObj.ActualInTime, out var aIn) &&
                                     shiftOutTimeValue < aIn)
@@ -1826,7 +1839,6 @@ foreach (var att in attendances)
                                     var otDuration = attendance.OutTime.Value - officeOutDateTime;
                                     double totalMinutes = otDuration.TotalMinutes;
 
-                                    // Deduct Special Break if applicable
                                     if (currentShiftObj.HasSpecialBreak && !string.IsNullOrEmpty(currentShiftObj.SpecialBreakDates))
                                     {
                                         var todayStr = date.Date.ToString("yyyy-MM-dd");
@@ -1857,7 +1869,6 @@ foreach (var att in attendances)
 
                                     if (totalMinutes < 0) totalMinutes = 0;
 
-                                    // Using the 45-minute rounding rule
                                     int fullHours = (int)(totalMinutes / 60);
                                     int remainingMinutes = (int)(totalMinutes % 60);
                                     otHours = (remainingMinutes >= 45) ? fullHours + 1 : fullHours;
@@ -1869,7 +1880,6 @@ foreach (var att in attendances)
                             }
                             else
                             {
-                                // Fallback: Total Hours = 9 (standard) + OT
                                 decimal rawOt = totalHours - 9;
                                 if (rawOt > 0)
                                 {
